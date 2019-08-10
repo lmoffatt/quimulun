@@ -88,6 +88,13 @@ template<typename T>
 auto& center(const T& x){ return x;}
 
 
+
+template<class Id, class...Ids>
+constexpr bool is_in_pack()
+{
+  return (std::is_same_v<Id,Ids >||...||false);
+}
+
 namespace impl {
 
 

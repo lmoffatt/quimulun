@@ -6,6 +6,11 @@
 namespace qm {
 
 
+struct Nothing{};
+
+
+inline Nothing operator+(Nothing, Nothing ){return Nothing{};}
+
 template<template<class...> class Tr,class Id> class Datum_
 {
 public:
@@ -20,12 +25,17 @@ public:
   auto& operator()(Id)const & {return value_;}
   v<T,unit> operator()(Id)&& {return std::move(value_);}
 
+  auto& value()const {return value_;}
+
   friend std::ostream& operator<<(std::ostream& os, const Datum_ me)
   {
     return os<<me(Id{});
   }
 
 };
+
+template<template<class...> class Tr,class Id, class Datas, class Rand>
+Datum_<Tr,Id> sample(const Datum_<Tr,Id>& d, const Datas& , Rand& ){return d;}
 
 
 template <template<class...>class, class...> class Data_;
@@ -39,14 +49,32 @@ public:
   template<class Id>
   using v_t=v<typename Tr<Id>::type::T,typename Tr<Id>::type::unit>;
 
+  typedef Cs<Ids...> myIds;
+
 private:
   std::tuple<Datum_<Tr,Ids>...> tu_;
 public:
-  Data_(v_t<Ids>&&... x):tu_{std::move(x)...}{}
+  //Data_(v_t<Ids>&&... x):tu_{std::move(x)...}{}
+
+
+  Data_(Datum_<Tr,Ids>&&... x):tu_{std::move(x)...}{}
+
   template<class Id>
-  auto& operator()(Id)const & {return std::get<Datum_<Tr,Id>>(tu_);}
+  auto operator()(Id)const& ->std::enable_if_t<is_in_pack<Id,Ids...>(),Datum_<Tr,Id>const &>
+  {return std::get<Datum_<Tr,Id>>(tu_);}
+
   template<class Id>
-  Datum_<Tr,Id> operator()(Id)&& {return std::move(std::get<Datum_<Tr,Id>>(tu_));}
+  auto operator()(Id)const& ->std::enable_if_t<!is_in_pack<Id,Ids...>(),Nothing>
+  {return Nothing{};}
+
+
+  template<class Id>
+  auto operator()(Id)&&->std::enable_if_t<is_in_pack<Id,Ids...>(),Datum_<Tr,Id>>
+  {return std::get<Datum_<Tr,Id>>(tu_);}
+
+  template<class Id>
+  auto operator()(Id)&&->std::enable_if_t<!is_in_pack<Id,Ids...>(),Nothing>
+  {return Nothing{};}
 
   friend std::ostream& operator<<(std::ostream& os, const Data_ me)
   {
@@ -56,15 +84,80 @@ public:
 
 };
 
+template<template<class...> class Tr,class Id>
+Data_<Tr,Id> operator+(Datum_<Tr,Id>&& d, Nothing)
+{
+  return Data_<Tr,Id>(std::move(d));
+}
+
+template<template<class...> class Tr,class Id>
+Data_<Tr,Id> operator+(const Datum_<Tr,Id>& d, Nothing)
+{
+  auto c(d);
+  return Data_<Tr,Id>(std::move(c));
+}
+
+
+
+template<template<class...> class Tr,class Id>
+Data_<Tr,Id> operator+( Nothing,Datum_<Tr,Id>&& d)
+{
+  return Data_<Tr,Id>(std::move(d));
+}
+
+template<template<class...> class Tr,class... Id>
+Data_<Tr,Id...> operator+(Datum_<Tr,Id...>&& d, Nothing)
+{
+  return d;
+}
+
+template<template<class...> class Tr,class... Id>
+Data_<Tr,Id...> operator+( Nothing,Data_<Tr,Id...>&& d)
+{
+  return d;
+}
+
+
+
+template<template<class...> class Tr,class Id,class... Ids>
+Data_<Tr,Id,Ids...> operator+(Datum_<Tr,Id>&& d, Datum_<Tr,Ids>&&... ds)
+{
+  return Data_<Tr,Id,Ids...>(std::move(d),std::move(ds)...);
+}
+
+template<template<class...> class Tr,class Id,class... Ids>
+Data_<Tr,Id,Ids...> operator+(Datum_<Tr,Id>&& d, Data_<Tr,Ids...>&& ds)
+{
+  return Data_<Tr,Id,Ids...>(std::move(d),std::move(ds)(Ids{})...);
+}
+
+
+
+template<template<class...> class Tr,class Id,class... Ids>
+Data_<Tr,Ids...,Id> operator+( Data_<Tr,Ids...>&& ds,Datum_<Tr,Id>&& d)
+{
+  return Data_<Tr,Ids...,Id>(std::move(ds)(Ids{})...,std::move(d));
+}
+
+
+template<template<class...> class Tr,class... Id,class... Ids>
+Data_<Tr,Id...,Ids...> operator+(Data_<Tr,Id...>&& d, Data_<Tr,Ids...>&& ds)
+{
+  return Data_<Tr,Id...,Ids...>(std::move(d)(Id{})...,std::move(ds)(Ids{})...);
+}
+
+template <class...Ds>
+auto make_data(Ds&&... d){return (d+...);}
+
+
+
 template<class... Ids>
 using Data=Data_<C,Ids...>;
 
+template<class... Ids>
+using Datum=Datum_<C,Ids...>;
 
-template<template<class...> class Tr,class... Ids, class Id>
-auto& value(const Data_<Tr,Ids...>& d,Id id)
-{
-  return d(id)(id);
-}
+
 
 template<template<class...> class Tr,class... Ids, class Id>
 auto& at(const Data_<Tr,Ids...>& d,Id id)
