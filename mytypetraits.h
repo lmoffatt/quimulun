@@ -110,17 +110,26 @@ auto constexpr index_of_this_type(Cs<T,Ts...> c, C<T> t) {
 };
 
 
-template<class, template<class...>class> struct transfer{};
+template<class, class> struct transfer{};
 
 
 template<template<class...>class Co,template<class...>class D, class...T>
-struct transfer<Co<T...>,D>
+struct transfer<Co<T...>,D<>>
 {
   typedef D<T...> type;
 };
 
-template<class S, template<class...>class D>
+template<template<class...>class Co,template<template<class...>class,class...>class D, template<class...>class Tr,class...T>
+struct transfer<Co<T...>,D<Tr>>
+{
+  typedef D<Tr,T...> type;
+};
+
+
+template<class S, class D>
 using transfer_t=typename transfer<S,D>::type;
+
+
 
 
 } // namespace qm

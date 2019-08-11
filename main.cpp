@@ -18,7 +18,7 @@ struct position
 
 int main()
 {
-  qm::Normal_Distribution<position, double> normal;
+  qm::Normal_Distribution<position> normal;
 
   qm::Data<mean<position>,stddev<position>> d(v(1.0,meter{}),v(0.1,meter{}));
 
@@ -39,12 +39,12 @@ int main()
   std::cout << logL<<std::endl;
 
   auto qui=quimulun{
-    F{position{},Normal_Distribution<position,double>{}},
-        F{mean<position>{}, Normal_Distribution<mean<position>, double>{}},
-        F{ stddev<position>{}, Exponential_Distribution<stddev<position>, double>{}},
-      F{ mean<mean<position>>{}, Datum<mean<mean<position>>>{v(1.0,meter{})}},
-      F{ stddev<mean<position>>{}, Datum<stddev<mean<position>>>{v(0.2,meter{})}},
-      F{ mean<stddev<position>>{}, Datum<mean<stddev<position>>>{v(0.2,meter{})}}
+    Normal_Distribution<position>{},
+        Normal_Distribution<mean<position>>{},
+       Exponential_Distribution<stddev<position>>{},
+      Datum<mean<mean<position>>>{v(1.0,meter{})},
+      Datum<stddev<mean<position>>>{v(0.2,meter{})},
+      Datum<mean<stddev<position>>>{v(0.2,meter{})}
       };
 
   auto sss=sample(qui,C<double>{},mt);

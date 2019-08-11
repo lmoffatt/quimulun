@@ -17,19 +17,20 @@ public:
   typedef typename Tr<Id>::type::T T;
 
   typedef typename Tr<Id>::type::unit unit;
+  typedef   Id myId;
 
 private:
   v<T,unit> value_;
 public:
   Datum_(v<T,unit>&& x):value_{std::move(x)}{}
-  auto& operator()(Id)const & {return value_;}
-  v<T,unit> operator()(Id)&& {return std::move(value_);}
+  auto& operator()(Id)const & {return *this;}
+  v<T,unit> operator()(Id)&& {return *this;}
 
   auto& value()const {return value_;}
 
   friend std::ostream& operator<<(std::ostream& os, const Datum_ me)
   {
-    return os<<me(Id{});
+    return os<<me.value();
   }
 
 };

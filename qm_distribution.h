@@ -34,23 +34,27 @@ struct variance{
 
 
 
-template<class Id, class T>
+template<class Id, class Mean=mean<Id>, class Std=stddev<Id>, class T=typename Id::T >
 class Normal_Distribution;
 
-template<class Id, class T>
+template<class Id, class Mean=mean<Id>,class T=typename Id::T>
 class Exponential_Distribution;
 
-template<class Id>
-struct Normal_Distribution<Id,double>
+template<class Id, class Mean, class Std>
+struct Normal_Distribution<Id,Mean,Std,double>
 {
+
+  typedef   Id myId;
+  auto &operator()(Id)const {return *this;}
+
   static_assert (std::is_same_v<typename Id::T,double >);
   typedef typename Id::unit  unit;
   typedef mult_exponent_t<unit,-1> unit_1;
   template<class Rnd, class Datas>
   auto sample(const Datas& par, Rnd& mt)const
   {
-    auto m=par(mean<Id>{});
-    auto std=par(stddev<Id>{});
+    auto m=par(Mean{});
+    auto std=par(Std{});
     if constexpr (std::is_same_v<decltype (m),Nothing >|| std::is_same_v<decltype (std),Nothing >)
       return Nothing{};
     else
@@ -60,8 +64,8 @@ struct Normal_Distribution<Id,double>
 
   template<class Param, class Datas>
   auto logP(const Param& par,const Datas& d) const {
-    auto std=par(stddev<Id>{}).value();
-    auto m=par(mean<Id>{}).value();
+    auto std=par(Std{}).value();
+    auto m=par(Mean{}).value();
     auto x=d(Id{}).value();
     auto logs=- log(std);
 
@@ -71,16 +75,19 @@ struct Normal_Distribution<Id,double>
 };
 
 
-template<class Id>
-struct Exponential_Distribution<Id,double>
+template<class Id, class Mean>
+struct Exponential_Distribution<Id,Mean,double>
 {
   static_assert (std::is_same_v<typename Id::T,double >);
+  auto &operator()(Id)const {return *this;}
+  typedef   Id myId;
+
   typedef typename Id::unit  unit;
   typedef mult_exponent_t<unit,-1> unit_1;
   template<class Rnd, class Datas>
   auto sample(const Datas& par, Rnd& mt)const
   {
-    auto m=par(mean<Id>{});
+    auto m=par(Mean{});
     if constexpr (std::is_same_v<decltype (m),Nothing >)
       return Nothing{};
     else
@@ -90,7 +97,7 @@ struct Exponential_Distribution<Id,double>
 
   template<class Param, class Datas>
   auto logP(const Param& par,const Datas& d) const {
-    auto m=value(par,mean<Id>{});
+    auto m=value(par,Mean{});
     auto x=value(d,Id{});
         return -log(m) -(x/ m);
   }

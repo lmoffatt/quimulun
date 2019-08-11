@@ -128,7 +128,7 @@ struct simplify<p<us...>>
 {
   typedef transfer_t<
       decltype(std::tuple_cat(std::declval<typename wrap_if_not_unit<us>::type>() ...)),
-      p> type;
+      p<>> type;
 };
 
 
