@@ -11,7 +11,6 @@ namespace qm {
 template <std::size_t N> struct my_static_string {
 private:
   std::array<char, N> c_;
-
 public:
   constexpr my_static_string(const char (&c)[N]) : c_{} {
     for (std::size_t i = 0; i < N; ++i)
@@ -19,7 +18,6 @@ public:
   }
   constexpr my_static_string(std::array<char, N> c) : c_{c} {
   }
-
   constexpr char operator[](std::size_t i) const { return c_[i]; }
 
   template <std::size_t N0>
@@ -66,7 +64,6 @@ constexpr auto to_static_string()
     constexpr int N10=N/10;
     constexpr int N0=N-N10*10;
     return to_static_string<N10>()+ my_static_string({'0' + N0,'\0'});
-
   }
 }
 
@@ -81,8 +78,9 @@ auto operator<<(std::ostream& os, T)->decltype (T::className,os)
 
 
 template<class...> struct Cs{};
+template<class...> struct C{};
 
-template <typename T> struct C { typedef T type; };
+template <typename T> struct C<T> { typedef T type; };
 
 template<typename T>
 auto& center(const T& x){ return x;}
@@ -95,9 +93,15 @@ constexpr bool is_in_pack()
   return (std::is_same_v<Id,Ids >||...||false);
 }
 
+template<class Id, class...Ids>
+constexpr bool is_in_pack(Id, Cs<Ids...>)
+{
+  return (std::is_same_v<Id,Ids >||...||false);
+}
+
+
+
 namespace impl {
-
-
 template <template <typename...> class Cs, typename... Ts, typename T, std::size_t ...Is>
 auto constexpr index_of_this_type(Cs<Ts...>, T, std::index_sequence<Is...>) {
   return ((std::is_same_v<Ts,T> ? Is : 0 )+...);

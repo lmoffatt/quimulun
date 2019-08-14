@@ -13,8 +13,11 @@ struct position
   constexpr static auto  className=my_static_string("position");
 };
 
+struct model_position {  constexpr static auto  className=my_static_string("model_position");
+};
 
-
+template <class T> struct distribution{ constexpr static auto  className=T::className+my_static_string("_distribution");
+};
 
 int main()
 {
@@ -39,6 +42,7 @@ int main()
   std::cout << logL<<std::endl;
 
   auto qui=quimulun{
+      model_position{},
     Normal_Distribution<position>{},
         Normal_Distribution<mean<position>>{},
        Exponential_Distribution<stddev<position>>{},
@@ -47,8 +51,29 @@ int main()
       Datum<mean<stddev<position>>>{v(0.2,meter{})}
       };
 
+/*  auto qui2=quimulun{
+      model_position{},
+      Normal_Distribution<position>{},
+        quimulun{distribution<mean<position>>{},
+            Normal_Distribution<mean<position>>{},
+      Datum<mean<mean<position>>>{v(1.0,meter{})},
+               Datum<stddev<mean<position>>>{v(0.2,meter{})}},
+        quimulun{distribution<stddev<position>>{},
+                 Exponential_Distribution<stddev<position>>{},
+      Datum<mean<stddev<position>>>{v(0.2,meter{})}
+      }
+  };
+
+*/
+
   auto sss=sample(qui,C<double>{},mt);
   std::cout << sss<<std::endl;
+
+  auto ssss=sample(qui,model_position{},C<double>{},mt);
+  std::cout << sss<<std::endl;
+
+  //auto s2=sample(qui2,model_position{},C<double>{},mt);
+  //std::cout << s2<<std::endl;
 
 
   return 0;

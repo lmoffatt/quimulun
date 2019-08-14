@@ -24,7 +24,7 @@ private:
 public:
   Datum_(v<T,unit>&& x):value_{std::move(x)}{}
   auto& operator()(Id)const & {return *this;}
-  v<T,unit> operator()(Id)&& {return *this;}
+  auto operator()(Id)&& {return *this;}
 
   auto& value()const {return value_;}
 
@@ -55,8 +55,6 @@ public:
 private:
   std::tuple<Datum_<Tr,Ids>...> tu_;
 public:
-  //Data_(v_t<Ids>&&... x):tu_{std::move(x)...}{}
-
 
   Data_(Datum_<Tr,Ids>&&... x):tu_{std::move(x)...}{}
 
@@ -84,6 +82,60 @@ public:
   }
 
 };
+
+
+
+
+
+
+template<template<class...> class Tr,class Id,bool complete,class... Ds> struct Data_new_: public Ds...
+{
+  using Ds::operator()...;
+  typedef Id myId;
+  typedef Cs<Id,typename Ds::myId...> myIds;
+
+  auto& operator()(Id)const {return *this;}
+
+  static constexpr bool is_complete=complete;
+
+  template<class I>
+  auto operator()(I)const ->std::enable_if_t<!is_in_pack(I{},myIds{}),Nothing>
+  {return Nothing{};}
+
+  Data_new_(Ds&&...d):Ds{std::move(d)}...{}
+
+  Data_new_(Data_new_<Tr,Id,!complete,Ds...>&& x):Ds{std::move(x)(typename Ds::myId{})}...{}
+};
+
+
+
+
+
+
+template<template<class...> class Tr,class Id,bool Complete,class... Ds>
+Data_new_<Tr,Id,false,Ds...> operator |(Data_new_<Tr,Id,Complete,Ds...>&& d, Nothing)
+{
+  return Data_new_<Tr,Id,false,Ds...>(std::move(d));
+}
+
+template<template<class...> class Tr,class Id,bool Complete,class... Ds, class Id2>
+Data_new_<Tr,Id,Complete,Ds...,Datum_<Tr,Id2>> operator |(Data_new_<Tr,Id,Complete,Ds...>&& d, Datum_<Tr,Id2>&& d2)
+{
+  return Data_new_<Tr,Id,Complete,Ds...,Datum_<Tr,Id2>>(std::move(d)(typename Ds::myId{})...,std::move(d2));
+}
+
+template<template<class...> class Tr,class Id,bool Complete,bool Complete2,class... Ds, class Id2, class ...Ds2>
+Data_new_<Tr,Id,Complete&Complete2,Ds...,Data_new_<Tr,Id2,Complete2,Ds2...>>
+operator |(Data_new_<Tr,Id,Complete,Ds...>&& d, Data_new_<Tr,Id2,Complete2,Ds2...>&& d2)
+{
+  return
+      Data_new_<Tr,Id,Complete&Complete2,Ds...,Data_new_<Tr,Id2,Complete2,Ds2...>>
+      (std::move(d)(typename Ds::myIds{})...,std::move(d2));
+}
+
+
+
+
 
 template<template<class...> class Tr,class Id>
 Data_<Tr,Id> operator+(Datum_<Tr,Id>&& d, Nothing)
