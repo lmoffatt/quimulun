@@ -34,79 +34,80 @@ struct variance{
 
 
 
-template<class Id, class Mean=mean<Id>, class Std=stddev<Id>, class T=typename Id::T >
-class Normal_Distribution;
 
-template<class Id, class Mean=mean<Id>,class T=typename Id::T>
-class Exponential_Distribution;
 
-template<class Id, class Mean, class Std>
-struct Normal_Distribution<Id,Mean,Std,double>
+struct Normal_Distribution
 {
-
-  typedef   Id myId;
-  auto &operator()(Id)const {return *this;}
-
-  static_assert (std::is_same_v<typename Id::T,double >);
-  typedef typename Id::unit  unit;
-  typedef mult_exponent_t<unit,-1> unit_1;
-  template<class Rnd, class Datas>
-  auto sample(const Datas& par, Rnd& mt)const
+  template<class unit,class Rnd>
+  auto sample(const v<double,unit>& mean, const v<double,unit>& stddev,Rnd& mt)const
   {
-    auto m=par(Mean{});
-    auto std=par(Std{});
-    if constexpr (std::is_same_v<decltype (m),Nothing >|| std::is_same_v<decltype (std),Nothing >)
-      return Nothing{};
-    else
-     return Datum<Id>(std::normal_distribution<double>
-                       {center(m.value()).value(),center(std.value()).value()}(mt));
+
+      return v<double,unit>(std::normal_distribution<double>
+                                       {mean.value(),stddev.value()}(mt));
   }
 
-  template<class Param, class Datas>
-  auto logP(const Param& par,const Datas& d) const {
-    auto std=par(Std{}).value();
-    auto m=par(Mean{}).value();
-    auto x=d(Id{}).value();
-    auto logs=- log(std);
+  template<class unit,class Rnd>
+  auto logP(const v<double,unit>& x,const v<double,unit>& mean, const v<double,unit>& stddev,Rnd& mt)const
+     {
+    auto logs=- log(stddev);
 
-    return -0.5 * std::log(2 * PI) -  log(std) -
-           v(0.5) * sqr((x - m) / std);
+    return -0.5 * std::log(2 * PI) -  log(stddev) -
+           v(0.5) * sqr((x - mean) / stddev);
   }
 };
 
 
-template<class Id, class Mean>
-struct Exponential_Distribution<Id,Mean,double>
-{
-  static_assert (std::is_same_v<typename Id::T,double >);
-  auto &operator()(Id)const {return *this;}
-  typedef   Id myId;
+struct Exponential_Distribution
 
-  typedef typename Id::unit  unit;
-  typedef mult_exponent_t<unit,-1> unit_1;
-  template<class Rnd, class Datas>
-  auto sample(const Datas& par, Rnd& mt)const
+{
+  template<class unit,class Rnd>
+  auto sample(const v<double,unit>& mean, Rnd& mt)const
   {
-    auto m=par(Mean{});
-    if constexpr (std::is_same_v<decltype (m),Nothing >)
-      return Nothing{};
-    else
-    return Datum<Id>(std::exponential_distribution<double>
-                       {1.0/center(m.value()).value()}(mt));
+    return v<double,unit>(std::exponential_distribution<double>
+                       {1.0/center(mean).value()}(mt));
   }
 
-  template<class Param, class Datas>
-  auto logP(const Param& par,const Datas& d) const {
-    auto m=value(par,Mean{});
-    auto x=value(d,Id{});
-        return -log(m) -(x/ m);
+  template<class unit,class Rnd>
+  auto logP(const v<double,unit>& x,const v<double,unit>& mean,Rnd& mt)const
+  {     return -log(mean) -(x/ mean);
   }
 };
-template<class Distribution,class Rnd, class Datas>
-auto sample(const Distribution& D,const Datas& d,Rnd& mt)->decltype (D.sample(d,mt))
+
+
+template<class Id,class Distribution, class... Xs>
+class  D
 {
-  return D.sample(d,mt);
+private:
+  Distribution g_;
+public:
+  typedef   Id myId;
+  auto &operator[](Id)const {return *this;}
+
+  template<class Param,class Rnd>
+  auto sample(const Param& par,Rnd& mt)const
+  {
+    auto out=consolidate(Id{},vec<>{},par[Xs{}]...);
+      auto p=out.begin();
+      do {
+        out(p)=g_.sample(par[Xs{}](p)...,mt);
+
+      } while (out.next(p));
+      return out;
+   }
+  D(Id id,Distribution&& g, Xs&&...):g_{std::move(g)}{}
+};
+
+
+
+template<class Id,class Distribution, class... Xs,class Rnd, class Datas>
+auto sample(const D<Id,Distribution,Xs...>& dist,const Datas& d,Rnd& mt)
+{
+   if constexpr ((std::is_same_v<decltype (d[Xs{}]),Nothing>||...))
+      return Nothing{};
+    else
+  return dist.sample(d,mt);
 }
+
 
 
 

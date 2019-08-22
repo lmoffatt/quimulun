@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <tuple>
 #include <cmath>
+#include <vector>
 
 namespace qm {
 
@@ -220,12 +221,14 @@ template<class ...> struct logv;
 
 
 
+
 template<class T,class unit> class v<T,unit>
 {
   T value_;
 public:
   v(T&& x,unit): value_{std::move(x)}{}
   v(T&& x): value_{std::move(x)}{}
+  v()=default;
   const T& value()const &{return value_;}
   T value()&& {return value_;}
   friend std::ostream& operator<<(std::ostream& os, const v& m)
@@ -233,6 +236,7 @@ public:
     return os<<m.value()<<" "<<unit{};
   }
 };
+
 
 
 
