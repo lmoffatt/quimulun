@@ -90,46 +90,11 @@ int main()
       Datum<mean<stddev<position>>,vec<>>{v(0.2,meter{})}
       };
 
-/*  auto qui2=quimulun{
-      model_position{},
-      Normal_Distribution<position>{},
-        quimulun{distribution<mean<position>>{},
-            Normal_Distribution<mean<position>>{},
-      Datum<mean<mean<position>>>{v(1.0,meter{})},
-               Datum<stddev<mean<position>>>{v(0.2,meter{})}},
-        quimulun{distribution<stddev<position>>{},
-                 Exponential_Distribution<stddev<position>>{},
-      Datum<mean<stddev<position>>>{v(0.2,meter{})}
-      }
-  };
 
-*/
-
-//  auto sss=sample<C>(qui,mt);
-//  std::cout << sss<<std::endl;
 
   auto ssss=sample<C>(qui,model_position{},mt);
   std::cout << ssss<<std::endl;
 
-  //auto s2=sample(qui2,model_position{},C<double>{},mt);
-  //std::cout << s2<<std::endl;
-
-  std::cerr<< "size of qm::v<double,meter> ="<<sizeof (qm::v<double,meter>)<<"\n";
-  std::cerr<< "size of double ="<<sizeof (double)<<"\n";
-  std::cerr<< "size of bool ="<<sizeof (bool)<<"\n";
-  std::cerr<< "size of std::string ="<<sizeof (std::string)<<"\n";
-  std::cerr<< "size of char ="<<sizeof (char)<<"\n";
-  std::cerr<< "size of position::className ="<<sizeof position::className<<"\n";
-  std::cerr<< "size of short ="<<sizeof (short)<<"\n";
-  std::cerr<< "size of int ="<<sizeof (int)<<"\n";
-  std::cerr<< "size of std::size_t ="<<sizeof (std::size_t)<<"\n";
-  std::cerr<< "size of long ="<<sizeof (long)<<"\n";
-  std::cerr<< "size of long double ="<<sizeof (long double)<<"\n";
-  std::cerr<< "size of long long ="<<sizeof (long long)<<"\n";
-  std::cerr<< "size of qm::Datum<position> ="<<sizeof (qm::Datum<position,vec<>>)<<"\n";
-  //std::cerr<< "size of Normal_Distribution<mean<position>> ="<<sizeof(Normal_Distribution<mean<position>>)<<"\n";
-  std::cerr<< "size of qui ="<<sizeof qui<<"\n";
-  std::cerr<< "size of decltype(qui) ="<<sizeof (decltype(qui))<<"\n";
 
   return 0;
 }

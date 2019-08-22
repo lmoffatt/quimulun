@@ -99,13 +99,6 @@ auto sample(const quimulun<Fid,Fs...>& qui,Id,Data_<Tr,Id2,Complete,Ds2...>&& d,
 }
 
 
-template <template<class...> class Tr,class Id, bool Complete,class...Ds, bool Complete2,class...Ds2
-          ,class... Ids_Not_Reachead>
-constexpr void check_if_reacheable(const Data_<Tr,Id,Complete,Ds...>& d
-                                   ,const Data_<Tr,Id,Complete2,Ds2...>& d2,Cs<Ids_Not_Reachead...>)
-{
-  static_assert(!Complete2||std::is_same_v<decltype (d),decltype (d2) >);
-}
 
 template <class... Ids_Not_Reachead>
 constexpr void check_if_reacheable(Cs<Ids_Not_Reachead...>)
@@ -120,10 +113,11 @@ template <template<class...> class Tr,class Id, class Fid,class...F,bool Complet
 auto sample(const quimulun<Fid,F...>& qui,Data_<Tr,Id,Complete,Ds2...>&& d, Random& mt)
 {
   auto s=(Data_<Tr,Id,true>{}|...|sample(qui,typename F::myId{},std::move(d),mt));
-  if constexpr (!(s.is_complete || std::is_same_v<decltype (s),Data_<Tr,Id,Complete,Ds2...>>))
+  if constexpr ( std::is_same_v<decltype (s),Data_<Tr,Id,Complete,Ds2...>>)
   {
      typedef pack_difference_t<Cs<typename F::myId...>,Cs<typename Ds2::myId...>>  Ids_not_reached_yet;
-     check_if_reacheable(d,s,Ids_not_reached_yet{});
+     check_if_reacheable(Ids_not_reached_yet{});
+     return false;
   }
   if constexpr (s.is_complete)
     return s;
