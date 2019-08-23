@@ -20,28 +20,15 @@ public:
   auto operator()(const Param& par)const
   {
     auto out=consolidate(Id{},vec<>{},par[Xs{}]...);
-    if constexpr (out.numIndex>0)
-    {
     auto p=out.begin();
     do {
       out(p)=std::invoke(g_,par[Xs{}](p).value()...);
 
     } while (out.next(p));
     return out;
-    }
-    else
-    {
-      return std::invoke(g_,par[Xs{}].value()...);
-    }
-    }
-
-
-
-
+  }
   F(Id id,G&& g, Xs&&...):g_{std::move(g)}{}
 };
-
-
 
 template<class Id,class G, class... Xs,class Rnd, class Datas>
 auto sample(const F<Id,G,Xs...>& f,const Datas& d,Rnd& )
@@ -52,15 +39,16 @@ auto sample(const F<Id,G,Xs...>& f,const Datas& d,Rnd& )
     return f(d);
 }
 
+template<class Id,class G, class... Xs,class Datas>
+auto logP(const F<Id,G,Xs...>& f,const Datas& d )
+{
+  return logP_zero{};
+}
+
+
 
 
 template<class Id, class G, class...Xs> F(Id&&,G&&,Xs&&...)->F<Id,G,Xs...>;
-
-
-
-
-
-
 
 
 template<class,class... > struct quimulun;
@@ -84,9 +72,6 @@ constexpr const bool test(Cs<Ids...>,Cs<Ids2...>)
 
 
 
-
-
-//--------------
 
 
 template <template<class...> class Tr, class Fid, class... Fs,class Id,class Id2,bool Complete,class...Ds2, class Random>
@@ -124,12 +109,14 @@ auto sample(const quimulun<Fid,F...>& qui,Data_<Tr,Id,Complete,Ds2...>&& d, Rand
   else
     return sample(qui,std::move(s),mt);
 }
-template <template<class...> class Tr,class Fid,class Id, class...Fs,class Random>
-auto sample(const quimulun<Fid,Fs...>& qui, Id,Random& mt)
-{
-  return sample(qui,Data_<Tr,Id,true>(),mt);
-}
 
+
+template <template<class...> class Tr,class Id, class Fid,class...F,bool Complete,class...Ds2>
+auto logP(const quimulun<Fid,F...>& qui,const Data_<Tr,Id,Complete,Ds2...>& d)
+{
+  auto s=(logP(qui[typename Ds2::myId{}],d)+...);
+    return s;
+}
 
 
 

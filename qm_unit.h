@@ -83,19 +83,19 @@ template<class m, int N> struct p<u<m,N>>
 {
   constexpr static auto  className=u<m,N>::className ;
 
- };
+};
 
- template<class m, int N,class ...ms, int...Ns> struct p<u<m,N>,u<ms,Ns>...>
- {
-   constexpr static auto  className=(u<m,N>::className+(my_static_string(".")+...+u<ms,Ns>::className)) ;
+template<class m, int N,class ...ms, int...Ns> struct p<u<m,N>,u<ms,Ns>...>
+{
+  constexpr static auto  className=(u<m,N>::className+(my_static_string(".")+...+u<ms,Ns>::className)) ;
 
- };
+};
 
- template<class ...ms, int...Ns>
- std::ostream& operator<<(std::ostream& os,p<u<ms,Ns>...> )
- {
-   return os<<p<u<ms,Ns>...>::className.c_str();
- }
+template<class ...ms, int...Ns>
+std::ostream& operator<<(std::ostream& os,p<u<ms,Ns>...> )
+{
+  return os<<p<u<ms,Ns>...>::className.c_str();
+}
 
 
 
@@ -246,9 +246,56 @@ template<class T,class... units> class logv<T,units...>
   std::tuple<std::pair<long,units>...> us_;
 
 
+
+
+
 public:
+  template<class...u>
+  using u_t=std::tuple<std::pair<long,u>...>;
+  typedef u_t<units...> myUnits;
+
+  template<class unit,class...unitS>
+  static long get_number(const u_t<unitS...>& tu)
+  {
+    if constexpr (is_in_pack<unit,unitS...>()) return std::get<std::pair<long,unit>>(tu).first;
+    else return 0;
+  }
+  template<class unit,class...unitS>
+  static long& get_number(std::tuple<std::pair<long,unitS>...>& tu)
+  {
+    return std::get<std::pair<long,unit>>(tu).first;
+  }
+
+
+  static auto addUnits(myUnits one, myUnits two)
+  {
+    ((get_number<units>(one)+=get_number<units>(two)),...);
+    return one;
+  }
+
+  template<class... units1, class...units2>
+      static auto addUnits_impl(std::tuple<std::pair<long,units1>...> one, const std::tuple<std::pair<long,units2>...>& two)
+  {
+
+    ((get_number<units1>(one)+=get_number<units1>(two)),...);
+    return one;
+  }
+
+  template<class... units1>
+      static auto addUnits(const myUnits& one, const std::tuple<std::pair<long,units1>...>& two)
+  {
+    typedef transfer_t<pack_difference_t<Cs<units1...>,Cs<units...>>,u_t<units...>> newUnits;
+    newUnits out;
+    addUnits_impl(out,one);
+    addUnits_impl(out,two);
+    return out;
+  }
+
+
+
 
   logv(T&& x,std::pair<long,units>... us): value_{std::move(x)}, us_{std::move(us)...}{}
+  logv(T&& x,myUnits&& us): value_{std::move(x)}, us_{std::move(us)}{}
   const T& value()const &{return value_;}
   T value()&& {return value_;}
   auto& size()const {return us_;}
@@ -284,6 +331,22 @@ public:
     me.value_-=a.value();
     return me;
   }
+
+  friend logv operator+(logv me, const logv& ti)
+  {
+    me.value_+=ti.value_;
+    me.us_=addUnits(me.size(),ti.size());
+    return me;
+  }
+  template<class... units1>
+  friend auto operator+(logv&& me, logv<T,units1...>&& ti)
+  {
+    typedef transfer_t<pack_difference_t<Cs<units1...>,Cs<units...>>,logv<T,units...>> logv_out;
+    logv_out out(me.value()+ti.value(),addUnits(me.size(),ti.size()));
+    return out;
+
+  }
+
 
 
 };

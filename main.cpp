@@ -92,9 +92,11 @@ int main()
 
 
 
-  auto ssss=sample<C>(qui,model_position{},mt);
+  auto ssss=sample(qui,Data_<C,model_position,true>(),mt);
+  auto logL=logP(qui,ssss);
   std::cout << ssss<<std::endl;
 
+  std::cout << logL<<std::endl;
 
   return 0;
 }

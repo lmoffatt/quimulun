@@ -19,6 +19,7 @@ std::ostream& operator<<(std::ostream& os, const std::vector<T>& me)
 
 struct Nothing{};
 
+
 inline Nothing operator+(Nothing, Nothing ){return Nothing{};}
 template <class...> class Position;
 
@@ -55,7 +56,7 @@ template<> struct vec<>
     return x;
   }
   template <class Vector, class Position>
-  static bool next(const Vector& x,Position& p){return false;}
+  static bool next(const Vector& x,Position& p) {return false;}
 
 };
 template<class I0, class...I> struct vec<I0,I...>{
@@ -185,7 +186,7 @@ public:
   auto operator[](Id)&& {return *this;}
   static auto begin() {return Position<>{};}
 
-  bool next(Position<>& p)
+  bool next(Position<>& p)const
   {
     return false;
   }
@@ -267,7 +268,7 @@ public:
 
 
   template<class... Ts>
-  auto next(Position<Ts...>& p)->std::enable_if_t<is_contained_in(Cs<Ts...>{},Cs<X,Xs...>{}),bool>
+  auto next(Position<Ts...>& p)const->std::enable_if_t<is_contained_in(Cs<Ts...>{},Cs<X,Xs...>{}),bool>
   {
     return vec<Ts...>::next(value_,p);
   }
@@ -275,7 +276,7 @@ public:
 
 
 
-  bool next(Position<X,Xs...>& p)
+  bool next(Position<X,Xs...>& p)const
   {
     return vec<X,Xs...>::next(value_,p);
   }
@@ -356,6 +357,18 @@ auto consolidate(Id,vec<myIndex...>,const Datum_<Tr,Id0,vec<X0...>>& one,const D
 template<template<class...> class Tr,class Id, class ...Ind,class Datas, class Rand>
 auto sample(const Datum_<Tr,Id,vec<Ind...>>& d, const Datas& , Rand& ){return d;}
 
+struct logP_zero{
+  constexpr static auto  className=my_static_string("logP_is_zero");
+};
+
+template<class T>
+auto operator+(T&& x,logP_zero){return std::forward<T>(x);}
+template<class T>
+auto operator+( logP_zero,T&& x){return std::forward<T>(x);}
+inline auto operator+(logP_zero ,logP_zero ){return logP_zero {};}
+
+template<template<class...> class Tr,class Id, class ...Ind,class Datas>
+auto logP(const Datum_<Tr,Id,vec<Ind...>>& d, const Datas& ){return logP_zero{};}
 
 
 
@@ -366,6 +379,12 @@ template<template<class...> class Tr,class Id,bool complete,class... Ds> struct 
   typedef Cs<Id,typename Ds::myId...> myIds;
 
   auto& operator[](Id)const {return *this;}
+
+  template<class I>
+  auto& at(I)const {
+    static_assert (is_in_pack(I{},myIds{}),"identifier is not in Data" );
+    return (*this)[I{}];
+  }
 
   static constexpr bool is_complete=complete;
 
@@ -551,6 +570,12 @@ auto sample(const Coord<Id,G,Xs...>& f,const Datas& d,Rnd& )
     return Nothing{};
   else
     return f(d);
+}
+
+template<class Id,class G, class... Xs,class Datas>
+auto logP(const Coord<Id,G,Xs...>& f,const Datas& d)
+{
+  return logP_zero{};
 }
 
 

@@ -35,7 +35,6 @@ struct variance{
 
 
 
-
 struct Normal_Distribution
 {
   template<class unit,class Rnd>
@@ -46,8 +45,8 @@ struct Normal_Distribution
                                        {mean.value(),stddev.value()}(mt));
   }
 
-  template<class unit,class Rnd>
-  auto logP(const v<double,unit>& x,const v<double,unit>& mean, const v<double,unit>& stddev,Rnd& mt)const
+  template<class unit>
+  auto logP(const v<double,unit>& x,const v<double,unit>& mean, const v<double,unit>& stddev)const
      {
     auto logs=- log(stddev);
 
@@ -67,8 +66,8 @@ struct Exponential_Distribution
                        {1.0/center(mean).value()}(mt));
   }
 
-  template<class unit,class Rnd>
-  auto logP(const v<double,unit>& x,const v<double,unit>& mean,Rnd& mt)const
+  template<class unit>
+  auto logP(const v<double,unit>& x,const v<double,unit>& mean)const
   {     return -log(mean) -(x/ mean);
   }
 };
@@ -94,6 +93,19 @@ public:
       } while (out.next(p));
       return out;
    }
+   template<class Param>
+   auto logP(const Param& par)const
+   {
+     auto& x=par[Id{}];
+     auto p=x.begin();
+     auto logProb=g_.logP(x(p),par[Xs{}](p)...);
+     while (x.next(p))
+       logProb=logProb+g_.logP(x(p),par[Xs{}](p)...);
+     return logProb;
+   }
+
+
+
   D(Id id,Distribution&& g, Xs&&...):g_{std::move(g)}{}
 };
 
@@ -108,6 +120,14 @@ auto sample(const D<Id,Distribution,Xs...>& dist,const Datas& d,Rnd& mt)
   return dist.sample(d,mt);
 }
 
+template<class Id,class Distribution, class... Xs, class Datas>
+auto logP(const D<Id,Distribution,Xs...>& dist,const Datas& d)
+{
+  if constexpr ((std::is_same_v<decltype (d.at(Xs{})),Nothing>||...))
+    return Nothing{};
+  else
+    return dist.logP(d);
+}
 
 
 

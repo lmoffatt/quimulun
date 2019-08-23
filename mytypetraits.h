@@ -75,8 +75,6 @@ auto operator<<(std::ostream& os, T)->decltype (T::className,os)
 }
 
 
-
-
 template<class...> struct Cs{};
 template<class...> class C{};
 
