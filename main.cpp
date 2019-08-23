@@ -76,10 +76,13 @@ int main()
       Datum<Duration<Start<mytime>>,vec<>>{v(1000.0,second{})},
       Datum<Duration<mytime>,vec<>>{v(1.0,second{})},
       Datum<Step<mytime>,vec<>>{v(0.01,second{})},
-      Datum<velocity,vec<>>{v(1.0,meters_per_second{})},
+      Datum<mean<velocity>,vec<>>{v(1.0,meters_per_second{})},
+      Datum<stddev<velocity>,vec<>>{v(1.0,meters_per_second{})},
+
       Coord(Start<mytime>{},EvenCoordinate{},Start<Start<mytime>>{},Duration<Start<mytime>>{},Step<Start<mytime>>{}),
       Coord(mytime{},EvenCoordinate{},Start<mytime>{},Duration<mytime>{},Step<mytime>{}),
       F(mean<position>{},[](auto time, auto velocity){return time*velocity;},mytime{},velocity{}),
+      D(velocity{},Normal_Distribution{},mean<velocity>{},stddev<velocity>{}),
 
       D(position{},Normal_Distribution{},mean<position>{},stddev<position>{}),
       //F(position2{},[](auto x){return Datum<position2,vec<>>{x.value()*x.value()};},position{}),
