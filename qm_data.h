@@ -232,7 +232,7 @@ public:
   auto& operator[](Id)& {return *this;}
 
   auto& operator[](Id)const & {return *this;}
-  auto operator[](Id)&& {return *this;}
+  auto&& operator[](Id)&& {return std::move(*this);}
 
 
   template<class Position>

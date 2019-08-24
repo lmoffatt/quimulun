@@ -48,23 +48,12 @@ template <class T> struct distribution{ constexpr static auto  className=T::clas
 int main()
 {
 
-  //qm::Data<mean<position>,stddev<position>> d(v(1.0,meter{}),v(0.1,meter{}));
 
 
   std::random_device rd;
   auto initseed = rd();
 
   std::mt19937 mt(initseed);
-
- // auto s=normal.sample(d,mt);
-
- // auto ss=s+Nothing{};
-//  auto logL=normal.logP(d,(s+Nothing{}));
-
-//  std::cout << d<<std::endl;
-
-//  std::cout << s<<std::endl;
-//  std::cout << logL<<std::endl;
 
 
 
@@ -97,7 +86,7 @@ int main()
 
   auto ssss=sample(qui,Data_<C,model_position,true>(),mt);
   auto logL=logP(qui,ssss);
-  std::cout << ssss<<std::endl;
+  std::cout << (ssss|qm::select<position>{})<<std::endl;
 
   std::cout << logL<<std::endl;
 

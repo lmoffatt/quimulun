@@ -61,7 +61,26 @@ template<class Id, class...Fs > struct  quimulun: public Fs...{
 
 };
 
+
+
+
 template<class Id, class...Fs >   quimulun(Id,Fs...) -> quimulun<Id,Fs...>;
+
+template<class... Ids> struct select{};
+
+template<class Id, class...Fs, class ...Ids >
+auto operator | (quimulun<Id,Fs...> q, select<Ids...>)
+{
+  return quimulun(Id{},std::move(q)[Ids{}]...);
+}
+
+template<template<class...> class Tr,class Id,bool complete,class... Ds, class...Ids>
+auto operator | (Data_<Tr,Id,complete,Ds...> d, select<Ids...>)
+{
+  return (Data_<Tr,Id,complete>{}|...|(std::move(d)[Ids{}]));
+}
+
+
 
 
 template <class...Ids,class...Ids2>

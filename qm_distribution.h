@@ -80,7 +80,9 @@ private:
   Distribution g_;
 public:
   typedef   Id myId;
-  auto &operator[](Id)const {return *this;}
+  auto &operator[](Id)const & {return *this;}
+  auto &operator[](Id) & {return *this;}
+  auto operator[](Id)&& {return *this;}
 
   template<class Param,class Rnd>
   auto sample(const Param& par,Rnd& mt)const
