@@ -3,6 +3,7 @@
 #include "qm_unit.h"
 #include <map>
 #include <vector>
+#include <algorithm>
 namespace qm {
 
 template<class T>
@@ -38,6 +39,7 @@ template <class...Ids> struct Position: Position<Ids>...
 
 
 
+
 template<class...> struct vec;
 
 template<> struct vec<>
@@ -66,12 +68,12 @@ template<class I0, class...I> struct vec<I0,I...>{
   template <class Vector, class Positionx>
   static auto& get(Vector& x,const Positionx& p)
   {
-    return vec<I...>::get(x[p[I0{}]()],p);
+    return vec<I...>::get(x.at(p[I0{}]()),p);
   }
   template <class Vector, class Positionx>
   static auto& get(const Vector& x,const Positionx& p)
   {
-    return vec<I...>::get(x[p[I0{}]()],p);
+    return vec<I...>::get(x.at(p[I0{}]()),p);
   }
 
   template <class Vector, class Position>
@@ -84,7 +86,7 @@ template<class I0, class...I> struct vec<I0,I...>{
   template <class In,class Vector, class Position>
   static auto& get_I(In i,const Vector& x,const Position& p)
   {
-    return vec<I...>::get_I(i,x[p[I0{}]()],p);
+    return vec<I...>::get_I(i,x.at(p[I0{}]()),p);
   }
 
 
@@ -99,7 +101,7 @@ template<class I0, class...I> struct vec<I0,I...>{
   template <class In,class Vector, class Position>
   static auto& get_I(In i, Vector& x,const Position& p)
   {
-    return vec<I...>::get_I(i,x[p[I0{}]()],p);
+    return vec<I...>::get_I(i,x.at(p[I0{}]()),p);
   }
 
 
@@ -115,14 +117,14 @@ template<class I0, class...I> struct vec<I0,I...>{
   template <class In,class Vector, class Position>
   static auto size(In i,const Vector& x,const Position& p)->std::enable_if_t<is_in_pack<In,I...>(),std::size_t>
   {
-    return vec<I...>::size(i,x[p[I0{}]()],p);
+    return vec<I...>::size(i,x.at(p[I0{}]()),p);
   }
 
 
   template <class Vector, class Position>
   static bool next(const Vector& x,Position& p)
   {
-    if(vec<I...>::next(x[p[I0{}]()],p))
+    if(vec<I...>::next(x.at(p[I0{}]()),p))
       return true;
     else {
       ++p[I0{}].i;
@@ -160,31 +162,55 @@ template <class Id> struct transpose {};
   };
   */
 
+template<class T, class U>
+void copy_size(const U& source,T& destination)
+{
+}
 
- template<template<class...> class Tr,class Id, class...> class Datum_;
+template<class T, class U>
+void copy_size(const std::vector<U>& source,std::vector<T>& destination)
+{
+  destination.resize(source.size());
+}
 
- template<template<class...> class Tr,class Id>
- struct Datum_<Tr,Id,vec<>>
+template<class T, class U>
+ void copy_size(const std::vector<std::vector<U>>& source,std::vector<std::vector<T>>& destination)
+{
+  destination.resize(source.size());
+  for (std::size_t i=0; i<source.size(); ++i) copy_size(source[i],destination[i]);
+
+}
+
+ template<class Id, class, class...> class Datum_;
+
+ template<class Id, class Value_type>
+ struct Datum_<Id,Value_type,vec<>>
   {
  public:
-   typedef typename Tr<Id>::type::T T;
-   typedef typename Tr<Id>::type::unit unit;
+   //typedef typename Id::T T;
+   //typedef typename Id::unit unit;
 
    typedef Id myId;
-   typedef  v<T,unit> value_type;
+
+   typedef Value_type element_type;
+   typedef  Value_type value_type;
 
    typedef vec<> myIndexes;
 
    constexpr static  auto numIndex=0;
 
 private:
-  v<T,unit> value_;
+  value_type value_;
 public:
-  Datum_(v<T,unit>&& x):value_{std::move(x)}{}
+  Datum_(value_type&& x):value_{std::move(x)}{}
+  Datum_(Id,value_type&& x):value_{std::move(x)}{}
   Datum_()=default;
   auto& operator[](Id)const & {return *this;}
+  auto& operator[](Id) & {return *this;}
   auto operator[](Id)&& {return *this;}
   static auto begin() {return Position<>{};}
+
+
 
   bool next(Position<>& p)const
   {
@@ -199,7 +225,9 @@ public:
   auto& operator()()const{ return value_;}
   auto& operator()(){ return value_;}
 
-  auto& value()const {return value_;}
+  auto& value()const& {return value_;}
+  auto& value()& {return value_;}
+  auto value()&& {return value_;}
 
   friend std::ostream& operator<<(std::ostream& os, const Datum_ me)
   {
@@ -209,15 +237,21 @@ public:
 };
 
 
-template<template<class...> class Tr,class Id, class X,class... Xs> class Datum_<Tr,Id,vec<X,Xs...>>
+
+template<class Id, class Value_type>
+Datum_(Id,Value_type&&)->Datum_<Id,Value_type,vec<>>;
+
+template<class Id, class Value_type,class X,class... Xs> class Datum_<Id,Value_type,vec<X,Xs...>>
 {
 public:
-  typedef typename Tr<Id>::type::T T;
+  typedef typename Id::T T;
 
-  typedef typename Tr<Id>::type::unit unit;
+  typedef typename Id::unit unit;
   typedef   Id myId;
 
-  typedef typename vec<X,Xs...>::template to_vector<v<T,unit>> value_type;
+  typedef Value_type element_type;
+
+  typedef typename vec<X,Xs...>::template to_vector<Value_type> value_type;
 
   typedef vec<X,Xs...> myIndexes;
   constexpr static  auto numIndex=sizeof... (Xs)+1;
@@ -229,6 +263,7 @@ private:
 
 public:
   Datum_(value_type&& x):value_{std::move(x)}{}
+  Datum_(Id,value_type&& x):value_{std::move(x)}{}
   auto& operator[](Id)& {return *this;}
 
   auto& operator[](Id)const & {return *this;}
@@ -261,6 +296,8 @@ public:
   static auto begin() {return Position<X,Xs...>{};}
 
   static auto begin(X){return Position<>{};}
+
+
   template<class I>
   static auto begin(I)->std::enable_if_t<is_in_pack(I{},Cs<X,Xs...>{}),pack_until_this_t<I,Position<X,Xs...>>>
 
@@ -293,6 +330,84 @@ public:
 
 };
 
+template<class Id>
+Datum_(Id,v<typename Id::T,typename Id::unit>&&)->Datum_<Id,v<typename Id::T,typename Id::unit>,vec<>>;
+
+
+
+
+
+
+template<class Id, class Value_type,class... Xs>
+Datum_<Id,Value_type,vec<Xs...>>& operator+=(Datum_<Id,Value_type,vec<Xs...>> &one,const Datum_<Id,Value_type,vec<Xs...>>& two )
+{
+  auto pos=one.begin();
+  one(pos)+=  two(pos);
+  while (one.next(pos)) one(pos)+=two(pos);
+  return one;
+
+}
+template<class Id, class Value_type,class... Xs>
+Datum_<Id,Value_type,vec<Xs...>>& operator-=(Datum_<Id,Value_type,vec<Xs...>> &one,const Datum_<Id,Value_type,vec<Xs...>>& two )
+{
+  auto pos=one.begin();
+  one(pos)= one(pos)-  two(pos);
+  while (one.next(pos)) one(pos)=one(pos)-two(pos);
+  return one;
+
+}
+
+template<class Id, class Value_type,class... Xs>
+Datum_<Id,Value_type,vec<Xs...>> operator-(Datum_<Id,Value_type,vec<Xs...>> one)
+{
+  auto pos=one.begin();
+  one(pos)= - one(pos);
+  while (one.next(pos)) one(pos)=-one(pos);
+  return one;
+
+}
+
+
+
+template<class Id, class Value_type,class... Xs, class T>
+Datum_<Id,Value_type,vec<Xs...>>& operator/=(Datum_<Id,Value_type,vec<Xs...>> &one,const v<T,dimension_less>& two )
+{
+  auto pos=one.begin();
+  one(pos)/=  two;
+  while (one.next(pos)) one(pos)/=two;
+  return one;
+
+}
+
+template<class Id, class Value_type,class... Xs, class T, class unit, class Res_type=decltype (std::declval<Value_type>()/std::declval<v<T,unit>>())>
+Datum_<Id,Res_type,vec<Xs...>> operator/(const Datum_<Id,Value_type,vec<Xs...>> &one,const v<T,unit>& two )
+{
+  Datum_<Id,Res_type,vec<Xs...>> out;
+  copy_size(one.value(),out.value());
+  auto pos=one.begin();
+  out(pos)= one(pos)/ two;
+  while (one.next(pos)) out(pos)=one(pos)/two;
+  return out;
+
+}
+
+
+template<class Id, class Value_type,class... Xs, class T, class unit, class Res_type=decltype (std::declval<Value_type>()*std::declval<v<T,unit>>())>
+Datum_<Id,Res_type,vec<Xs...>> operator*(const Datum_<Id,Value_type,vec<Xs...>> &one,const v<T,unit>& two )
+{
+  Datum_<Id,Res_type,vec<Xs...>> out;
+  copy_size(one.value(),out.value());
+  auto pos=one.begin();
+  out(pos)= one(pos)* two;
+  while (one.next(pos)) out(pos)=one(pos)*two;
+  return out;
+
+}
+
+
+
+
+
 
 template <class Vector, class Position, class... Datum>
 void fill_vector(Vector&,Position& ,vec<>, const Datum&...  )
@@ -318,11 +433,11 @@ void fill_vector(Vector&v,Position& p,vec<X,X1...> ,const Datum0& one,const Datu
 }
 
 
-template<class Id,template<class...> class Tr,class Id0, class...Datas>
-auto consolidate(Id,const Datum_<Tr,Id0>& one,const Datas...d)
+template<class Id,class Id0, class Value_type,class...Datas>
+auto consolidate(Id,const Datum_<Id0, Value_type>& one,const Datas...d)
 {
   typedef decltype ((vec<>{}<<...<<typename Datas::myIndexes{})) myvec;
-  typedef Datum_<Tr,Id,myvec> myDatum;
+  typedef Datum_<Id,Value_type,myvec> myDatum;
 
   typedef typename myDatum::value_type myValue_type;
 
@@ -335,12 +450,13 @@ auto consolidate(Id,const Datum_<Tr,Id0>& one,const Datas...d)
 }
 
 
-template<class Id,class... myIndex,template<class...> class Tr,class Id0, class... X0, class...Datas>
-auto consolidate(Id,vec<myIndex...>,const Datum_<Tr,Id0,vec<X0...>>& one,const Datas...d)
+template<class Id, class Value_type,class... myIndex,class Id0, class Value_type0,class... X0, class...Datas>
+auto consolidate(vec<myIndex...>,const Datum_<Id0,Value_type0,vec<X0...>>& one,const Datas...d)
 {
   typedef decltype ((vec<X0...>{}<<...<<typename Datas::myIndexes{})<<vec<myIndex...>{}) myvec;
 
-  typedef Datum_<Tr,Id,myvec> myDatum;
+
+  typedef Datum_<Id,Value_type,myvec> myDatum;
 
   typedef typename myDatum::value_type myValue_type;
 
@@ -350,12 +466,12 @@ auto consolidate(Id,vec<myIndex...>,const Datum_<Tr,Id0,vec<X0...>>& one,const D
   fill_vector(out,p,myvec{},one,d...);
 
   return myDatum(std::move(out));
-  }
+}
 
 
 
-template<template<class...> class Tr,class Id, class ...Ind,class Datas, class Rand>
-auto sample(const Datum_<Tr,Id,vec<Ind...>>& d, const Datas& , Rand& ){return d;}
+template<class Id, class Value_type,class ...Ind,class Datas, class Rand>
+  Datum_<Id,Value_type,vec<Ind...>> sample(const Datum_<Id,Value_type,vec<Ind...>>& d, const Datas& , Rand& ){return d;}
 
 struct logP_zero{
   constexpr static auto  className=my_static_string("logP_is_zero");
@@ -367,12 +483,25 @@ template<class T>
 auto operator+( logP_zero,T&& x){return std::forward<T>(x);}
 inline auto operator+(logP_zero ,logP_zero ){return logP_zero {};}
 
-template<template<class...> class Tr,class Id, class ...Ind,class Datas>
-auto logP(const Datum_<Tr,Id,vec<Ind...>>& d, const Datas& ){return logP_zero{};}
+template<class Id, class Value_type,class ...Ind,class Datas>
+auto logP(const Datum_<Id,Value_type,vec<Ind...>>& d, const Datas& ){return logP_zero{};}
 
 
 
-template<template<class...> class Tr,class Id,bool complete,class... Ds> struct Data_: public Ds...
+template<bool complete,class Data>
+struct Is_Complete{
+  Data value;
+  typedef Data type;
+  static constexpr bool is_complete=complete;
+  Is_Complete(std::bool_constant<complete>,Data&& d):value{std::move(d)}{}
+  Is_Complete()=default;
+
+};
+
+template<bool Complete, class Data> Is_Complete(std::bool_constant<Complete>,Data&&)->Is_Complete<Complete,Data>;
+
+
+template<class Id,class... Ds> struct Data_: public Ds...
 {
   using Ds::operator[]...;
   typedef Id myId;
@@ -386,61 +515,126 @@ template<template<class...> class Tr,class Id,bool complete,class... Ds> struct 
     return (*this)[I{}];
   }
 
-  static constexpr bool is_complete=complete;
 
   template<class I>
   auto operator[](I)const ->std::enable_if_t<!is_in_pack(I{},myIds{}),Nothing>
   {return Nothing{};}
 
   Data_(Ds&&...d):Ds{std::move(d)}...{}
+  Data_(Id,Ds&&...d):Ds{std::move(d)}...{}
 
-  Data_(Data_<Tr,Id,!complete,Ds...>&& x):Ds{std::move(x)[typename Ds::myId{}]}...{}
+//  Data_(Data_<Id,Ds...>&& x):Ds{std::move(x)[typename Ds::myId{}]}...{}
 
-  friend std::ostream& operator<<(std::ostream& os, const Data_ me)
+  friend std::ostream& operator<<(std::ostream& os, const Data_& me)
   {
     ((os<<typename Ds::myId{}<<"="<<me[typename Ds::myId{}]<<"  ")&&...);
     return os;
   }
 };
 
+template<class Id,class... Ds>
+Data_(Id,Ds&&...)->Data_<Id,Ds...>;
 
 
-template<template<class...> class Tr,class Id,bool Complete,class... Ds, class Id2, class... Id2s>
-Data_<Tr,Id,Complete,Ds...,Datum_<Tr,Id2,Id2s...>> operator |(Data_<Tr,Id,Complete,Ds...>&& d, Datum_<Tr,Id2,Id2s...>&& d2)
+
+
+
+template<class Id,bool Complete,class... Ds, class Id2, class Value_type,class... vecs>
+Is_Complete<Complete,Data_<Id,Ds...,Datum_<Id2,Value_type,vecs...>>> operator |
+    (Is_Complete<Complete,Data_<Id,Ds...>>&& d, Datum_<Id2,Value_type,vecs...>&& d2)
 {
-  return Data_<Tr,Id,Complete,Ds...,Datum_<Tr,Id2,Id2s...>>(std::move(d)[typename Ds::myId{}]...,std::move(d2));
+  return Is_Complete(std::bool_constant<Complete>{},
+                     Data_<Id,Ds...,Datum_<Id2,Value_type,vecs...>>(std::move(d.value)[typename Ds::myId{}]...,std::move(d2)));
 }
 
 
-template<template<class...> class Tr,class Id,bool Complete,class... Ds>
-Data_<Tr,Id,false,Ds...> operator |(Data_<Tr,Id,Complete,Ds...>&& d, Nothing)
+template<class Id,bool Complete,class... Ds>
+Is_Complete<false,Data_<Id,Ds...>> operator |(Is_Complete<Complete,Data_<Id,Ds...>>&& d, Nothing)
 {
-  return Data_<Tr,Id,false,Ds...>(std::move(d));
+  return Is_Complete(std::bool_constant<false>{},std::move(d.value));
 }
 
-
-template<template<class...> class Tr,class Id,bool Complete,bool Complete2,class... Ds, class Id2, class ...Ds2>
-Data_<Tr,Id,Complete&Complete2,Ds...,Data_<Tr,Id2,Complete2,Ds2...>>
-operator |(Data_<Tr,Id,Complete,Ds...>&& d, Data_<Tr,Id2,Complete2,Ds2...>&& d2)
+/*
+template<class Id,bool Complete,bool Complete2,class... Ds, class Id2, class ...Ds2>
+Is_Complete<Complete&&Complete2,Data_<Id,Ds...,Data_<Id2,Ds2...>>>
+operator |(Is_Complete<Complete,Data_<Id,Ds...>>&& d, Is_Complete<Complete2,Data_<Id2,Ds2...>>&& d2)
 {
   return
-      Data_<Tr,Id,Complete&Complete2,Ds...,Data_<Tr,Id2,Complete2,Ds2...>>
+      Is_Complete<Complete&Complete2,Data_<Id,Ds...,Data_<Id2,Ds2...>>>
       (std::move(d)(typename Ds::myIds{})...,std::move(d2));
+}
+*/
+
+
+template<class Id,class... Ds1, class Id2, class Value_type,class... Xs>
+ auto operator+(Data_<Id,Ds1...>&& one, Datum_<Id2,Value_type,Xs...>&& two)
+    ->std::enable_if_t<is_in_pack<Datum_<Id2,Value_type,Xs...>,Ds1...>(),Data_<Id,Ds1...>>
+{
+  one[Id2{}]+=two;
+  return one;
+}
+
+template<class Id,class... Ds1, class Id2, class Value_type,class... Xs>
+auto operator+(Data_<Id,Ds1...>&& one, Datum_<Id2,Value_type,Xs...>&& two)
+    ->std::enable_if_t<!is_in_pack<Datum_<Id2,Value_type,Xs...>,Ds1...>(),Data_<Id,Ds1...,Datum_<Id2,Value_type,Xs...>>>
+{
+  return Data_(Id{},std::move(one)[typename Ds1::myId{}]...,std::move(two));
+}
+
+template<class Id,class... Ds1,  class... Ds2>
+auto operator+(Data_<Id,Ds1...>&& one, Data_<Id,Ds2...>&& two)
+{
+  return (std::move(one)+...+std::move(two)[typename Ds2::myId{}]);
+}
+
+template<class Id,class... Ds1>
+auto operator-(Data_<Id,Ds1...> one)
+{
+  ((one[typename Ds1::myId{}] = -one[typename Ds1::myId{}]),...);
+  return one;
+}
+
+
+template<class Id,class... Ds1, class Id2, class Value_type,class... Xs>
+auto operator-(Data_<Id,Ds1...>&& one, Datum_<Id2,Value_type,Xs...> two)
+    ->std::enable_if_t<is_in_pack<Datum_<Id2,Value_type,Xs...>,Ds1...>(),Data_<Id,Ds1...>>
+{
+  one[Id2{}]-=two;
+  return one;
+}
+
+template<class Id,class... Ds1, class Id2, class Value_type,class... Xs>
+auto operator-(Data_<Id,Ds1...>&& one, Datum_<Id2,Value_type,Xs...>&& two)
+    ->std::enable_if_t<!is_in_pack<Datum_<Id2,Value_type,Xs...>,Ds1...>(),Data_<Id,Ds1...,Datum_<Id2,Value_type,Xs...>>>
+{
+  return Data_(Id{},std::move(one)[typename Ds1::myId{}]...,-std::move(two));
+}
+
+template<class Id,class... Ds1,  class... Ds2>
+auto operator-(Data_<Id,Ds1...>&& one, Data_<Id,Ds2...>&& two)
+{
+  return (std::move(one)-...-std::move(two)[typename Ds2::myId{}]);
+}
+
+
+template<class Id,class... Ds,  class T, class unit>
+auto operator/(Data_<Id,Ds...> one, const v<T, unit>& two)
+{
+  return Data_(Id{},std::move(one)[typename Ds::myId{}]/two...);
+
 }
 
 
 
+template<class T, class unit,class Id, class... Ds>
+auto operator*(const Data_<Id,Ds...>& one, const v<T, unit>& x)
+{
+  return Data_(Id{},one[typename Ds::myId{}]*x...);
 
-
-
-
-
-template<class... Ids>
-using Datum=Datum_<C,Ids...>;
-
-
-
-
+}
+template<class Id,class... Ds,  class T, class unit>
+auto operator*( const v<T, unit>& two,Data_<Id,Ds...> one)
+{return one*two;}
 
 
 
@@ -548,7 +742,11 @@ public:
   template<class Param>
   auto operator()(const Param& par)const
   {
-    auto out=consolidate(Id{},vec<Id>{},par[Xs{}]...);
+    typedef typename decltype(g_(std::declval<typename std::decay_t<decltype(par[Xs{}])>::element_type>()...))::value_type value_type;
+
+    //typedef typename value_type::sgser dgewr;
+
+    auto out=consolidate<Id,value_type>(vec<Id>{},par[Xs{}]...);
     auto p=out.begin(Id{});
 
       do {

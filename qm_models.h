@@ -19,7 +19,9 @@ public:
   template<class Param>
   auto operator()(const Param& par)const
   {
-    auto out=consolidate(Id{},vec<>{},par[Xs{}]...);
+    typedef  decltype(std::invoke(g_,std::declval<typename std::decay_t<decltype(par[Xs{}])>::element_type>()...)) value_type;
+
+    auto out=consolidate<Id,value_type>(vec<>{},par[Xs{}]...);
     auto p=out.begin();
     do {
       out(p)=std::invoke(g_,par[Xs{}](p).value()...);
@@ -74,13 +76,33 @@ auto operator | (quimulun<Id,Fs...> q, select<Ids...>)
   return quimulun(Id{},std::move(q)[Ids{}]...);
 }
 
-template<template<class...> class Tr,class Id,bool complete,class... Ds, class...Ids>
-auto operator | (Data_<Tr,Id,complete,Ds...> d, select<Ids...>)
+template<class Id,class... Ds, class...Ids>
+auto operator | (Data_<Id,Ds...> d, select<Ids...>)
 {
-  return (Data_<Tr,Id,complete>{}|...|(std::move(d)[Ids{}]));
+  return (Data_<Id>{}+...+(std::move(d)[Ids{}]));
+}
+
+template<class Id, class...Fs, class Id2, class...Fs2>
+    auto operator + (quimulun<Id,Fs...> q1,quimulun<Id2,Fs2...> q2)
+    ->std::enable_if_t<!(is_in_pack(typename Fs2::myId{},Cs<typename Fs::myId...>{})&&...),quimulun<Id,Fs...,Fs2...>>
+{
+  return quimulun(Id{},std::move(q1)[typename Fs::myId{}]...,std::move(q2)[typename Fs2::myId{}]...);
 }
 
 
+template<class Id, class...Fs, class Id2, class...Fs2>
+auto operator << (quimulun<Id,Fs...> q1,quimulun<Id2,Fs2...> q2)
+{
+  typedef transfer_t<pack_difference_t<Cs<typename Fs::myId...>,Cs<typename Fs2::myId...>>,select<>> non_common_Ids ;
+  return (q1|non_common_Ids{})+q2;
+}
+
+template<class Id, class...Fs, class Id2, class...Fs2>
+auto operator << (Data_<Id,Fs...> q1,Data_<Id2,Fs2...> q2)
+{
+  typedef transfer_t<pack_difference_t<Cs<typename Fs::myId...>,Cs<typename Fs2::myId...>>,select<>> non_common_Ids ;
+  return (std::move(q1)|non_common_Ids{})+std::move(q2);
+}
 
 
 template <class...Ids,class...Ids2>
@@ -93,13 +115,10 @@ constexpr const bool test(Cs<Ids...>,Cs<Ids2...>)
 
 
 
-template <template<class...> class Tr, class Fid, class... Fs,class Id,class Id2,bool Complete,class...Ds2, class Random>
-auto sample(const quimulun<Fid,Fs...>& qui,Id,Data_<Tr,Id2,Complete,Ds2...>&& d, Random& mt)
+template < class Fid, class... Fs,class Id,class Id2,class...Ds2, class Random>
+auto sample(const quimulun<Fid,Fs...>& qui,Id,const Data_<Id2,Ds2...>& d, Random& mt)
 {
-  if constexpr (is_in_pack<Id,Id2,typename Ds2::myId...>())
-    return std::move(d)[Id{}];
-  else
-    return sample(qui[Id{}],d,mt);
+   return sample(qui[Id{}],d,mt);
 }
 
 
@@ -110,28 +129,33 @@ constexpr void check_if_reacheable(Cs<Ids_Not_Reachead...>)
   static_assert(sizeof... (Ids_Not_Reachead)==0,"some Ids are Not Reacheable");
 }
 
-
-
-
-template <template<class...> class Tr,class Id, class Fid,class...F,bool Complete,class...Ds2, class Random>
-auto sample(const quimulun<Fid,F...>& qui,Data_<Tr,Id,Complete,Ds2...>&& d, Random& mt)
+template <class Id, class Fid,class...F,class...Ds2,  class... Fields,class Random>
+auto sample(const quimulun<Fid,F...>& qui,const Data_<Id,Ds2...>& d, Cs<Fields...>,Random& mt)
 {
-  auto s=(Data_<Tr,Id,true>{}|...|sample(qui,typename F::myId{},std::move(d),mt));
-  if constexpr ( std::is_same_v<decltype (s),Data_<Tr,Id,Complete,Ds2...>>)
-  {
-     typedef pack_difference_t<Cs<typename F::myId...>,Cs<typename Ds2::myId...>>  Ids_not_reached_yet;
-     check_if_reacheable(Ids_not_reached_yet{});
-     return false;
-  }
-  if constexpr (s.is_complete)
-    return s;
-  else
-    return sample(qui,std::move(s),mt);
+  return (Is_Complete<true,Data_<Id>>()|...|sample(qui,Fields{},d,mt));
+
 }
 
 
-template <template<class...> class Tr,class Id, class Fid,class...F,bool Complete,class...Ds2>
-auto logP(const quimulun<Fid,F...>& qui,const Data_<Tr,Id,Complete,Ds2...>& d)
+template <class Id, class Fid,class...F,class...Ds2, class Random>
+auto sample(const quimulun<Fid,F...>& qui,Data_<Id,Ds2...>&& d, Random& mt)
+{
+  auto Fields=pack_difference_t<Cs<typename F::myId...>,Cs<typename Ds2::myId...>>{};
+  auto s=sample(qui,d,Fields,mt);
+  if constexpr ( std::is_same_v<typename decltype(s)::type,Data_<Id>>)
+  {
+     check_if_reacheable(Fields);
+     return false;
+  }
+  if constexpr (s.is_complete)
+    return std::move(d)+std::move(s.value);
+  else
+    return sample(qui,std::move(d)+std::move(s.value),mt);
+}
+
+
+template <class Id, class Fid,class...F,class...Ds2>
+auto logP(const quimulun<Fid,F...>& qui,const Data_<Id,Ds2...>& d)
 {
   auto s=(logP(qui[typename Ds2::myId{}],d)+...);
     return s;

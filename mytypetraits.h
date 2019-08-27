@@ -57,7 +57,8 @@ constexpr auto to_static_string()
   }
   else if constexpr (N<10)
   {
-    return my_static_string({'0' + N,'\0'});
+    constexpr char c='0'+N;
+    return my_static_string({c,'\0'});
   }
   else
   {

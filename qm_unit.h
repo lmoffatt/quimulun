@@ -222,19 +222,24 @@ template<class ...> struct logv;
 
 
 
-template<class T,class unit> class v<T,unit>
+template<class TYPE,class myunit> class v<TYPE,myunit>
 {
-  T value_;
+  TYPE value_;
 public:
-  v(T&& x,unit): value_{std::move(x)}{}
-  v(T&& x): value_{std::move(x)}{}
+ typedef TYPE T;
+ typedef myunit unit;
+
+  v(TYPE&& x,myunit): value_{std::move(x)}{}
+  v(TYPE&& x): value_{std::move(x)}{}
   v()=default;
-  const T& value()const &{return value_;}
-  T value()&& {return value_;}
+  const TYPE& value()const &{return value_;}
+  TYPE value()&& {return value_;}
   friend std::ostream& operator<<(std::ostream& os, const v& m)
   {
-    return os<<m.value()<<" "<<unit{};
+    return os<<m.value()<<" "<<myunit{};
   }
+  v& operator+=(const v& other){value_+=other.value(); return *this;}
+
 };
 
 template<class...us>
@@ -322,13 +327,13 @@ public:
   }
 
 
-  friend logv operator-(double a, logv&& me)
+  friend logv operator-(double a, logv me)
   {
     me=-me;
     me.value_+=a;
     return me;
   }
-  friend logv operator-(logv&& me, v<double,dimension_less> a)
+  friend logv operator-(logv me, v<double,dimension_less> a)
   {
     me.value_-=a.value();
     return me;
@@ -377,12 +382,29 @@ template<class... units1, class ...units2>
 auto operator/(p<units1...>,p<units2...>)
 { return  simplify_t<substr_exponent_t<add_exponent_t<my_scalar_unit,units1...>,units2...>>{};
 }
+template<class ...units2>
+auto operator/(p<>,p<units2...>)
+{ return  simplify_t<substr_exponent_t<my_scalar_unit,units2...>>{};
+}
+
 
 
 template <class T, class U,class unit1, class unit2>
 auto operator*( const v<T,unit1>& one, const  v<U,unit2>& other)
 {
   return v(one.value()*other.value(),unit1{}*unit2{});
+}
+
+
+template <class T, class unit1>
+auto operator*( const v<T,unit1>& one, double other)
+{
+  return v(one.value()*other,unit1{});
+}
+template <class T, class unit1>
+auto operator*(  double other,const v<T,unit1>& one)
+{
+  return one*other;
 }
 
 

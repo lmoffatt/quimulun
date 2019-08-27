@@ -48,12 +48,20 @@ struct Normal_Distribution
   template<class unit>
   auto logP(const v<double,unit>& x,const v<double,unit>& mean, const v<double,unit>& stddev)const
      {
-    auto logs=- log(stddev);
-
     return -0.5 * std::log(2 * PI) -  log(stddev) -
            v(0.5) * sqr((x - mean) / stddev);
   }
+  template<class vx, class vm,class vs>
+  auto logP(const vx& x,const vm& mean, const vs& stddev)const
+  {
+    return -0.5 * std::log(2 * PI) -  log(stddev) -
+           v(0.5) * sqr((x - mean) / stddev);
+  }
+
+
 };
+
+
 
 
 struct Exponential_Distribution
@@ -70,6 +78,12 @@ struct Exponential_Distribution
   auto logP(const v<double,unit>& x,const v<double,unit>& mean)const
   {     return -log(mean) -(x/ mean);
   }
+  template<class vx, class vm>
+  auto logP(const vx& x,const vm& mean)const
+  {     return -log(mean) -(x/ mean);
+  }
+
+
 };
 
 
@@ -87,7 +101,8 @@ public:
   template<class Param,class Rnd>
   auto sample(const Param& par,Rnd& mt)const
   {
-    auto out=consolidate(Id{},vec<>{},par[Xs{}]...);
+    typedef  decltype(g_.sample(std::declval<typename std::decay_t<decltype(par[Xs{}])>::element_type>()...,mt)) value_type;
+    auto out=consolidate<Id,value_type>(vec<>{},par[Xs{}]...);
       auto p=out.begin();
       do {
         out(p)=g_.sample(par[Xs{}](p)...,mt);
@@ -102,7 +117,7 @@ public:
      auto p=x.begin();
      auto logProb=g_.logP(x(p),par[Xs{}](p)...);
      while (x.next(p))
-       logProb=logProb+g_.logP(x(p),par[Xs{}](p)...);
+       logProb=std::move(logProb)+g_.logP(x(p),par[Xs{}](p)...);
      return logProb;
    }
 
