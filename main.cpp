@@ -46,9 +46,14 @@ struct model_position {  constexpr static auto  className=my_static_string("mode
 template <class T> struct distribution{ constexpr static auto  className=T::className+my_static_string("_distribution");
 };
 
+
 int main()
 {
 
+
+  auto x=Data(position{},Datum(position2{},0), Data(mean<position>{},Datum(stddev<position>{},{9,meter{}})));
+
+  std::cerr<<x[mean<position>{}][stddev<position>{}]<<"\n";
 
 
   std::random_device rd;
@@ -61,13 +66,13 @@ int main()
 
   auto qui=quimulun{
       model_position{},
-      Datum_(Start<Start<mytime>>{},v(0.0,second{})),
-      Datum_(Step<Start<mytime>>{}, v(100.0,second{})),
-      Datum_(Duration<Start<mytime>>{}, v(1000.0,second{})),
-      Datum_(Duration<mytime>{}, v(1.0,second{})),
-      Datum_(Step<mytime>{}, v(0.01,second{})),
-      Datum_(mean<velocity>{}, v(1.0,meters_per_second{})),
-      Datum_(stddev<velocity>{}, v(1.0,meters_per_second{})),
+      Datum(Start<Start<mytime>>{},v(0.0,second{})),
+      Datum(Step<Start<mytime>>{}, v(100.0,second{})),
+      Datum(Duration<Start<mytime>>{}, v(1000.0,second{})),
+      Datum(Duration<mytime>{}, v(1.0,second{})),
+      Datum(Step<mytime>{}, v(0.01,second{})),
+      Datum(mean<velocity>{}, v(1.0,meters_per_second{})),
+      Datum(stddev<velocity>{}, v(1.0,meters_per_second{})),
 
       Coord(Start<mytime>{},EvenCoordinate{},Start<Start<mytime>>{},Duration<Start<mytime>>{},Step<Start<mytime>>{}),
       Coord(mytime{},EvenCoordinate{},Start<mytime>{},Duration<mytime>{},Step<mytime>{}),
@@ -76,18 +81,18 @@ int main()
       D(velocity{},Normal_Distribution{},mean<velocity>{},stddev<velocity>{}),
 
       D(position{},Normal_Distribution{},mean<position>{},stddev<position>{}),
-      //F(position2{},[](auto x){return Datum_(position2{}, x.value()*x.value()};},position{}),
+      //F(position2{},[](auto x){return Datum(position2{}, x.value()*x.value()};},position{}),
       // Normal_Distribution<mean<position>>{},
       D(stddev<position>{},Exponential_Distribution{},mean<stddev<position>>{}),
-      Datum_(mean<mean<position>>{}, v(1.0,meter{})),
-      Datum_(stddev<mean<position>>{}, v(0.2,meter{})),
-      Datum_(mean<stddev<position>>{}, v(0.2,meter{}))
+      Datum(mean<mean<position>>{}, v(1.0,meter{})),
+      Datum(stddev<mean<position>>{}, v(0.2,meter{})),
+      Datum(mean<stddev<position>>{}, v(0.2,meter{}))
       };
 
   //typedef typename decltype (typename mytime::unit{}* typename velocity::unit{})::dge de;
 
-  auto s=sample(qui,Data_(model_position{}),mt);
-  auto ss=s| qm::select<mean<velocity>,stddev<position>>{};
+  auto s=sample(qui,Data(model_position{}),mt);
+  auto ss=s| qm::select<mean<velocity>,stddev<position>,stddev<velocity>>{};
   auto ds=self_Derivative(std::move(ss));
   auto ds2=s<<ds;
 
@@ -97,13 +102,13 @@ int main()
   auto logL=logP(qui,s);
   auto dlogL=logP(qui,ds2);
 
-  std::cout << s <<std::endl;
+//  std::cout << s <<std::endl;
   auto s2=s;
   auto s3=s;
   auto sss=std::move(s2)+std::move(s3);
-  std::cout<<s<<"\n";
+ // std::cout<<s<<"\n";
   std::cout << logL<<std::endl;
-  std::cout << dlogL<<std::endl;
+ std::cout << dlogL<<std::endl;
 
   return 0;
 }

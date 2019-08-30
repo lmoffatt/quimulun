@@ -77,9 +77,9 @@ auto operator | (quimulun<Id,Fs...> q, select<Ids...>)
 }
 
 template<class Id,class... Ds, class...Ids>
-auto operator | (Data_<Id,Ds...> d, select<Ids...>)
+auto operator | (Data<Id,Ds...> d, select<Ids...>)
 {
-  return (Data_<Id>{}+...+(std::move(d)[Ids{}]));
+  return (Data<Id>{}+...+(std::move(d)[Ids{}]));
 }
 
 template<class Id, class...Fs, class Id2, class...Fs2>
@@ -98,7 +98,7 @@ auto operator << (quimulun<Id,Fs...> q1,quimulun<Id2,Fs2...> q2)
 }
 
 template<class Id, class...Fs, class Id2, class...Fs2>
-auto operator << (Data_<Id,Fs...> q1,Data_<Id2,Fs2...> q2)
+auto operator << (Data<Id,Fs...> q1,Data<Id2,Fs2...> q2)
 {
   typedef transfer_t<pack_difference_t<Cs<typename Fs::myId...>,Cs<typename Fs2::myId...>>,select<>> non_common_Ids ;
   return (std::move(q1)|non_common_Ids{})+std::move(q2);
@@ -116,7 +116,7 @@ constexpr const bool test(Cs<Ids...>,Cs<Ids2...>)
 
 
 template < class Fid, class... Fs,class Id,class Id2,class...Ds2, class Random>
-auto sample(const quimulun<Fid,Fs...>& qui,Id,const Data_<Id2,Ds2...>& d, Random& mt)
+auto sample(const quimulun<Fid,Fs...>& qui,Id,const Data<Id2,Ds2...>& d, Random& mt)
 {
    return sample(qui[Id{}],d,mt);
 }
@@ -130,19 +130,20 @@ constexpr void check_if_reacheable(Cs<Ids_Not_Reachead...>)
 }
 
 template <class Id, class Fid,class...F,class...Ds2,  class... Fields,class Random>
-auto sample(const quimulun<Fid,F...>& qui,const Data_<Id,Ds2...>& d, Cs<Fields...>,Random& mt)
+auto sample(const quimulun<Fid,F...>& qui,const Data<Id,Ds2...>& d, Cs<Fields...>,Random& mt)
 {
-  return (Is_Complete<true,Data_<Id>>()|...|sample(qui,Fields{},d,mt));
+  return (Is_Complete<true,Data<Id>>()|...|sample(qui,Fields{},d,mt));
 
 }
 
 
 template <class Id, class Fid,class...F,class...Ds2, class Random>
-auto sample(const quimulun<Fid,F...>& qui,Data_<Id,Ds2...>&& d, Random& mt)
+auto sample(const quimulun<Fid,F...>& qui,Data<Id,Ds2...>&& d, Random& mt)
 {
   auto Fields=pack_difference_t<Cs<typename F::myId...>,Cs<typename Ds2::myId...>>{};
   auto s=sample(qui,d,Fields,mt);
-  if constexpr ( std::is_same_v<typename decltype(s)::type,Data_<Id>>)
+  //typedef typename decltype (s)::sample sample_type;
+  if constexpr ( std::is_same_v<typename decltype(s)::type,Data<Id>>)
   {
      check_if_reacheable(Fields);
      return false;
@@ -155,7 +156,7 @@ auto sample(const quimulun<Fid,F...>& qui,Data_<Id,Ds2...>&& d, Random& mt)
 
 
 template <class Id, class Fid,class...F,class...Ds2>
-auto logP(const quimulun<Fid,F...>& qui,const Data_<Id,Ds2...>& d)
+auto logP(const quimulun<Fid,F...>& qui,const Data<Id,Ds2...>& d)
 {
   auto s=(logP(qui[typename Ds2::myId{}],d)+...);
     return s;
