@@ -90,8 +90,8 @@ int main()
 
   // typedef der_t<myder,Data<model_position,Datum<position,v<double,meter>,vec<>>>> myder2;
 
-   typedef typename dvalue_ddata::dd detwetr;
-   typedef typename d2value_ddata::dd detwetr2;
+  // typedef typename dvalue_ddata::dd detwetr;
+  // typedef typename d2value_ddata::dd detwetr2;
 
 //   typedef typename dvalue_ddata_inv::dd detwetr;
 //    typedef typename ddatum_ddata::dd detwetr2;
