@@ -4,7 +4,7 @@
 #include "qm_distribution.h"
 #include "qm_models.h"
 #include "qm_derivative.h"
-using namespace qm;
+//using namespace qm;
 typedef p<u<m,1>> meter;
 typedef p<u<s,1>> second;
 typedef p_t<u<m,1>,u<s,-1>> meters_per_second;
@@ -29,6 +29,12 @@ struct velocity
   constexpr static auto  className=my_static_string("velocity");
 };
 
+struct logLik
+{
+  typedef double T;
+  typedef dimension_less unit;
+  constexpr static auto  className=my_static_string("logLik");
+};
 
 
 struct position2
@@ -47,6 +53,7 @@ template <class T> struct distribution{ constexpr static auto  className=T::clas
 };
 
 
+
 int main()
 {
 
@@ -61,6 +68,36 @@ int main()
 
   std::mt19937 mt(initseed);
 
+  typedef der_t<position,mytime> dpos_dtime;
+
+  typedef der_t<position,dpos_dtime> ddtime;
+
+
+  typedef v<double,second> mytime_value;
+  typedef Datum<mytime,v<double,second>,vec<>> mytime_datum;
+  typedef Datum<position,v<double,meter>,vec<>> myposition_datum;
+  typedef Data<model_position,mytime_datum,myposition_datum> mydata;
+  typedef  der_t<mytime_value,mydata> dvalue_ddata;
+ typedef  der_t<mytime_value,dvalue_ddata> dvalue_ddata_inv;
+ static_assert (std::is_same_v<mydata,dvalue_ddata_inv > );
+
+ typedef  der_t<dvalue_ddata,mydata> d2value_ddata;
+
+  typedef  der_t<mytime_datum,mydata> ddatum_ddata;
+  //typedef  der_t<mytime_datum,ddatum_ddata> ddatum_ddata_inv;
+  typedef  der_t<mydata,mydata> ddata_ddata;
+ // typedef  der_t<mydata,ddata_ddata> ddata_ddata_inv;
+
+  // typedef der_t<myder,Data<model_position,Datum<position,v<double,meter>,vec<>>>> myder2;
+
+   typedef typename dvalue_ddata::dd detwetr;
+   typedef typename d2value_ddata::dd detwetr2;
+
+//   typedef typename dvalue_ddata_inv::dd detwetr;
+//    typedef typename ddatum_ddata::dd detwetr2;
+//    typedef typename ddatum_ddata_inv::dd detwetr2;
+//    typedef typename ddata_ddata::dd detwetr3;
+   // typedef typename ddata_ddata_inv::dd detwetr4;
 
 
 
@@ -92,7 +129,7 @@ int main()
   //typedef typename decltype (typename mytime::unit{}* typename velocity::unit{})::dge de;
 
   auto s=sample(qui,Data(model_position{}),mt);
-  auto ss=s| qm::select<mean<velocity>,stddev<position>,stddev<velocity>>{};
+  auto ss=s| myselect<mean<velocity>,stddev<position>,stddev<velocity>>{};
   auto ds=self_Derivative(std::move(ss));
   auto ds2=s<<ds;
 
@@ -101,7 +138,10 @@ int main()
 
   auto logL=logP(qui,s);
   auto dlogL=logP(qui,ds2);
-
+  auto dlogLL=dlogL;
+  auto ddlogL=Data(model_position{},Datum(logLik{},std::move(dlogLL)));
+  std::cerr<<ddlogL<<"\n";
+  //std::cerr<<"derivative"<<ddlogL[der<logLik,mean<velocity>>{}]<<"\n";
 //  std::cout << s <<std::endl;
   auto s2=s;
   auto s3=s;

@@ -6,7 +6,7 @@
 #include <string>
 #include <iomanip>
 
-namespace qm {
+//namespace qm {
 
 template <std::size_t N> struct my_static_string {
 private:
@@ -257,7 +257,7 @@ using pack_until_this_t=typename pack_until_this<A,B>::type;
 
 
 
-} // namespace qm
+//} // namespace qm
 
 
 #endif // MYTYPETRAITS_H

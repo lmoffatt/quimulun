@@ -4,7 +4,7 @@
 #include <map>
 #include <vector>
 #include <algorithm>
-namespace qm {
+//namespace qm {
 
 template<class T>
 std::ostream& operator<<(std::ostream& os, const std::vector<T>& me)
@@ -537,16 +537,15 @@ public:
   }
 
   template<class I>
-  auto operator[](I) &->std::conditional_t<is_in_pack(I{},myIds{}),decltype (std::declval<Data&>().get(I{})),Nothing>
+  auto operator[](I) &->std::enable_if_t<!(std::is_same_v<Nothing,decltype(get(I{}))>),decltype (std::declval<Data&>().get(I{}))>
   {
-    if constexpr(is_in_pack(I{},myIds{}) )
     return get(I{});
-    else return Nothing{};
 
   }
 
   template<class I>
-  auto operator[](I) const &->std::conditional_t<is_in_pack(I{},myIds{}),decltype (std::declval<Data const &>().get(I{})),Nothing>
+  auto operator[](I) const &->std::conditional_t<!(std::is_same_v<Nothing,decltype(get(I{}))>),decltype (std::declval<Data const&>().get(I{})),Nothing>
+ // auto operator[](I) const &->std::conditional_t<is_in_pack(I{},myIds{}),decltype (std::declval<Data const &>().get(I{})),Nothing>
   {
     if constexpr(is_in_pack(I{},myIds{}) )
       return get(I{});
@@ -554,7 +553,8 @@ public:
 
   }
   template<class I>
-  auto operator[](I) &&->std::conditional_t<is_in_pack(I{},myIds{}),decltype (std::declval<Data &&>().get(I{})),Nothing>
+  auto operator[](I) &&->std::conditional_t<!(std::is_same_v<Nothing,decltype(get(I{}))>),decltype (std::declval<Data&&>().get(I{})),Nothing>
+//  auto operator[](I) &&->std::conditional_t<is_in_pack(I{},myIds{}),decltype (std::declval<Data &&>().get(I{})),Nothing>
   {
     if constexpr(is_in_pack(I{},myIds{}) )
       return get(I{});
@@ -828,6 +828,6 @@ template<class Id, class G, class...Xs> Coord(Id&&,G&&,Xs&&...)->Coord<Id,G,Xs..
 
 
 
-} // namespace qm
+//} // namespace qm
 
 #endif // DATA_H

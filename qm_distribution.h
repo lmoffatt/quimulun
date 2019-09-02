@@ -5,7 +5,7 @@
 #include "qm_data.h"
 #include <random>
 
-namespace qm {
+//namespace qm {
 inline constexpr double PI = 3.14159265358979323846;
 
 
@@ -151,6 +151,6 @@ auto logP(const D<Id,Distribution,Xs...>& dist,const Datas& d)
 
 
 
-} // namespace qm
+//} // namespace qm
 
 #endif // QM_DISTRIBUTION_H

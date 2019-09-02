@@ -3,9 +3,69 @@
 #include "qm_data.h"
 
 #include<algorithm>
-namespace qm {
+//namespace qm {
+
 
 template<class...> struct der;
+template<class...> struct der_tmp;
+
+struct Id{
+  constexpr static auto  className=my_static_string("_");
+
+};
+
+template<class...>struct product;
+
+template<class F> struct product<Id,F>{typedef F type;};
+template<class F> struct product<F,Id>{typedef F type;};
+template<class F, class X> struct product<F,der<Id,X>>{typedef der<F,X> type;};
+
+
+template<class F,class T, class unit> struct product<F,v<T,unit>>{typedef v<T,unit> type;};
+
+template<class F,class T, class unit> struct product<v<T,unit>,F>{typedef v<T,unit> type;};
+
+
+
+
+template <class X, class Y> using product_t=typename product<X,Y>::type;
+
+template<class F,class I1, class Value_type,class X,class... Xs> struct product<F, Datum<I1,Value_type,vec<X,Xs...>>>{
+  typedef Datum<product_t<F,I1>,product_t<F,Value_type>,vec<X,Xs...>> type;
+};
+template<class F,class I1, class Value_type> struct product<F, Datum<I1,Value_type,vec<>>>{
+  typedef Datum<product_t<F,I1>,product_t<F,Value_type>,vec<>> type;
+};
+
+
+//template <class F, class X> using der_tmp_t=typename der_tmp<F,X>::type;
+
+template<class F, class X> struct der<F,X>
+{
+  //typedef typename F::T T;
+  //typedef decltype (typename F::unit{}/typename X::unit{}) unit;
+  constexpr static auto  className=my_static_string("d_")+F::className+my_static_string("_d_")+X::className;
+  typedef der<F,X> type;
+};
+
+template<class F, class X,class Y> struct der<F,X,Y>{
+  typedef typename F::T T;
+  typedef decltype (typename F::unit{}/typename X::unit{}/typename Y::unit{}) unit;
+  constexpr static auto  className=my_static_string("d_")+F::className+my_static_string("_d_")+X::className+F::className+my_static_string("_d_")+Y::className;
+  typedef der<F,X,Y> type;
+
+};
+
+template<class F, class X,class Y> struct der<der<F,X>,Y>{
+  typedef der<F,X,Y> type;
+};
+
+template<class F, class X> struct der<F,der<F,X>>{
+  typedef X type;
+};
+
+
+template<class F, class X> struct der_{typedef typename der<F,X>::type type;};
 
 template<class F, class X>
 using der_t=typename der<F,X>::type;
@@ -32,44 +92,59 @@ struct der<logv<T,unit1...>,v<T,unit2>>
 };
 
 
-
-
-/*
-template<class T, class unit,class unit2,class Id>
-struct der<v<T,unit>,Datum<Id,v<unit2>,vec<>>>
+template< class value_type,class T,class unit2,class I1, class... Xs>
+struct der<value_type,Datum<I1,v<T,unit2>,vec<Xs...>>>
 {
-  typedef Datum<Id,der_t<v<T,unit>,v<T,unit2>>,vec<>> type;
+  typedef Datum<der_t<Id,I1>,der_t<value_type,v<T,unit2>>,vec<Xs...>> type;
 };
-*/
-/*
-template<class T, class unit,class unit2,class Id, class... Xs>
-struct der<v<T,unit>,Datum<Id,v<T,unit2>,vec<Xs...>>>
-{
-  typedef Datum<Id,der_t<v<T,unit>,v<T,unit2>>,vec<Xs...>> type;
-};
-*/
 
-template<class T, class value_type,class unit2,class Id, class... Xs>
-struct der<value_type,Datum<Id,v<T,unit2>,vec<Xs...>>>
+template<class value_type,class value_type2,class I1, class... Xs>
+struct der<value_type,Datum<I1,value_type2,vec<Xs...>>>
 {
-  typedef Datum<Id,der_t<value_type,v<T,unit2>>,vec<Xs...>> type;
+  typedef Datum<der_t<Id,I1>,der_t<value_type,value_type2>,vec<Xs...>> type;
 };
 
 
-/*
-template<class T, class unit,class Id,class... Ds,template<class, class>class v>
-struct der<v<T,unit>,Data<Id,Ds...>>
+
+template<class I1,class value_type1, class... Xs1,class I2,class value_type2, class... Xs2>
+struct der<Datum<I1,value_type1,vec<Xs1...>>,Datum<I2,value_type2,vec<Xs2...>>>
 {
-  typedef Data<Id, der_t<v<T,unit>,Ds>...> type;
+  typedef Datum<der_t<I1,I2>,product_t<I1,der_t<value_type1,Datum<I2,value_type2,vec<Xs2...>>>>,vec<Xs1...>> type;
+};
+
+
+
+
+
+template<class value_type,class I1,class... Ds>
+struct der<value_type,Data<I1,Ds...>>
+{
+  typedef Data<der_t<Id,I1>, der_t<value_type,Ds>...> type;
 
 };
-*/
-template<class value_type,class Id,class... Ds>
-struct der<value_type,Data<Id,Ds...>>
+
+
+template<class Id1,class value_type,class ...Xs,class Id2, class... Ds>
+    struct der<Datum<Id1,value_type,vec<Xs...>>,Data<Id2,Ds...>>
 {
-  typedef Data<Id, der_t<value_type,Ds>...> type;
+  typedef Datum<der_t<Id1,Id2>,product_t<Id1,der_t<value_type,Data<Id2,Ds...>>>,vec<Xs...>> type;
 
 };
+
+template<class F,class Id1,class... Ds> struct product<F,Data<Id1,Ds...>>{
+  typedef Data<product_t<F,Id1>,product_t<F,Ds>...> type;
+};
+
+
+template<class Id1,class... Ds,class Id2, class... Ds2>
+struct der<Data<Id1,Ds...>,Data<Id2,Ds2...>>
+{
+  typedef Data<der_t<Id1,Id2>,der_t<Ds,Data<Id2,Ds2...>>...> type;
+
+};
+
+
+
 
 
 template<class ,class...>
@@ -83,6 +158,20 @@ struct Der<v<T,unit>,Data<Id,Ds...>>
 };
 
 
+template<class value_type,class Id,class Id2,class... Ds>
+struct Der<Datum<Id,value_type,vec<>>,Data<Id2,Ds...>>
+{
+  typedef Datum<Id,Derivative<value_type,Data<Id2,Ds...>>,vec<>> type;
+
+};
+
+
+template<class Id,class... Ds,class Id2, class... Ds2>
+struct Der<Data<Id,Ds...>,Data<Id2,Ds2...>>
+{
+  typedef Data<Id,Der_t<Ds,Data<Id2,Ds2...>>...> type;
+
+};
 
 
 
@@ -113,13 +202,95 @@ public:
   }
 };
 
-template<class T, class unit,class Id,class... Ds>
-Derivative(v<T,unit>&& f,Data<Id,Ds...>&& Df)
-    ->Derivative<v<T,unit>,Data<Id,der_t<v<T,unit>,Ds>...>>;
+template<class T, class unit,class I,class... Ds>
+Derivative(v<T,unit>&& f,Data<I,Ds...>&& Df)
+    ->Derivative<v<T,unit>,der_t<v<T,unit>,Data<I,Ds...>>>;
 
-template<class T, class... units,class Id,class... Ds>
-Derivative(logv<T,units...>&& f,Data<Id,Ds...>&& Df)
-    ->Derivative<logv<T,units...>,Data<Id,der_t<v<T,dimension_less>,Ds>...>>;
+template<class T, class... units,class I,class... Ds>
+Derivative(logv<T,units...>&& f,Data<I,Ds...>&& Df)
+    ->Derivative<logv<T,units...>,der_t<v<T,dimension_less>,Data<I,Ds...>>>;
+
+
+
+
+template<class val_type,class Id,class Id2,class... Ds>
+struct Datum<Id,Derivative<val_type,Data<Id2,Ds...>>,vec<>>
+
+{
+public:
+  //typedef typename Id::T T;
+  //typedef typename Id::unit unit;
+
+  typedef Id myId;
+
+  typedef Derivative<val_type,Data<Id2,Ds...>> element_type;
+  typedef  Derivative<val_type,Data<Id2,Ds...>> value_type;
+
+  typedef vec<> myIndexes;
+
+  constexpr static  auto numIndex=0;
+
+
+protected:
+  Datum const& get(Id)const & {return *this;}
+  Datum& get(Id) & {return *this;}
+  Datum get(Id)&& {return *this;}
+
+  template<class I2>
+  auto & get(der<Id,I2>)const &
+  {
+    return  value().Df()[I2{}];
+  }
+
+  template<class I2>
+  auto & get(der<Id,I2>) &
+  {
+    return  value().Df()[I2{}];
+  }
+  template<class I2>
+  auto get(der<Id,I2>) &&
+  {
+    return  value().Df()[I2{}];
+  }
+
+
+private:
+  value_type value_;
+public:
+  Datum(value_type&& x):value_{std::move(x)}{}
+  Datum(Id,value_type&& x):value_{std::move(x)}{}
+  Datum()=default;
+  Datum const& operator[](Id)const & {return *this;}
+  Datum& operator[](Id) & {return *this;}
+  Datum operator[](Id)&& {return *this;}
+  static auto begin() {return Position<>{};}
+
+
+
+  bool next(Position<>& p)const
+  {
+    return false;
+  }
+  template<class Position>
+  auto& operator()(const Position& p){ return value_;}
+
+  template<class Position>
+  auto& operator()(const Position& p)const{ return value_;}
+
+  auto& operator()()const{ return value_;}
+  auto& operator()(){ return value_;}
+
+  auto& value()const& {return value_;}
+  auto& value()& {return value_;}
+  auto value()&& {return value_;}
+
+  friend std::ostream& operator<<(std::ostream& os, const Datum me)
+  {
+    return os<<me.value();
+  }
+
+};
+
 
 
 
@@ -464,6 +635,6 @@ log( const Derivative<v<T,unit>,Data<Id,Ds...>>& x)
 
 
 
-} // namespace qm
+//} // namespace qm
 
 #endif // QM_DERIVATIVE_H

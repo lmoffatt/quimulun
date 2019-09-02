@@ -8,7 +8,7 @@
 #include <cmath>
 #include <vector>
 
-namespace qm {
+//namespace qm {
 
 
 struct m{ constexpr static auto  className=my_static_string("m");};
@@ -387,6 +387,10 @@ auto operator/(p<>,p<units2...>)
 { return  simplify_t<substr_exponent_t<my_scalar_unit,units2...>>{};
 }
 
+template<class ...units2>
+auto operator/(p<units2...>,p<>)
+{ return  p<units2...>{};
+}
 
 
 template <class T, class U,class unit1, class unit2>
@@ -465,7 +469,7 @@ auto log(const v<double,unit1>& x) { return logv<double,unit1>(std::log(x.value(
 
 
 
-} // namespace qm
+//} // namespace qm
 
 
 #endif // QM_UNIT_H

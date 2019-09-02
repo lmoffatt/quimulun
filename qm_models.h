@@ -3,7 +3,7 @@
 #include "qm_distribution.h"
 #include <functional>
 #include <type_traits>
-namespace qm {
+//namespace qm {
 
 
 
@@ -68,16 +68,16 @@ template<class Id, class...Fs > struct  quimulun: public Fs...{
 
 template<class Id, class...Fs >   quimulun(Id,Fs...) -> quimulun<Id,Fs...>;
 
-template<class... Ids> struct select{};
+template<class... Ids> struct myselect{};
 
 template<class Id, class...Fs, class ...Ids >
-auto operator | (quimulun<Id,Fs...> q, select<Ids...>)
+auto operator | (quimulun<Id,Fs...> q, myselect<Ids...>)
 {
   return quimulun(Id{},std::move(q)[Ids{}]...);
 }
 
 template<class Id,class... Ds, class...Ids>
-auto operator | (Data<Id,Ds...> d, select<Ids...>)
+auto operator | (Data<Id,Ds...> d, myselect<Ids...>)
 {
   return (Data<Id>{}+...+(std::move(d)[Ids{}]));
 }
@@ -93,14 +93,14 @@ template<class Id, class...Fs, class Id2, class...Fs2>
 template<class Id, class...Fs, class Id2, class...Fs2>
 auto operator << (quimulun<Id,Fs...> q1,quimulun<Id2,Fs2...> q2)
 {
-  typedef transfer_t<pack_difference_t<Cs<typename Fs::myId...>,Cs<typename Fs2::myId...>>,select<>> non_common_Ids ;
+  typedef transfer_t<pack_difference_t<Cs<typename Fs::myId...>,Cs<typename Fs2::myId...>>,myselect<>> non_common_Ids ;
   return (q1|non_common_Ids{})+q2;
 }
 
 template<class Id, class...Fs, class Id2, class...Fs2>
 auto operator << (Data<Id,Fs...> q1,Data<Id2,Fs2...> q2)
 {
-  typedef transfer_t<pack_difference_t<Cs<typename Fs::myId...>,Cs<typename Fs2::myId...>>,select<>> non_common_Ids ;
+  typedef transfer_t<pack_difference_t<Cs<typename Fs::myId...>,Cs<typename Fs2::myId...>>,myselect<>> non_common_Ids ;
   return (std::move(q1)|non_common_Ids{})+std::move(q2);
 }
 
@@ -169,7 +169,7 @@ auto logP(const quimulun<Fid,F...>& qui,const Data<Id,Ds2...>& d)
 
 
 
-} // namespace qm
+//} // namespace qm
 
 
 #endif // QM_MODELS_H
