@@ -414,8 +414,37 @@ Datum<Id,Res_type,vec<Xs...>> operator*(const Datum<Id,Value_type,vec<Xs...>> &o
 }
 
 
+template<class Id, class Value_type,class... Xs>
+Datum<Id,Value_type,vec<Xs...>> operator*(const Datum<Id,Value_type,vec<Xs...>> &one,double two )
+{
+  auto out=one;
+  auto pos=one.begin();
+  out(pos)= one(pos)* two;
+  while (one.next(pos)) out(pos)=one(pos)*two;
+  return out;
+}
 
 
+template<class Id, class Value_type,class... Xs>
+Datum<Id,Value_type,vec<Xs...>> operator*( Datum<Id,Value_type,vec<Xs...>> &&one,double two )
+{
+  auto pos=one.begin();
+  one(pos)= one(pos)* two;
+  while (one.next(pos)) one(pos)=one(pos)*two;
+  return one;
+}
+
+template<class Id, class Value_type,class... Xs>
+Datum<Id,Value_type,vec<Xs...>> operator*(double two,const Datum<Id,Value_type,vec<Xs...>> &one )
+{
+  return one*two;
+}
+
+template<class Id, class Value_type,class... Xs>
+Datum<Id,Value_type,vec<Xs...>> operator*(double two, Datum<Id,Value_type,vec<Xs...>> &&one )
+{
+  return std::move(one)*two;
+}
 
 
 template <class Vector, class Position, class... Datum>
@@ -492,9 +521,20 @@ template<class T>
 auto operator+( logP_zero,T&& x){return std::forward<T>(x);}
 inline auto operator+(logP_zero ,logP_zero ){return logP_zero {};}
 
+template<class T>
+auto operator*( logP_zero,const T& x){return logP_zero{};}
+template<class T>
+auto operator/( logP_zero,const T& x){return logP_zero{};}
+template<class T>
+auto operator*( const T& x,logP_zero){return logP_zero{};}
+inline auto operator*(logP_zero,logP_zero){return logP_zero{};}
+
+
 template<class Id, class Value_type,class ...Ind,class Datas>
 auto logP(const Datum<Id,Value_type,vec<Ind...>>& d, const Datas& ){return logP_zero{};}
 
+template<class Id, class Value_type,class ...Ind,class Datas>
+auto FIM(const Datum<Id,Value_type,vec<Ind...>>& d, const Datas& ){return logP_zero{};}
 
 
 template<bool complete,class Data>
@@ -665,6 +705,11 @@ auto operator/(Data<Id,Ds...> one, const v<T, unit>& two)
 
 }
 
+template<class Id,class... Ds1,  class... Ds2>
+auto operator*(const Data<Id,Ds1...>& one, const Data<Id,Ds2...>& two)
+{
+  return Data(Id{},one[typename Ds1::myId{}]*two[typename Ds2::myId{}]...);
+}
 
 
 template<class T, class unit,class Id, class... Ds>
@@ -675,6 +720,16 @@ auto operator*(const Data<Id,Ds...>& one, const v<T, unit>& x)
 }
 template<class Id,class... Ds,  class T, class unit>
 auto operator*( const v<T, unit>& two,Data<Id,Ds...> one)
+{return one*two;}
+
+template<class Id, class... Ds>
+auto operator*(const Data<Id,Ds...>& one, double x)
+{
+  return Data(Id{},one[typename Ds::myId{}]*x...);
+
+}
+template<class Id,class... Ds>
+auto operator*( double two,Data<Id,Ds...> one)
 {return one*two;}
 
 
@@ -817,6 +872,11 @@ auto logP(const Coord<Id,G,Xs...>& f,const Datas& d)
   return logP_zero{};
 }
 
+template<class Id,class G, class... Xs,class Datas>
+auto FIM(const Coord<Id,G,Xs...>& f,const Datas& d)
+{
+  return logP_zero{};
+}
 
 
 template<class Id, class G, class...Xs> Coord(Id&&,G&&,Xs&&...)->Coord<Id,G,Xs...>;

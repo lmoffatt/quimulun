@@ -49,8 +49,6 @@ template<class F, class X> struct der<F,X>
 };
 
 template<class F, class X,class Y> struct der<F,X,Y>{
-  typedef typename F::T T;
-  typedef decltype (typename F::unit{}/typename X::unit{}/typename Y::unit{}) unit;
   constexpr static auto  className=my_static_string("d_")+F::className+my_static_string("_d_")+X::className+F::className+my_static_string("_d_")+Y::className;
   typedef der<F,X,Y> type;
 
@@ -91,13 +89,13 @@ struct der<logv<T,unit1...>,v<T,unit2>>
   typedef v<T,unit> type;
 };
 
-
+/*
 template< class value_type,class T,class unit2,class I1, class... Xs>
 struct der<value_type,Datum<I1,v<T,unit2>,vec<Xs...>>>
 {
   typedef Datum<der_t<Id,I1>,der_t<value_type,v<T,unit2>>,vec<Xs...>> type;
 };
-
+*/
 template<class value_type,class value_type2,class I1, class... Xs>
 struct der<value_type,Datum<I1,value_type2,vec<Xs...>>>
 {
@@ -105,13 +103,19 @@ struct der<value_type,Datum<I1,value_type2,vec<Xs...>>>
 };
 
 
-
+/*
 template<class I1,class value_type1, class... Xs1,class I2,class value_type2, class... Xs2>
 struct der<Datum<I1,value_type1,vec<Xs1...>>,Datum<I2,value_type2,vec<Xs2...>>>
 {
   typedef Datum<der_t<I1,I2>,product_t<I1,der_t<value_type1,Datum<I2,value_type2,vec<Xs2...>>>>,vec<Xs1...>> type;
 };
+*/
 
+template<class I1,class value_type1, class... Xs1,class I2,class value_type2, class... Xs2>
+struct der<Datum<I1,value_type1,vec<Xs1...>>,Datum<I2,value_type2,vec<Xs2...>>>
+{
+  typedef Datum<der_t<I1,I2>,der_t<value_type1,value_type2>,decltype(vec<Xs2...>{}<<vec<Xs1...>{})> type;
+};
 
 
 
@@ -127,7 +131,7 @@ struct der<value_type,Data<I1,Ds...>>
 template<class Id1,class value_type,class ...Xs,class Id2, class... Ds>
     struct der<Datum<Id1,value_type,vec<Xs...>>,Data<Id2,Ds...>>
 {
-  typedef Datum<der_t<Id1,Id2>,product_t<Id1,der_t<value_type,Data<Id2,Ds...>>>,vec<Xs...>> type;
+  typedef Data<der_t<Id1,Id2>,der_t<Datum<Id1,value_type,vec<Xs...>>,Ds>...> type;
 
 };
 
@@ -196,11 +200,21 @@ public:
 //  Derivative(v<T,unit>&& f,Data<Id,der_t<v<T,unit>,Ds>...>&& Df):f_{std::move(f)},Df_{std::move(Df)}{}
   Derivative(dependent_type&& f,derivative_type&& Df):f_{std::move(f)},Df_{std::move(Df)}{}
 
+
   friend std::ostream& operator<<(std::ostream& os, const Derivative& me)
   {
     return os<<"f="<<me.f()<<" df="<<me.Df();
   }
 };
+
+
+template<class dependent_type,class Id,class... Ds>
+auto& Df(const Derivative<dependent_type,Data<Id,Ds...>>& f){return f.Df();}
+
+template<class T>
+auto Df(const T& f){return logP_zero{};}
+
+
 
 template<class T, class unit,class I,class... Ds>
 Derivative(v<T,unit>&& f,Data<I,Ds...>&& Df)
@@ -210,6 +224,12 @@ template<class T, class... units,class I,class... Ds>
 Derivative(logv<T,units...>&& f,Data<I,Ds...>&& Df)
     ->Derivative<logv<T,units...>,der_t<v<T,dimension_less>,Data<I,Ds...>>>;
 
+
+template<class Id1,class Id2,class value_type1,class value_type2>
+auto operator*(const Datum<der<Id,Id1>,value_type1,vec<>>& one, const Datum<der<Id,Id2>,value_type2,vec<>>& two)
+{
+  return Datum(der<Id,Id1,Id2>{},one.value()*two.value());
+}
 
 
 
@@ -326,34 +346,28 @@ public:
 */
 
 
+template<class Id_datum, class T, class unit>
+auto  self_derivative( const Datum<Id_datum,v<T,unit>,vec<>>& x)
+{
+  return der_t<v<T,unit>,Datum<Id_datum,v<T,unit>,vec<>>>(v<T,dimension_less>(1.0));
+}
 
 
 
 
 template<class Id_data,class Id_datum, class T, class unit>
-auto  self_Derivative( Datum<Id_datum,v<T,unit>,vec<>> x)
+auto  Self_Derivative(Id_data,const Datum<Id_datum,v<T,unit>,vec<>>& x)
 {
-
-  typedef Datum<Id_datum,v<T,unit>,vec<>> self_type;
-  typedef v<T,unit> dependent_type;
-  typedef Data<Id_data,self_type> self_data;
-
-  typedef der_t<v<T,unit>, self_type> derivative_datum;
-  typedef Derivative<v<T,unit>, self_data> derivative_data;
-
-
-  return Datum(Id_datum{},derivative_data(std::move(x.value()),Data(Id_data{},derivative_datum(v<T,dimension_less>(1.0)))));
+  auto f=x;
+  return Datum(Id_datum{},
+               Derivative(std::move(f.value()),Data(Id_data{},self_derivative(x))));
 }
 
-template<class Id,class... Ds>
 
-
-
-
-
-auto  self_Derivative( Data<Id,Ds...>&& x)
+template<class I,class... Ds>
+auto  Self_Derivative(const  Data<I,Ds...>& x)
 {
-  return Data(Id{},self_Derivative<Id>(std::move(x)[typename Ds::myId{}])...);
+  return Data(I{},Self_Derivative(I{},x[typename Ds::myId{}])...);
 }
 
 

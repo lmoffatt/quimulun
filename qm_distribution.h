@@ -3,6 +3,7 @@
 #include <iomanip>
 
 #include "qm_data.h"
+#include "qm_derivative.h"
 #include <random>
 
 //namespace qm {
@@ -58,6 +59,13 @@ struct Normal_Distribution
            v(0.5) * sqr((x - mean) / stddev);
   }
 
+  template<class derMean, class derStd>
+  auto FIM(const derMean& mean ,const derStd& stddev )const
+  {
+    auto dmean= Df(mean)/stddev.f();
+    auto dstd=Df(stddev)/stddev.f();
+    return dmean*dmean+2.0*dstd*dstd;
+  }
 
 };
 
@@ -81,6 +89,13 @@ struct Exponential_Distribution
   template<class vx, class vm>
   auto logP(const vx& x,const vm& mean)const
   {     return -log(mean) -(x/ mean);
+  }
+
+  template<class derMean>
+  auto FIM(const derMean& mean )const
+  {
+    auto dmean= Df(mean)/center(mean);
+    return dmean*dmean;
   }
 
 
@@ -120,7 +135,16 @@ public:
        logProb=std::move(logProb)+g_.logP(x(p),par[Xs{}](p)...);
      return logProb;
    }
-
+   template<class Param>
+   auto FIM(const Param& par)const
+   {
+     auto& x=par[Id{}];
+     auto p=x.begin();
+     auto fim=g_.FIM(par[Xs{}](p)...);
+     while (x.next(p))
+       fim=std::move(fim)+g_.FIM(par[Xs{}](p)...);
+     return fim;
+   }
 
 
   D(Id id,Distribution&& g, Xs&&...):g_{std::move(g)}{}
@@ -144,6 +168,15 @@ auto logP(const D<Id,Distribution,Xs...>& dist,const Datas& d)
     return Nothing{};
   else
     return dist.logP(d);
+}
+
+template<class Id,class Distribution, class... Xs, class Datas>
+auto FIM(const D<Id,Distribution,Xs...>& dist,const Datas& d)
+{
+  if constexpr ((std::is_same_v<decltype (d.at(Xs{})),Nothing>||...))
+    return Nothing{};
+  else
+    return dist.FIM(d);
 }
 
 

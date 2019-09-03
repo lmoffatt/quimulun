@@ -90,13 +90,13 @@ int main()
 
   // typedef der_t<myder,Data<model_position,Datum<position,v<double,meter>,vec<>>>> myder2;
 
-  // typedef typename dvalue_ddata::dd detwetr;
-  // typedef typename d2value_ddata::dd detwetr2;
+ // typedef typename dvalue_ddata::dd detwetr;
+ //  typedef typename d2value_ddata::dd detwetr2;
 
-//   typedef typename dvalue_ddata_inv::dd detwetr;
-//    typedef typename ddatum_ddata::dd detwetr2;
+ //  typedef typename dvalue_ddata_inv::dd detwetr;
+ //   typedef typename ddatum_ddata::dd detwetr2;
 //    typedef typename ddatum_ddata_inv::dd detwetr2;
-//    typedef typename ddata_ddata::dd detwetr3;
+ //   typedef typename ddata_ddata::dd detwetr3;
    // typedef typename ddata_ddata_inv::dd detwetr4;
 
 
@@ -130,7 +130,7 @@ int main()
 
   auto s=sample(qui,Data(model_position{}),mt);
   auto ss=s| myselect<mean<velocity>,stddev<position>,stddev<velocity>>{};
-  auto ds=self_Derivative(std::move(ss));
+  auto ds=Self_Derivative(ss);
   auto ds2=s<<ds;
 
 
@@ -138,9 +138,12 @@ int main()
 
   auto logL=logP(qui,s);
   auto dlogL=logP(qui,ds2);
+  auto fim=FIM(qui,ds2);
   auto dlogLL=dlogL;
   auto ddlogL=Data(model_position{},Datum(logLik{},std::move(dlogLL)));
+
   std::cerr<<ddlogL<<"\n";
+
   //std::cerr<<"derivative"<<ddlogL[der<logLik,mean<velocity>>{}]<<"\n";
 //  std::cout << s <<std::endl;
   auto s2=s;
@@ -149,6 +152,6 @@ int main()
  // std::cout<<s<<"\n";
   std::cout << logL<<std::endl;
  std::cout << dlogL<<std::endl;
-
+ std::cerr<<"FIM "<<fim<<"\n";
   return 0;
 }

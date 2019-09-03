@@ -47,6 +47,11 @@ auto logP(const F<Id,G,Xs...>& f,const Datas& d )
   return logP_zero{};
 }
 
+template<class Id,class G, class... Xs,class Datas>
+auto FIM(const F<Id,G,Xs...>& f,const Datas& d )
+{
+  return logP_zero{};
+}
 
 
 
@@ -162,6 +167,12 @@ auto logP(const quimulun<Fid,F...>& qui,const Data<Id,Ds2...>& d)
     return s;
 }
 
+template <class Id, class Fid,class...F,class...Ds2>
+auto FIM(const quimulun<Fid,F...>& qui,const Data<Id,Ds2...>& d)
+{
+  auto s=(FIM(qui[typename Ds2::myId{}],d)+...);
+  return s;
+}
 
 
 
