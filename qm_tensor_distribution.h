@@ -5,10 +5,10 @@
 #include <iomanip>
 
 #include "qm_tensor_derivative.h"
+#include "qm_tensor_coordinate.h"
 //#include "qm_derivative.h"
 #include <random>
 
-namespace ten {
 inline constexpr double PI = 3.14159265358979323846;
 
 
@@ -65,9 +65,9 @@ struct Normal_Distribution
   auto FIM(const derVar& var ,const derMean& mean ,const derStd& stddev )const
   {
 
-    auto dvar= ten::Df(var)/center(stddev);
-    auto dmean= ten::Df(mean)/center(stddev);
-    auto dstd=ten::Df(stddev)/center(stddev);
+    auto dvar= Df(var)/center(stddev);
+    auto dmean= Df(mean)/center(stddev);
+    auto dstd=Df(stddev)/center(stddev);
  //   typedef typename decltype (dvar)::se ge;
    // typedef typename decltype (dvar(up<Iu_>{},dn<Id_>{})*dvar(up<Ju_>{},dn<Jd_>{}))::se ge;
     return dvar*dvar+dmean*dmean+2.0*dstd*dstd;
@@ -100,8 +100,8 @@ struct Exponential_Distribution
   template<class derVar,class derMean>
   auto FIM(const derVar& var,const derMean& mean )const
   {
-    auto dvar= ten::Df(var)/center(mean);
-    auto dmean= ten::Df(mean)/center(mean);
+    auto dvar= Df(var)/center(mean);
+    auto dmean= Df(mean)/center(mean);
     return dvar*dvar+dmean*dmean;
   }
 
@@ -199,7 +199,6 @@ auto FIM(const D<Id,Distribution,Xs...>& dist,const Datas&... d)
 
 
 
-} // namespace te
 
 
 #endif // QM_TENSOR_DISTRIBUTION_H

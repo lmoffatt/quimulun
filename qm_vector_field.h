@@ -4,7 +4,6 @@
 
 #include "qm_vector_space.h"
 
-namespace ten {
 
 
 
@@ -165,7 +164,6 @@ auto consolidate(vec<myIndex...>,const Datas...d)
 }
 
 
-} // namespace ten
 
 
 

@@ -1,7 +1,6 @@
 #ifndef QM_TENSOR_COORDINATE_H
 #define QM_TENSOR_COORDINATE_H
 #include "qm_vector_field.h"
-namespace ten {
 
 
 
@@ -179,5 +178,4 @@ template<class Id, class G, class...Xs> Coord(Id&&,G&&,Xs&&...)->Coord<Id,G,Xs..
 
 
 
-} // namespace ten
 #endif // QM_TENSOR_COORDINATE_H

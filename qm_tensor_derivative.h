@@ -8,7 +8,6 @@
 //namespace qm {
 
 
-namespace ten {
 
 
 template<class...> struct der;
@@ -555,7 +554,6 @@ log( const Derivative<v<T,unit>,vector_space<Ds...>>& x)
 }
 
 
-} // namespace ten
 
 
 

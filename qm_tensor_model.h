@@ -4,7 +4,6 @@
 #include <functional>
 #include <type_traits>
 
-namespace ten {
 //namespace qm {
 
 
@@ -262,6 +261,5 @@ auto MAP(const quimulun<Fid,F...>& qui,const vector_space<Ds2...>& data, const v
 
 
 
-} // namespace ten
 
 #endif // QM_TENSOR_MODEL_H

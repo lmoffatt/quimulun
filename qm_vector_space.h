@@ -7,7 +7,6 @@
 #include <vector>
 #include <algorithm>
 
-namespace ten {
 
 struct Iu_{};
 struct Ju_{};
@@ -648,7 +647,6 @@ Is_Complete<false,vector_space<Ds...>> operator |(Is_Complete<Complete,vector_sp
 }
 
 
-} // namespace ten
 
 
 
