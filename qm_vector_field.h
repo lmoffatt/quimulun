@@ -11,9 +11,6 @@ namespace ten {
 template<class...> class vector_field;
 
 
-
-
-
 template<class Value_type,class... Xs> class vector_field<vec<Xs...>,Value_type>
 {
 public:

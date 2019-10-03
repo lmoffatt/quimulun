@@ -90,7 +90,7 @@ friend auto &operator<<(std::ostream& os, te)
 template <class ...Ups0, class ...iUps0,class a, class ia,
           class b>
 
-auto operator * (ein<te<up<Ups0...>,dn<a>>,up<iUps0...>,dn<ia>>,
+constexpr auto operator * (ein<te<up<Ups0...>,dn<a>>,up<iUps0...>,dn<ia>>,
                ein<te<up<b>,dn<>>,up<ia>,dn<>>)
 {
 
@@ -111,7 +111,7 @@ auto operator * (ein<te<up<Ups0...>,dn<a>>,up<iUps0...>,dn<ia>>,
 
 template <class ...Ups0, class ...iUps0,
           class Up1, class iUp1>
-auto operator * (ein<te<up<Ups0...>,dn<>>,up<iUps0...>,dn<>>,
+constexpr auto operator * (ein<te<up<Ups0...>,dn<>>,up<iUps0...>,dn<>>,
                ein<te<up<Up1>,dn<>>,up<iUp1>,dn<>>)
 {
 
@@ -132,7 +132,7 @@ auto operator * (ein<te<up<Ups0...>,dn<>>,up<iUps0...>,dn<>>,
 template <class ...Ups0, class ...iUps0,class A, class iA,
           class B, class iB>
 
-auto operator * (ein<te<up<Ups0...>,dn<A>>,up<iUps0...>,dn<iA>>,
+constexpr auto operator * (ein<te<up<Ups0...>,dn<A>>,up<iUps0...>,dn<iA>>,
                ein<te<up<B>,dn<>>,up<iB>,dn<>>)
 {
 
@@ -149,7 +149,7 @@ auto operator * (ein<te<up<Ups0...>,dn<A>>,up<iUps0...>,dn<iA>>,
 }
 
 template <class ...Downs0, class ...iDowns0>
-Nothing join(ein<te<up<>,dn<Downs0...>>,up<>,dn<iDowns0...>>,Nothing)
+constexpr Nothing join(ein<te<up<>,dn<Downs0...>>,up<>,dn<iDowns0...>>,Nothing)
 {
   return Nothing{};
 }
@@ -158,7 +158,7 @@ Nothing join(ein<te<up<>,dn<Downs0...>>,up<>,dn<iDowns0...>>,Nothing)
 
 template <class ...Downs0, class ...iDowns0,
           class ...Ups1, class ...iUps1,class ...Downs1, class ...iDowns1>
-auto join(ein<te<up<>,dn<Downs0...>>,up<>,dn<iDowns0...>>,
+constexpr auto join(ein<te<up<>,dn<Downs0...>>,up<>,dn<iDowns0...>>,
           ein<te<up<Ups1...>,dn<Downs1...>>,up<iUps1...>,dn<iDowns1...>>)
 {
   return ein<te<up<Ups1...>,dn<Downs0...,Downs1...>>,up<iUps1...>,dn<iDowns0...,iDowns1...>>{};
@@ -168,7 +168,7 @@ auto join(ein<te<up<>,dn<Downs0...>>,up<>,dn<iDowns0...>>,
 
 template <class Up0, class iUp0,class Up00, class iUp00,class ...Ups0, class ...iUps0,class Down1, class iDown1,class ...Downs0, class ...iDowns0>
 
-auto operator * (ein<te<up<Up0,Up00,Ups0...>,dn<Downs0...>>,up<iUp0,iUp00,iUps0...>,dn<iDowns0...>>,
+constexpr auto operator * (ein<te<up<Up0,Up00,Ups0...>,dn<Downs0...>>,up<iUp0,iUp00,iUps0...>,dn<iDowns0...>>,
                ein<te<up<>,dn<Down1>>,up<>,dn<iDown1>>)
 {
 
@@ -196,7 +196,7 @@ auto operator * (ein<te<up<Up0,Up00,Ups0...>,dn<Downs0...>>,up<iUp0,iUp00,iUps0.
 
 template <class ...Ups, class ...iUps,class Down0, class iDown0,class Down1, class iDown1,class ...Downs, class ...iDowns>
 
-auto operator * (ein<te<up<Ups...>,dn<>>,up<iUps...>,dn<>>,
+constexpr auto operator * (ein<te<up<Ups...>,dn<>>,up<iUps...>,dn<>>,
                ein<te<up<>,dn<Down0,Down1,Downs...>>,up<>,dn<iDown0,iDown1,iDowns...>>)
 {
   /**
@@ -216,7 +216,7 @@ auto operator * (ein<te<up<Ups...>,dn<>>,up<iUps...>,dn<>>,
 
 
 template <class ...Ups0, class ...iUps0,class ...Downs0, class ...iDowns0>
-auto operator * (ein<te<up<Ups0...>,dn<Downs0...>>,up<iUps0...>,dn<iDowns0...>>,
+constexpr auto operator * (ein<te<up<Ups0...>,dn<Downs0...>>,up<iUps0...>,dn<iDowns0...>>,
                Nothing)
 {
 
@@ -225,7 +225,7 @@ auto operator * (ein<te<up<Ups0...>,dn<Downs0...>>,up<iUps0...>,dn<iDowns0...>>,
 }
 
 template <          class ...Ups1, class ...iUps1,class ...Downs1, class ...iDowns1>
-auto operator * (Nothing,ein<te<up<Ups1...>,dn<Downs1...>>,up<iUps1...>,dn<iDowns1...>>)
+constexpr auto operator * (Nothing,ein<te<up<Ups1...>,dn<Downs1...>>,up<iUps1...>,dn<iDowns1...>>)
 {
   return Nothing{};
 
@@ -237,7 +237,7 @@ auto operator * (Nothing,ein<te<up<Ups1...>,dn<Downs1...>>,up<iUps1...>,dn<iDown
 template <class ...Ups0, class ...iUps0,class ...Downs0, class ...iDowns0,
           class ...Ups1, class ...iUps1,class ...Downs1, class ...iDowns1>
 
-auto operator * (ein<te<up<Ups0...>,dn<Downs0...>>,up<iUps0...>,dn<iDowns0...>>,
+constexpr auto operator * (ein<te<up<Ups0...>,dn<Downs0...>>,up<iUps0...>,dn<iDowns0...>>,
                ein<te<up<Ups1...>,dn<Downs1...>>,up<iUps1...>,dn<iDowns1...>>)
 {
 
