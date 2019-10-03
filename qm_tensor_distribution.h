@@ -1,13 +1,14 @@
-#ifndef QM_DISTRIBUTION_H
-#define QM_DISTRIBUTION_H
+#ifndef QM_TENSOR_DISTRIBUTION_H
+#define QM_TENSOR_DISTRIBUTION_H
+
+
 #include <iomanip>
 
-#include "qm_data.h"
-#include "qm_coordinate.h"
+#include "qm_tensor_derivative.h"
 //#include "qm_derivative.h"
 #include <random>
 
-//namespace qm {
+namespace ten {
 inline constexpr double PI = 3.14159265358979323846;
 
 
@@ -29,7 +30,7 @@ struct stddev{
 template<class Id>
 struct variance{
   typedef typename Id::T T;
- // typedef typename Id::unit unit;
+  // typedef typename Id::unit unit;
   constexpr static auto  className=Id::className+my_static_string("_variance");
 };
 
@@ -43,13 +44,13 @@ struct Normal_Distribution
   auto sample(const v<double,unit>& mean, const v<double,unit>& stddev,Rnd& mt)const
   {
 
-      return v<double,unit>(std::normal_distribution<double>
-                                       {mean.value(),stddev.value()}(mt));
+    return v<double,unit>(std::normal_distribution<double>
+                           {mean.value(),stddev.value()}(mt));
   }
 
   template<class unit>
   auto logP(const v<double,unit>& x,const v<double,unit>& mean, const v<double,unit>& stddev)const
-     {
+  {
     return -0.5 * std::log(2 * PI) -  log(stddev) -
            v(0.5) * sqr((x - mean) / stddev);
   }
@@ -63,9 +64,12 @@ struct Normal_Distribution
   template<class derVar,class derMean, class derStd>
   auto FIM(const derVar& var ,const derMean& mean ,const derStd& stddev )const
   {
-    auto dvar= Df(var)/center(stddev);
-    auto dmean= Df(mean)/center(stddev);
-    auto dstd=Df(stddev)/center(stddev);
+
+    auto dvar= ten::Df(var)/center(stddev);
+    auto dmean= ten::Df(mean)/center(stddev);
+    auto dstd=ten::Df(stddev)/center(stddev);
+ //   typedef typename decltype (dvar)::se ge;
+   // typedef typename decltype (dvar(up<Iu_>{},dn<Id_>{})*dvar(up<Ju_>{},dn<Jd_>{}))::se ge;
     return dvar*dvar+dmean*dmean+2.0*dstd*dstd;
   }
 
@@ -81,7 +85,7 @@ struct Exponential_Distribution
   auto sample(const v<double,unit>& mean, Rnd& mt)const
   {
     return v<double,unit>(std::exponential_distribution<double>
-                       {1.0/center(mean).value()}(mt));
+                           {1.0/center(mean).value()}(mt));
   }
 
   template<class unit>
@@ -96,8 +100,8 @@ struct Exponential_Distribution
   template<class derVar,class derMean>
   auto FIM(const derVar& var,const derMean& mean )const
   {
-    auto dvar= Df(var)/center(mean);
-    auto dmean= Df(mean)/center(mean);
+    auto dvar= ten::Df(var)/center(mean);
+    auto dmean= ten::Df(mean)/center(mean);
     return dvar*dvar+dmean*dmean;
   }
 
@@ -120,34 +124,36 @@ public:
   auto sample(const Param& par,Rnd& mt)const
   {
     typedef  decltype(g_.sample(std::declval<typename std::decay_t<decltype(par[Xs{}])>::element_type>()...,mt)) value_type;
-    auto out=consolidate<Id,value_type>(vec<>{},par[Xs{}]...);
-      auto p=out.begin();
-      do {
-        out(p)=g_.sample(par[Xs{}](p)...,mt);
+    auto out=consolidate<value_type>(vec<>{},par[Xs{}]...);
 
-      } while (out.next(p));
-      return out;
-   }
-   template<class... Param>
-   auto logP(const Param&... par)const
-   {
-     auto const& x=get_from<Id>(par...);
-     auto p=x.begin();
-     auto logProb=g_.logP(x(p),get_from<Xs>(par...)(p)...);
-     while (x.next(p))
-       logProb=std::move(logProb)+g_.logP(x(p),get_from<Xs>(par...)(p)...);
-     return logProb;
-   }
-   template<class... Param>
-   auto FIM(const Param&... par)const
-   {
-     auto const& x=get_from<Id>(par...);
-     auto p=x.begin();
-     auto fim=g_.FIM(x(p),get_from<Xs>(par...)(p)...);
-     while (x.next(p))
-       fim=std::move(fim)+g_.FIM(x(p),get_from<Xs>(par...)(p)...);
-     return fim;
-   }
+
+    auto p=out.begin();
+    do {
+      out(p)=g_.sample(par[Xs{}](p)...,mt);
+
+    } while (out.next(p));
+    return x_i(Id{},std::move(out));
+  }
+  template<class... Param>
+  auto logP(const Param&... par)const
+  {
+    auto const& x=get_from<Id>(par...);
+    auto p=x().begin();
+    auto logProb=g_.logP(x()(p),get_from<Xs>(par...)(p)...);
+    while (x().next(p))
+      logProb=std::move(logProb)+g_.logP(x()(p),get_from<Xs>(par...)(p)...);
+    return logProb;
+  }
+  template<class... Param>
+  auto FIM(const Param&... par)const
+  {
+    auto const& x=get_from<Id>(par...);
+    auto p=x().begin();
+    auto fim=g_.FIM(x(p),get_from<Xs>(par...)(p)...);
+    while (x().next(p))
+      fim=std::move(fim)+g_.FIM(x(p),get_from<Xs>(par...)(p)...);
+    return fim;
+  }
 
 
   D(Id id,Distribution&& g, Xs&&...):g_{std::move(g)}{}
@@ -158,10 +164,10 @@ public:
 template<class Id,class Distribution, class... Xs,class Rnd, class Datas>
 auto sample(const D<Id,Distribution,Xs...>& dist,const Datas& d,Rnd& mt)
 {
-   if constexpr ((std::is_same_v<decltype (d[Xs{}]),Nothing>||...))
-      return Nothing{};
-    else
-  return dist.sample(d,mt);
+  if constexpr ((std::is_same_v<decltype (d[Xs{}]),Nothing>||...))
+    return Nothing{};
+  else
+    return dist.sample(d,mt);
 }
 template<class Id,class Distribution, class... Xs,class... Datas>
 auto calculate(const D<Id,Distribution,Xs...>& ,const Datas&... d )
@@ -193,6 +199,7 @@ auto FIM(const D<Id,Distribution,Xs...>& dist,const Datas&... d)
 
 
 
-//} // namespace qm
+} // namespace te
 
-#endif // QM_DISTRIBUTION_H
+
+#endif // QM_TENSOR_DISTRIBUTION_H

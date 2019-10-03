@@ -199,7 +199,7 @@ public:
 
 //  Derivative(v<T,unit>&& f,Data<Id,der_t<v<T,unit>,Ds>...>&& Df):f_{std::move(f)},Df_{std::move(Df)}{}
   Derivative(dependent_type&& f,derivative_type&& Df):f_{std::move(f)},Df_{std::move(Df)}{}
-
+  Derivative()=default;
 
   friend std::ostream& operator<<(std::ostream& os, const Derivative& me)
   {
@@ -210,6 +210,10 @@ public:
 
 template<class dependent_type,class Id,class... Ds>
 auto& Df(const Derivative<dependent_type,Data<Id,Ds...>>& f){return f.Df();}
+
+template<class dependent_type,class Id,class... Ds>
+auto& center(const Derivative<dependent_type,Data<Id,Ds...>>& f){return f.f();}
+
 
 template<class T>
 auto Df(const T& f){return logP_zero{};}
@@ -231,6 +235,11 @@ auto operator*(const Datum<der<Id,Id1>,value_type1,vec<>>& one, const Datum<der<
   return Datum(der<Id,Id1,Id2>{},one.value()*two.value());
 }
 
+template<class Id1,class Id2,class...Ds,class value_type2>
+auto operator*(const Data<Id1,Ds...>& one, const Datum<der<Id,Id2>,value_type2,vec<>>& two)
+{
+  return Data(Id1{},  one[typename Ds::myId{}]*two...);
+}
 
 
 template<class val_type,class Id,class Id2,class... Ds>
@@ -410,6 +419,9 @@ operator +(   v<T,unit>&& two,Derivative<v<T,unit>,Data<Id,Ds...>>&& one)
   std::move(one)+std::move(two);
 }
 
+
+
+
 //----logv addition
 
 
@@ -428,6 +440,34 @@ operator +( Derivative<logv<T,unit...>,Data<Id,Ds...>>&& one,  Derivative<logv<T
   return Derivative(std::move(one.f())+std::move(two.f()),std::move(one.Df())+std::move(two.Df()));
 }
 
+
+template<class T, class... units,class Id,class... Ds>
+Derivative<logv<T,units...>,Data<Id,Ds...>>
+operator +( Derivative<logv<T,units...>,Data<Id,Ds...>> one,  logv<T,units...> two)
+{
+  return Derivative<logv<T,units...>,Data<Id,Ds...>>(std::move(one.f())+std::move(two),std::move(one.Df()));
+}
+
+template<class T, class... units,class Id,class... Ds>
+Derivative<logv<T,units...>,Data<Id,Ds...>>
+operator +( logv<T,units...> two,Derivative<logv<T,units...>,Data<Id,Ds...>> one )
+{
+  return std::move(one)+std::move(two);
+}
+
+template<class T, class... unit,class... unit2,class Id,class... Ds>
+auto
+operator +( Derivative<logv<T,unit...>,Data<Id,Ds...>>&& one,  logv<T,unit2...> two)
+{
+  return Derivative(std::move(one.f())+std::move(two),std::move(one.Df()));
+}
+
+template<class T, class... unit,class... unit2,class Id,class... Ds>
+auto
+operator +( logv<T,unit2...> two, Derivative<logv<T,unit...>,Data<Id,Ds...>>&& one )
+{
+  return std::move(one)+std::move(two);
+}
 
 
 
@@ -452,7 +492,7 @@ template<class T, class unit,class Id,class... Ds>
 Derivative<v<T,unit>,Data<Id,Ds...>>
 operator -( Derivative<v<T,unit>,Data<Id,Ds...>> one,  v<T,unit> two)
 {
-  one.f()-=std::move(two);
+  one.f()=one.f()-std::move(two);
   return one;
 }
 

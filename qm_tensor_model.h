@@ -1,8 +1,10 @@
-#ifndef QM_MODELS_H
-#define QM_MODELS_H
-#include "qm_distribution.h"
+#ifndef QM_TENSOR_MODEL_H
+#define QM_TENSOR_MODEL_H
+#include "qm_tensor_distribution.h"
 #include <functional>
 #include <type_traits>
+
+namespace ten {
 //namespace qm {
 
 
@@ -21,13 +23,13 @@ public:
   {
     typedef  decltype(std::invoke(g_,std::declval<typename std::decay_t<decltype(get_from<Xs>(par...))>::element_type>()...)) value_type;
 
-    auto out=consolidate<Id,value_type>(vec<>{},get_from<Xs>(par...)...);
+    auto out=consolidate<value_type>(vec<>{},get_from<Xs>(par...)...);
     auto p=out.begin();
     do {
       out(p)=std::invoke(g_,get_from<Xs>(par...)(p)...);
 
     } while (out.next(p));
-    return out;
+    return x_i(Id{},std::move(out));
   }
   F(Id id,G&& g, Xs&&...):g_{std::move(g)}{}
 };
@@ -94,20 +96,20 @@ auto operator | (quimulun<Id,Fs...> q, myselect<Ids...>)
   return quimulun(Id{},std::move(q)[Ids{}]...);
 }
 
-template<class Id,class... Ds, class...Ids>
-auto operator | (Data<Id,Ds...> d, myselect<Ids...>)
+template<class... Ds, class...Ids>
+auto operator | (vector_space<Ds...> d, myselect<Ids...>)
 {
-  return (Data<Id>{}+...+(std::move(d)[Ids{}]));
+  return (vector_space<>{}+...+(std::move(d)[Ids{}]));
 }
-template<class Id,class... Ds, class...Ids>
-auto operator | (Data<Id,Ds...> d, myselect<Cs<Ids...>>)
+template<class... Ds, class...Ids>
+auto operator | (vector_space<Ds...> d, myselect<Cs<Ids...>>)
 {
   return std::move(d)|myselect<Ids...>{};
 }
 
 
 template<class Id, class...Fs, class Id2, class...Fs2>
-    auto operator + (quimulun<Id,Fs...> q1,quimulun<Id2,Fs2...> q2)
+auto operator + (quimulun<Id,Fs...> q1,quimulun<Id2,Fs2...> q2)
     ->std::enable_if_t<!(is_in_pack(typename Fs2::myId{},Cs<typename Fs::myId...>{})&&...),quimulun<Id,Fs...,Fs2...>>
 {
   return quimulun(Id{},std::move(q1)[typename Fs::myId{}]...,std::move(q2)[typename Fs2::myId{}]...);
@@ -121,8 +123,8 @@ auto operator << (quimulun<Id,Fs...> q1,quimulun<Id2,Fs2...> q2)
   return (q1|non_common_Ids{})+q2;
 }
 
-template<class Id, class...Fs, class Id2, class...Fs2>
-auto operator << (Data<Id,Fs...> q1,Data<Id2,Fs2...> q2)
+template<class...Fs, class...Fs2>
+auto operator << (vector_space<Fs...> q1,vector_space<Fs2...> q2)
 {
   typedef transfer_t<pack_difference_t<Cs<typename Fs::myId...>,Cs<typename Fs2::myId...>>,myselect<>> non_common_Ids ;
   return (std::move(q1)|non_common_Ids{})+std::move(q2);
@@ -139,12 +141,11 @@ constexpr const bool test(Cs<Ids...>,Cs<Ids2...>)
 
 
 
-template < class Fid, class... Fs,class Id,class Id2,class...Ds2, class Random>
-auto sample(const quimulun<Fid,Fs...>& qui,Id,const Data<Id2,Ds2...>& d, Random& mt)
+template < class Fid, class... Fs,class Id,class...Ds2, class Random>
+auto sample(const quimulun<Fid,Fs...>& qui,Id,const vector_space<Ds2...>& d, Random& mt)
 {
-   return sample(qui[Id{}],d,mt);
+  return sample(qui[Id{}],d,mt);
 }
-
 
 
 template <class... Ids_Not_Reachead>
@@ -153,23 +154,23 @@ constexpr void check_if_reacheable(Cs<Ids_Not_Reachead...>)
   static_assert(sizeof... (Ids_Not_Reachead)==0,"some Ids are Not Reacheable");
 }
 
-template <class Id, class Fid,class...F,class...Ds2,  class... Fields,class Random>
-auto sample(const quimulun<Fid,F...>& qui,const Data<Id,Ds2...>& d, Cs<Fields...>,Random& mt)
+template <class Fid,class...F,class...Ds2,  class... Fields,class Random>
+auto sample(const quimulun<Fid,F...>& qui,const vector_space<Ds2...>& d, Cs<Fields...>,Random& mt)
 {
-  return (Is_Complete<true,Data<Id>>()|...|sample(qui,Fields{},d,mt));
+  return (Is_Complete<true,vector_space<>>()|...|sample(qui,Fields{},d,mt));
 }
 
 
-template <class Id, class Fid,class...F,class...Ds2, class Random>
-auto sample(const quimulun<Fid,F...>& qui,Data<Id,Ds2...>&& d, Random& mt)
+template <class Fid,class...F,class...Ds2, class Random>
+auto sample(const quimulun<Fid,F...>& qui,vector_space<Ds2...>&& d, Random& mt)
 {
   auto Fields=pack_difference_t<Cs<typename F::myId...>,Cs<typename Ds2::myId...>>{};
   auto s=sample(qui,d,Fields,mt);
   //typedef typename decltype (s)::sample sample_type;
-  if constexpr ( std::is_same_v<typename decltype(s)::type,Data<Id>>)
+  if constexpr ( std::is_same_v<typename decltype(s)::type,vector_space<>>)
   {
-     check_if_reacheable(Fields);
-     return false;
+    check_if_reacheable(Fields);
+    return false;
   }
   if constexpr (s.is_complete)
     return std::move(d)+std::move(s.value);
@@ -185,21 +186,23 @@ auto calculate(const quimulun<Fid,Fs...>& qui,Id0,const Datas&... data)
 }
 
 
-template <class Fid,class...F,class... Fields,class Id1,class...Ds1,class...Datas>
-auto calculate(const quimulun<Fid,F...>& qui, Cs<Fields...>,const Data<Id1,Ds1...>& variables, const Datas&... parameters)
+template <class Fid,class...F,class... Fields,class...Ds1,class...Datas>
+auto calculate(const quimulun<Fid,F...>& qui, Cs<Fields...>,const vector_space<Ds1...>& variables, const Datas&... parameters)
 {
-  return (Is_Complete<true,Data<Id1>>()|...|calculate(qui,Fields{},variables, parameters...));
+  return (Is_Complete<true,vector_space<>>()|...|calculate(qui,Fields{},variables, parameters...));
 
 }
 
 
-template <class Fid,class...F,class...Datas,class Id2,class...Ds2 >
-auto calculate(const quimulun<Fid,F...>& qui,Data<Id2,Ds2...>&& variables,const Datas&...param )
+template <class Fid,class...F,class...Datas,class...Ds2 >
+auto calculate(const quimulun<Fid,F...>& qui,vector_space<Ds2...>&& variables,const Datas&...param )
 {
   auto Fields=pack_difference_t<Cs<typename F::myId...>,pack_concatenation_t<Cs<typename Ds2::myId...>,typename Datas::myIds...>>{};
+  //typedef typename Cs<typename Datas::myIds...>::sample Ds2_ltype;
+ // typedef typename Cs<typename F::myId...>::sample sample_ltype;
   auto s=calculate(qui,Fields,variables,param...);
-  //typedef typename decltype (s)::sample sample_type;
-  if constexpr ( std::is_same_v<decltype(s.value),Data<Id2>>&& ! std::is_same_v<Cs<>,decltype(Fields) >)
+ // typedef typename decltype (s)::sample sample_type;
+  if constexpr ( std::is_same_v<decltype(s.value),vector_space<>>&& ! std::is_same_v<Cs<>,decltype(Fields) >)
   {
     check_if_reacheable(Fields);
     return false;
@@ -216,7 +219,7 @@ auto calculate(const quimulun<Fid,F...>& qui,Data<Id2,Ds2...>&& variables,const 
 template <class Fid,class...F,class...Datas>
 auto logP(const quimulun<Fid,F...>& qui,const Datas&... d)
 {
-  auto ds=calculate(qui,Data<Fid>{},d...);
+  auto ds=calculate(qui,vector_space<>{},d...);
   auto s=(logP(qui[typename F::myId{}],d...,ds)+...);
   return s;
 }
@@ -225,14 +228,14 @@ auto logP(const quimulun<Fid,F...>& qui,const Datas&... d)
 template <class Fid,class...F,class...Datas>
 auto FIM(const quimulun<Fid,F...>& qui,const Datas&... d)
 {
-  auto ds=calculate(qui,Data<Fid>{},d...);
+  auto ds=calculate(qui,vector_space<>{},d...);
   auto s=(FIM(qui[typename F::myId{}],d...,ds)+...);
   return s;
 }
 
 
-template <class Id, class Fid,class...F,class...Ds2, class... Ds3>
-auto MAP(const quimulun<Fid,F...>& qui,const Data<Id,Ds2...>& data, const Data<Id,Ds2...>& parameters )
+template <class Fid,class...F,class...Ds2, class... Ds3>
+auto MAP(const quimulun<Fid,F...>& qui,const vector_space<Ds2...>& data, const vector_space<Ds2...>& parameters )
 {
   auto dpar=Self_Derivative(parameters);
 
@@ -258,4 +261,7 @@ auto MAP(const quimulun<Fid,F...>& qui,const Data<Id,Ds2...>& data, const Data<I
 //} // namespace qm
 
 
-#endif // QM_MODELS_H
+
+} // namespace ten
+
+#endif // QM_TENSOR_MODEL_H

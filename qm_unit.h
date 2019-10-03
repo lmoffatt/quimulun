@@ -10,6 +10,44 @@
 
 //namespace qm {
 
+struct Nothing{};
+
+
+inline Nothing operator+(Nothing, Nothing ){return Nothing{};}
+
+inline Nothing operator||(Nothing, Nothing ){return Nothing{};}
+
+template<class Something>
+auto operator||(Nothing, Something&& s){return std::forward<Something>(s);}
+
+template<class Something>
+auto operator||( Something&& s, Nothing){return std::forward<Something>(s);}
+
+
+template <class...> class Position;
+
+template <class Id> struct Position<Id>
+{
+private :
+  std::size_t i;
+public:
+  auto& operator[](Id)const {return *this;}
+  auto& operator[](Id) {return *this;}
+  auto& operator()()const {return  i;}
+  auto& operator()() {return  i;}
+};
+
+template <class...Ids> struct Position: Position<Ids>...
+{
+
+  using Position<Ids>::operator[]...;
+};
+
+
+
+
+
+
 
 struct m{ constexpr static auto  className=my_static_string("m");};
 struct s{constexpr static auto  className=my_static_string("s");};
@@ -228,12 +266,24 @@ template<class TYPE,class myunit> class v<TYPE,myunit>
 public:
  typedef TYPE T;
  typedef myunit unit;
+ typedef v element_type;
+
 
   v(TYPE&& x,myunit): value_{std::move(x)}{}
   v(TYPE&& x): value_{std::move(x)}{}
   v()=default;
   const TYPE& value()const &{return value_;}
   TYPE value()&& {return value_;}
+
+  static auto begin() {return Position<>{};}
+  bool next(Position<>& p)const {return false;}
+
+  template<class Position>
+  auto& operator()(const Position& p){ return *this;}
+
+  template<class Position>
+  auto& operator()(const Position& p)const { return *this;}
+
   friend std::ostream& operator<<(std::ostream& os, const v& m)
   {
     return os<<m.value()<<" "<<myunit{};
@@ -467,6 +517,219 @@ auto sqrt(const v<double,unit1>& x) { return v<double,div_exponent_t<unit1,2>>(s
 template <class unit1>
 auto log(const v<double,unit1>& x) { return logv<double,unit1>(std::log(x.value()),{1,unit1{}}); }
 
+
+
+
+
+
+template<class T>
+std::ostream& operator<<(std::ostream& os, const std::vector<T>& me)
+{
+  os<<"  [";
+  for (auto& x:me)
+    os<<x<<" ";
+  os<<"]   ";
+
+  return os;
+}
+
+
+
+template<class...> struct vec;
+
+template<> struct vec<>
+{
+  template <class T>
+  using to_vector=T;
+
+  static inline constexpr auto index_size=0;
+
+  template <class Vector, class Position>
+  static auto& get(Vector& x, const Position&)
+  {
+    return x;
+  }
+  template <class Vector, class Position>
+  static auto& get(const Vector& x,const Position&)
+  {
+    return x;
+  }
+  template <class Vector, class Position>
+  static bool next(const Vector& x,Position& p) {return false;}
+
+};
+template<class I0, class...I> struct vec<I0,I...>{
+
+  static inline constexpr auto index_size=sizeof... (I)+1;
+
+  template <class T>
+  using to_vector=std::vector<typename vec<I...>::template to_vector<T>>;
+
+  template <class Vector, class Positionx>
+  static auto& get(Vector& x,const Positionx& p)
+  {
+    return vec<I...>::get(x.at(p[I0{}]()),p);
+  }
+  template <class Vector, class Positionx>
+  static auto& get(const Vector& x,const Positionx& p)
+  {
+    return vec<I...>::get(x.at(p[I0{}]()),p);
+  }
+
+  template <class Vector, class Position>
+  static auto& get_I(I0,const Vector& x,const Position& p)
+  {
+    return x;
+  }
+
+
+  template <class In,class Vector, class Position>
+  static auto& get_I(In i,const Vector& x,const Position& p)
+  {
+    return vec<I...>::get_I(i,x.at(p[I0{}]()),p);
+  }
+
+
+
+  template <class Vector, class Position>
+  static auto& get_I(I0,Vector& x,const Position& p)
+  {
+    return x;
+  }
+
+
+  template <class In,class Vector, class Position>
+  static auto& get_I(In i, Vector& x,const Position& p)
+  {
+    return vec<I...>::get_I(i,x.at(p[I0{}]()),p);
+  }
+
+
+
+
+
+  template <class Vector, class Position>
+  static auto size(I0,const Vector& x,const Position& p)
+  {
+    return x.size();
+  }
+
+  template <class In,class Vector, class Position>
+  static auto size(In i,const Vector& x,const Position& p)->std::enable_if_t<is_in_pack<In,I...>(),std::size_t>
+  {
+    return vec<I...>::size(i,x.at(p[I0{}]()),p);
+  }
+
+
+  template <class Vector, class Position>
+  static bool next(const Vector& x,Position& p)
+  {
+    if(vec<I...>::next(x.at(p[I0{}]()),p))
+      return true;
+    else {
+      ++p[I0{}]();
+      if (p[I0{}]()<x.size())
+        return true;
+      else {
+        p[I0{}]()=0; return false;
+      }
+    }
+  }
+};
+
+
+
+
+
+
+template<class...I0, class...I1>
+auto operator<<(vec<I0...>, vec<I1...>)
+{
+
+  return transfer_t<pack_difference_t<Cs<I1...>,Cs<I0...>>,vec<I0...>>{};
+
+
+}
+
+
+
+
+
+template<class T, class U>
+void copy_size(const U& source,T& destination)
+{
+}
+
+template<class T, class U>
+void copy_size(const std::vector<U>& source,std::vector<T>& destination)
+{
+  destination.resize(source.size());
+}
+
+template<class T, class U>
+void copy_size(const std::vector<std::vector<U>>& source,std::vector<std::vector<T>>& destination)
+{
+  destination.resize(source.size());
+  for (std::size_t i=0; i<source.size(); ++i) copy_size(source[i],destination[i]);
+
+}
+
+
+/*
+template<class Id,class Id0, class Value_type,class...Datas, template<class...> class Datum>
+auto consolidate(Id,const Datum<Id0, Value_type>& one,const Datas...d)
+{
+  typedef decltype ((vec<>{}<<...<<typename Datas::myIndexes{})) myvec;
+  typedef Datum<Id,Value_type,myvec> myDatum;
+
+  typedef typename myDatum::value_type myValue_type;
+
+  myValue_type out;
+  auto p=myDatum::begin();
+
+  fill_vector(out,p,myvec{},one,d...);
+
+  return myDatum(std::move(out));
+}
+
+*/
+
+struct logP_zero{
+  constexpr static auto  className=my_static_string("logP_is_zero");
+};
+
+template<class T>
+auto operator+(T&& x,logP_zero){return std::forward<T>(x);}
+template<class T>
+auto operator+( logP_zero,T&& x){return std::forward<T>(x);}
+inline auto operator+(logP_zero ,logP_zero ){return logP_zero {};}
+
+template<class T>
+auto operator*( logP_zero,const T& x){return logP_zero{};}
+template<class T>
+auto operator/( logP_zero,const T& x){return logP_zero{};}
+template<class T>
+auto operator*( const T& x,logP_zero){return logP_zero{};}
+inline auto operator*(logP_zero,logP_zero){return logP_zero{};}
+
+template<bool complete,class Data>
+struct Is_Complete{
+  Data value;
+  typedef Data type;
+  static constexpr bool is_complete=complete;
+  Is_Complete(std::bool_constant<complete>,Data&& d):value{std::move(d)}{}
+  Is_Complete()=default;
+
+};
+
+template<bool Complete, class Data> Is_Complete(std::bool_constant<Complete>,Data&&)->Is_Complete<Complete,Data>;
+
+
+template <class anId, class...Datas>
+auto get_from(const Datas&...ds)
+{
+  return (ds[anId{}]||...);
+}
 
 
 //} // namespace qm

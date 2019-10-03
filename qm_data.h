@@ -6,180 +6,50 @@
 #include <algorithm>
 //namespace qm {
 
-template<class T>
-std::ostream& operator<<(std::ostream& os, const std::vector<T>& me)
+template <class Vector, class Position, class... Datum>
+void fill_vector(Vector&,Position& ,vec<>, const Datum&...  )
+{}
+
+template <class Vector, class Position, class... X1>
+void fill_vector(Vector&,Position& ,vec<X1...>)
+{}
+
+
+template <class Vector, class X, class... X1, class Position,class Datum0, class... Datum1>
+void fill_vector(Vector&v,Position& p,vec<X,X1...> ,const Datum0& one,const Datum1&... two)
 {
-  os<<"  [";
-  for (auto& x:me)
-    os<<x<<" ";
-  os<<"]   ";
-
-  return os;
-}
-
-
-struct Nothing{};
-
-
-inline Nothing operator+(Nothing, Nothing ){return Nothing{};}
-template <class...> class Position;
-
-template <class Id> struct Position<Id>
-{
-  std::size_t i;
-  auto& operator[](Id)const {return *this;}
-  auto& operator[](Id) {return *this;}
-  auto operator()()const {return  i;}
-};
-template <class...Ids> struct Position: Position<Ids>...
-{
-
-  using Position<Ids>::operator[]...;
-};
-
-
-
-
-template<class...> struct vec;
-
-template<> struct vec<>
-{
-  template <class T>
-  using to_vector=T;
-
-  template <class Vector, class Position>
-  static auto& get(Vector& x, const Position&)
+  if constexpr (is_in_pack(X{},typename Datum0::myIndexes{}))
   {
-    return x;
+    auto n=one.size(X{},p);
+    v.resize(n);
+    auto& i=p[X{}]();
+    for (i=0; i<n; ++i)
+      fill_vector(v[i],p,vec<X1...>{},one,two...);
   }
-  template <class Vector, class Position>
-  static auto& get(const Vector& x,const Position&)
-  {
-    return x;
-  }
-  template <class Vector, class Position>
-  static bool next(const Vector& x,Position& p) {return false;}
-
-};
-template<class I0, class...I> struct vec<I0,I...>{
-  template <class T>
-  using to_vector=std::vector<typename vec<I...>::template to_vector<T>>;
-
-  template <class Vector, class Positionx>
-  static auto& get(Vector& x,const Positionx& p)
-  {
-    return vec<I...>::get(x.at(p[I0{}]()),p);
-  }
-  template <class Vector, class Positionx>
-  static auto& get(const Vector& x,const Positionx& p)
-  {
-    return vec<I...>::get(x.at(p[I0{}]()),p);
-  }
-
-  template <class Vector, class Position>
-  static auto& get_I(I0,const Vector& x,const Position& p)
-  {
-    return x;
-  }
-
-
-  template <class In,class Vector, class Position>
-  static auto& get_I(In i,const Vector& x,const Position& p)
-  {
-    return vec<I...>::get_I(i,x.at(p[I0{}]()),p);
-  }
-
-
-
-  template <class Vector, class Position>
-  static auto& get_I(I0,Vector& x,const Position& p)
-  {
-    return x;
-  }
-
-
-  template <class In,class Vector, class Position>
-  static auto& get_I(In i, Vector& x,const Position& p)
-  {
-    return vec<I...>::get_I(i,x.at(p[I0{}]()),p);
-  }
-
-
-
-
-
-  template <class Vector, class Position>
-  static auto size(I0,const Vector& x,const Position& p)
-  {
-    return x.size();
-  }
-
-  template <class In,class Vector, class Position>
-  static auto size(In i,const Vector& x,const Position& p)->std::enable_if_t<is_in_pack<In,I...>(),std::size_t>
-  {
-    return vec<I...>::size(i,x.at(p[I0{}]()),p);
-  }
-
-
-  template <class Vector, class Position>
-  static bool next(const Vector& x,Position& p)
-  {
-    if(vec<I...>::next(x.at(p[I0{}]()),p))
-      return true;
-    else {
-      ++p[I0{}].i;
-      if (p[I0{}].i<x.size())
-        return true;
-      else {
-        p[I0{}].i=0; return false;
-      }
-    }
-  }
-};
-
-
-
-
-
-
-template<class...I0, class...I1>
-auto operator<<(const vec<I0...>&, const vec<I1...>&)
-{
-
-  return transfer_t<pack_difference_t<Cs<I1...>,Cs<I0...>>,vec<I0...>>{};
-
-
+  else fill_vector(v,p,vec<X,X1...>{},two...);
 }
 
 
 
-template <class Id> struct transpose {};
-
- /* template <class rowIndex, class colIndex=transpose<rowIndex>> struct matrix{
-    template <class T>
-    using v=Matrix<T>;
-
-  };
-  */
-
-template<class T, class U>
-void copy_size(const U& source,T& destination)
+template<class Id, class Value_type,class... myIndex,class Id0, class Value_type0,class... X0, class...Datas, template<class...> class Datum>
+auto consolidate(vec<myIndex...>,const Datum<Id0,Value_type0,vec<X0...>>& one,const Datas...d)
 {
+  typedef decltype ((vec<X0...>{}<<...<<typename Datas::myIndexes{})<<vec<myIndex...>{}) myvec;
+
+
+  typedef Datum<Id,Value_type,myvec> myDatum;
+
+  typedef typename myDatum::value_type myValue_type;
+
+  myValue_type out{};
+  auto p=myDatum::begin(myIndex{}...);
+
+  fill_vector(out,p,myvec{},one,d...);
+
+  return myDatum(std::move(out));
 }
 
-template<class T, class U>
-void copy_size(const std::vector<U>& source,std::vector<T>& destination)
-{
-  destination.resize(source.size());
-}
 
-template<class T, class U>
- void copy_size(const std::vector<std::vector<U>>& source,std::vector<std::vector<T>>& destination)
-{
-  destination.resize(source.size());
-  for (std::size_t i=0; i<source.size(); ++i) copy_size(source[i],destination[i]);
-
-}
 
  template<class Id, class, class...> class Datum;
 
@@ -213,6 +83,8 @@ public:
   Datum const& operator[](Id)const & {return *this;}
   Datum& operator[](Id) & {return *this;}
   Datum operator[](Id)&& {return *this;}
+
+
   static auto begin() {return Position<>{};}
 
 
@@ -354,7 +226,6 @@ Datum<Id,Value_type,vec<Xs...>>& operator+=(Datum<Id,Value_type,vec<Xs...>> &one
   one(pos)+=  two(pos);
   while (one.next(pos)) one(pos)+=two(pos);
   return one;
-
 }
 template<class Id, class Value_type,class... Xs>
 Datum<Id,Value_type,vec<Xs...>>& operator-=(Datum<Id,Value_type,vec<Xs...>> &one,const Datum<Id,Value_type,vec<Xs...>>& two )
@@ -447,107 +318,23 @@ Datum<Id,Value_type,vec<Xs...>> operator*(double two, Datum<Id,Value_type,vec<Xs
 }
 
 
-template <class Vector, class Position, class... Datum>
-void fill_vector(Vector&,Position& ,vec<>, const Datum&...  )
-{}
-
-template <class Vector, class Position, class... X1>
-void fill_vector(Vector&,Position& ,vec<X1...>)
-{}
-
-
-template <class Vector, class X, class... X1, class Position,class Datum0, class... Datum1>
-void fill_vector(Vector&v,Position& p,vec<X,X1...> ,const Datum0& one,const Datum1&... two)
-{
-  if constexpr (is_in_pack(X{},typename Datum0::myIndexes{}))
-  {
-   auto n=one.size(X{},p);
-   v.resize(n);
-   auto& i=p[X{}].i;
-   for (i=0; i<n; ++i)
-     fill_vector(v[i],p,vec<X1...>{},one,two...);
-   }
-   else fill_vector(v,p,vec<X,X1...>{},two...);
-}
-
-
-template<class Id,class Id0, class Value_type,class...Datas>
-auto consolidate(Id,const Datum<Id0, Value_type>& one,const Datas...d)
-{
-  typedef decltype ((vec<>{}<<...<<typename Datas::myIndexes{})) myvec;
-  typedef Datum<Id,Value_type,myvec> myDatum;
-
-  typedef typename myDatum::value_type myValue_type;
-
-  myValue_type out;
-  auto p=myDatum::begin();
-
-  fill_vector(out,p,myvec{},one,d...);
-
-  return myDatum(std::move(out));
-}
-
-
-template<class Id, class Value_type,class... myIndex,class Id0, class Value_type0,class... X0, class...Datas>
-auto consolidate(vec<myIndex...>,const Datum<Id0,Value_type0,vec<X0...>>& one,const Datas...d)
-{
-  typedef decltype ((vec<X0...>{}<<...<<typename Datas::myIndexes{})<<vec<myIndex...>{}) myvec;
-
-
-  typedef Datum<Id,Value_type,myvec> myDatum;
-
-  typedef typename myDatum::value_type myValue_type;
-
-  myValue_type out{};
-  auto p=myDatum::begin(myIndex{}...);
-
-  fill_vector(out,p,myvec{},one,d...);
-
-  return myDatum(std::move(out));
-}
-
 
 
 template<class Id, class Value_type,class ...Ind,class Datas, class Rand>
   Datum<Id,Value_type,vec<Ind...>> sample(const Datum<Id,Value_type,vec<Ind...>>& d, const Datas& , Rand& ){return d;}
 
-struct logP_zero{
-  constexpr static auto  className=my_static_string("logP_is_zero");
-};
-
-template<class T>
-auto operator+(T&& x,logP_zero){return std::forward<T>(x);}
-template<class T>
-auto operator+( logP_zero,T&& x){return std::forward<T>(x);}
-inline auto operator+(logP_zero ,logP_zero ){return logP_zero {};}
-
-template<class T>
-auto operator*( logP_zero,const T& x){return logP_zero{};}
-template<class T>
-auto operator/( logP_zero,const T& x){return logP_zero{};}
-template<class T>
-auto operator*( const T& x,logP_zero){return logP_zero{};}
-inline auto operator*(logP_zero,logP_zero){return logP_zero{};}
+template<class Id, class Value_type,class ...Ind,class... Datas>
+Datum<Id,Value_type,vec<Ind...>> calculate(const Datum<Id,Value_type,vec<Ind...>>& d, const Datas& ...){return d;}
 
 
-template<class Id, class Value_type,class ...Ind,class Datas>
-auto logP(const Datum<Id,Value_type,vec<Ind...>>& d, const Datas& ){return logP_zero{};}
 
-template<class Id, class Value_type,class ...Ind,class Datas>
-auto FIM(const Datum<Id,Value_type,vec<Ind...>>& d, const Datas& ){return logP_zero{};}
+template<class Id, class Value_type,class ...Ind,class... Datas>
+auto logP(const Datum<Id,Value_type,vec<Ind...>>& , const Datas&... ){return logP_zero{};}
+
+template<class Id, class Value_type,class ...Ind,class... Datas>
+auto FIM(const Datum<Id,Value_type,vec<Ind...>>& , const Datas&... ){return logP_zero{};}
 
 
-template<bool complete,class Data>
-struct Is_Complete{
-  Data value;
-  typedef Data type;
-  static constexpr bool is_complete=complete;
-  Is_Complete(std::bool_constant<complete>,Data&& d):value{std::move(d)}{}
-  Is_Complete()=default;
-
-};
-
-template<bool Complete, class Data> Is_Complete(std::bool_constant<Complete>,Data&&)->Is_Complete<Complete,Data>;
 
 
 template<class Id,class... Ds> struct Data: public Ds...
@@ -601,11 +388,12 @@ public:
     else return Nothing{};
 
   }
-  Data(Ds&&...d):Ds{std::move(d)}...{}
+  //Data(Ds&&...d):Ds{std::move(d)}...{}
   Data(Id,Ds&&...d):Ds{std::move(d)}...{}
 
 //  Data(Data<Id,Ds...>&& x):Ds{std::move(x)[typename Ds::myId{}]}...{}
 
+  Data()=default;
   friend std::ostream& operator<<(std::ostream& os, const Data& me)
   {
     ((os<<typename Ds::myId{}<<"="<<me[typename Ds::myId{}]<<"  ")&&...);
@@ -620,12 +408,14 @@ Data(Id,Ds&&...)->Data<Id,Ds...>;
 
 
 
-template<class Id,bool Complete,class... Ds, class Id2, class Value_type,class... vecs>
-Is_Complete<Complete,Data<Id,Ds...,Datum<Id2,Value_type,vecs...>>> operator |
-    (Is_Complete<Complete,Data<Id,Ds...>>&& d, Datum<Id2,Value_type,vecs...>&& d2)
+
+
+template<class Id1,bool Complete,class... Ds, class Id2, class Value_type,class... vecs>
+Is_Complete<Complete,Data<Id1,Ds...,Datum<Id2,Value_type,vecs...>>> operator |
+    (Is_Complete<Complete,Data<Id1,Ds...>>&& d, Datum<Id2,Value_type,vecs...>&& d2)
 {
   return Is_Complete(std::bool_constant<Complete>{},
-                     Data<Id,Ds...,Datum<Id2,Value_type,vecs...>>(std::move(d.value)[typename Ds::myId{}]...,std::move(d2)));
+                     Data<Id1,Ds...,Datum<Id2,Value_type,vecs...>>(Id1{},std::move(d.value)[typename Ds::myId{}]...,std::move(d2)));
 }
 
 
@@ -708,7 +498,7 @@ auto operator/(Data<Id,Ds...> one, const v<T, unit>& two)
 template<class Id,class... Ds1,  class... Ds2>
 auto operator*(const Data<Id,Ds1...>& one, const Data<Id,Ds2...>& two)
 {
-  return Data(Id{},one[typename Ds1::myId{}]*two[typename Ds2::myId{}]...);
+  return ((one*two[typename Ds2::myId{}])+...);
 }
 
 
@@ -731,160 +521,6 @@ auto operator*(const Data<Id,Ds...>& one, double x)
 template<class Id,class... Ds>
 auto operator*( double two,Data<Id,Ds...> one)
 {return one*two;}
-
-
-
-template<class Id> struct Start{
-  typedef typename Id::T T;
-  typedef typename Id::unit unit;
-
-  constexpr static auto  className=Id::className+my_static_string("_start");
-
-};
-template<class Id> struct Duration{
-  typedef typename Id::T T;
-  typedef typename Id::unit unit;
-
-  constexpr static auto  className=Id::className+my_static_string("_end");
-
-};
-template<class Id> struct Step{
-  typedef typename Id::T T;
-  typedef typename Id::unit unit;
-
-  constexpr static auto  className=Id::className+my_static_string("_step");
-
-};
-
-
-
- struct EvenCoordinate
-{
-
-  template<class T, class unit>
-  auto operator()(v<T,unit> start, v<T,unit> duration, v<T,unit> step)const
-  {
-    auto n=duration/step;
-    std::vector<v<T,unit>> out;
-    out.reserve(n.value());
-    for (auto x=start; x.value()<start.value()+duration.value(); x=x+step)
-      out.push_back(x);
-
-    return out;
-  }
-
-
-};
-
-
-
-template<class Id> class UnEvenCoordinate
-{
-public:
-  typedef typename Id::T T;
-  typedef typename Id::unit unit;
-private:private:
-
-  std::map<T, std::size_t> m_;
-  std::vector<T> v_;
-
-  std::map<T, std::size_t> vector_to_map(const std::vector<T>& v)
-  {
-    std::map<T, std::size_t> out;
-    for (std::size_t i=0; i<v.size(); ++i)
-      out[v[i]]=i;
-    return out;
-  }
-public:
-  UnEvenCoordinate(v<std::vector<T>,unit>&& c): m_{vector_to_map(c)},v_{std::move(c).value()}{}
-  v<T,unit> start()const {return v_[0];}
-  v<T,unit> end()const {return v_.back();}
-
-  auto nsteps()const {return v_.size();}
-  v<T,unit> operator()(std::size_t i)const {return v_[i];}
-
-  std::size_t index(const v<T,unit>& x)
-  {
-    auto it= m_.lower_bound(x);
-    return it->second;
-  }
-
-};
-
-
-template<class...> class Cartesian;
-
-template<template<class >class...Coordinates, class...Ids>
-class Cartesian<Coordinates<Ids>...>
-{
-private :
-  std::tuple<Coordinates<Ids>...> tu_;
-public :
-
-};
-
-
-
-
-template<class Id,class G, class... Xs>
-class  Coord
-{
-private:
-  G g_;
-public:
-  typedef   Id myId;
-  auto &operator[](Id)const {return *this;}
-
-  template<class Param>
-  auto operator()(const Param& par)const
-  {
-    typedef typename decltype(g_(std::declval<typename std::decay_t<decltype(par[Xs{}])>::element_type>()...))::value_type value_type;
-
-    //typedef typename value_type::sgser dgewr;
-
-    auto out=consolidate<Id,value_type>(vec<Id>{},par[Xs{}]...);
-    auto p=out.begin(Id{});
-
-      do {
-        out(Id{},p)=g_(par[Xs{}](p)...);
-
-      } while (out.next(p));
-      return out;
-    }
-
-  Coord(Id id,G&& g, Xs&&...):g_{std::move(g)}{}
-};
-
-
-
-template<class Id,class G, class... Xs,class Rnd, class Datas>
-auto sample(const Coord<Id,G,Xs...>& f,const Datas& d,Rnd& )
-{
-  if constexpr ((std::is_same_v<decltype (d[Xs{}]),Nothing>||...))
-    return Nothing{};
-  else
-    return f(d);
-}
-
-template<class Id,class G, class... Xs,class Datas>
-auto logP(const Coord<Id,G,Xs...>& f,const Datas& d)
-{
-  return logP_zero{};
-}
-
-template<class Id,class G, class... Xs,class Datas>
-auto FIM(const Coord<Id,G,Xs...>& f,const Datas& d)
-{
-  return logP_zero{};
-}
-
-
-template<class Id, class G, class...Xs> Coord(Id&&,G&&,Xs&&...)->Coord<Id,G,Xs...>;
-
-
-
-
-
 
 
 

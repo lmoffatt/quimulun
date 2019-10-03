@@ -70,9 +70,9 @@ constexpr auto to_static_string()
 
 
 template <class T>
-auto operator<<(std::ostream& os, T)->decltype (T::className,os)
+auto operator<<(std::ostream& os, T x)->decltype (x.className,os)
 {
-  return os<<T::className.c_str();
+  return os<<x.className.c_str();
 }
 
 
@@ -178,6 +178,23 @@ struct pack_difference<Cs<Ts...>,Cs<Us...>>
 
 template<class One,class Two>
 using pack_difference_t =typename pack_difference<One,Two>::type;
+
+template<class One,class Two> struct pack_union;
+
+
+template<class... Ts, class...Us>
+struct pack_union<Cs<Ts...>,Cs<Us...>>
+{
+  typedef pack_concatenation_t<
+      Cs<Ts...>,
+      pack_difference_t<Cs<Us...>,Cs<Ts...>
+          >>
+      type;
+};
+
+template<class One,class Two>
+using pack_union_t =typename pack_union<One,Two>::type;
+
 
 
 
