@@ -2,10 +2,11 @@
 #define QM_VECTOR_SPACE_H
 
 //#include "qm_data.h"
-#include "qm_unit.h"
-#include <map>
-#include <vector>
-#include <algorithm>
+
+#include "qm_vector_field.h"
+
+
+
 
 
 struct Iu_{};
@@ -14,10 +15,6 @@ struct Id_{};
 struct Jd_{};
 
 
-template<class T>
-struct get_myIndexes{
-  typedef vec<> type;
-};
 
 
 template<class ...Is> struct dn;
@@ -57,17 +54,17 @@ struct ein<te,Up,Down>{
 
 template <class ...Ups, class ...Downs>
 struct te<up<Ups...>,dn<Downs...>>{
-//  template<class... as, class... bs>
-//  Nothing operator()(const ve<as...>&, const co<bs...>& ){return Nothing{};}
-//  Scalar operator()(ve<Ups...>,co<Downs...>){return Scalar{};};
+  //  template<class... as, class... bs>
+  //  Nothing operator()(const ve<as...>&, const co<bs...>& ){return Nothing{};}
+  //  Scalar operator()(ve<Ups...>,co<Downs...>){return Scalar{};};
 
-friend auto &operator<<(std::ostream& os, te)
+  friend auto &operator<<(std::ostream& os, te)
   {
-  if constexpr (sizeof... (Downs)>0)
-    ((os<<"d/d"<<Downs{}<<"_"),...);
-  if constexpr (sizeof... (Ups)>0)
-    ((os<<Ups{}<<"_"),...);
-  return os;
+    if constexpr (sizeof... (Downs)>0)
+      ((os<<"d/d"<<Downs{}<<"_"),...);
+    if constexpr (sizeof... (Ups)>0)
+      ((os<<Ups{}<<"_"),...);
+    return os;
 
 
 
@@ -90,7 +87,7 @@ template <class ...Ups0, class ...iUps0,class a, class ia,
           class b>
 
 constexpr auto operator * (ein<te<up<Ups0...>,dn<a>>,up<iUps0...>,dn<ia>>,
-               ein<te<up<b>,dn<>>,up<ia>,dn<>>)
+                         ein<te<up<b>,dn<>>,up<ia>,dn<>>)
 {
 
   /**
@@ -101,17 +98,17 @@ constexpr auto operator * (ein<te<up<Ups0...>,dn<a>>,up<iUps0...>,dn<ia>>,
         -A
 
   **/
-  if constexpr (std::is_same_v<a,b >)
-      return ein<te<up<Ups0...>,dn<>>,up<iUps0...>,dn<>>{};
+      if constexpr (std::is_same_v<a,b >)
+          return ein<te<up<Ups0...>,dn<>>,up<iUps0...>,dn<>>{};
   else
-    return Nothing{};
+      return Nothing{};
 
 }
 
 template <class ...Ups0, class ...iUps0,
           class Up1, class iUp1>
 constexpr auto operator * (ein<te<up<Ups0...>,dn<>>,up<iUps0...>,dn<>>,
-               ein<te<up<Up1>,dn<>>,up<iUp1>,dn<>>)
+                         ein<te<up<Up1>,dn<>>,up<iUp1>,dn<>>)
 {
 
   /**
@@ -132,7 +129,7 @@ template <class ...Ups0, class ...iUps0,class A, class iA,
           class B, class iB>
 
 constexpr auto operator * (ein<te<up<Ups0...>,dn<A>>,up<iUps0...>,dn<iA>>,
-               ein<te<up<B>,dn<>>,up<iB>,dn<>>)
+                         ein<te<up<B>,dn<>>,up<iB>,dn<>>)
 {
 
   /**
@@ -158,7 +155,7 @@ constexpr Nothing join(ein<te<up<>,dn<Downs0...>>,up<>,dn<iDowns0...>>,Nothing)
 template <class ...Downs0, class ...iDowns0,
           class ...Ups1, class ...iUps1,class ...Downs1, class ...iDowns1>
 constexpr auto join(ein<te<up<>,dn<Downs0...>>,up<>,dn<iDowns0...>>,
-          ein<te<up<Ups1...>,dn<Downs1...>>,up<iUps1...>,dn<iDowns1...>>)
+                    ein<te<up<Ups1...>,dn<Downs1...>>,up<iUps1...>,dn<iDowns1...>>)
 {
   return ein<te<up<Ups1...>,dn<Downs0...,Downs1...>>,up<iUps1...>,dn<iDowns0...,iDowns1...>>{};
 }
@@ -168,7 +165,7 @@ constexpr auto join(ein<te<up<>,dn<Downs0...>>,up<>,dn<iDowns0...>>,
 template <class Up0, class iUp0,class Up00, class iUp00,class ...Ups0, class ...iUps0,class Down1, class iDown1,class ...Downs0, class ...iDowns0>
 
 constexpr auto operator * (ein<te<up<Up0,Up00,Ups0...>,dn<Downs0...>>,up<iUp0,iUp00,iUps0...>,dn<iDowns0...>>,
-               ein<te<up<>,dn<Down1>>,up<>,dn<iDown1>>)
+                         ein<te<up<>,dn<Down1>>,up<>,dn<iDown1>>)
 {
 
   /**
@@ -181,11 +178,11 @@ constexpr auto operator * (ein<te<up<Up0,Up00,Ups0...>,dn<Downs0...>>,up<iUp0,iU
   **/
 
 
-  return  join(ein<te<up<>,dn<Downs0...>>,up<>,dn<iDowns0...>>{},
-              ((ein<te<up<>,dn<Down1>>,up<>,dn<iDown1>>{}*
- ein<te<up<Up0>,dn<>>,up<iUp0>,dn<>>{}*
- ein<te<up<Up00>,dn<>>,up<iUp00>,dn<>>{})*...*
-                  ein<te<up<Ups0>,dn<>>,up<iUps0>,dn<>>{})
+      return  join(ein<te<up<>,dn<Downs0...>>,up<>,dn<iDowns0...>>{},
+                  ((ein<te<up<>,dn<Down1>>,up<>,dn<iDown1>>{}*
+                    ein<te<up<Up0>,dn<>>,up<iUp0>,dn<>>{}*
+                    ein<te<up<Up00>,dn<>>,up<iUp00>,dn<>>{})*...*
+                   ein<te<up<Ups0>,dn<>>,up<iUps0>,dn<>>{})
                   );
 
 }
@@ -196,7 +193,7 @@ constexpr auto operator * (ein<te<up<Up0,Up00,Ups0...>,dn<Downs0...>>,up<iUp0,iU
 template <class ...Ups, class ...iUps,class Down0, class iDown0,class Down1, class iDown1,class ...Downs, class ...iDowns>
 
 constexpr auto operator * (ein<te<up<Ups...>,dn<>>,up<iUps...>,dn<>>,
-               ein<te<up<>,dn<Down0,Down1,Downs...>>,up<>,dn<iDown0,iDown1,iDowns...>>)
+                         ein<te<up<>,dn<Down0,Down1,Downs...>>,up<>,dn<iDown0,iDown1,iDowns...>>)
 {
   /**
              -***                                       -***
@@ -207,19 +204,19 @@ constexpr auto operator * (ein<te<up<Ups...>,dn<>>,up<iUps...>,dn<>>,
 
   **/
 
-  return ((ein<te<up<Ups...>,dn<>>,up<iUps...>,dn<>>{}*
-           ein<te<up<>,dn<Down0>>,up<>,dn<iDown0>>{}*ein<te<up<>,dn<Down1>>,up<>,dn<iDown1>>{})
-          *...*
-          ein<te<up<>,dn<Downs>>,up<>,dn<iDowns>>{});
+      return ((ein<te<up<Ups...>,dn<>>,up<iUps...>,dn<>>{}*
+               ein<te<up<>,dn<Down0>>,up<>,dn<iDown0>>{}*ein<te<up<>,dn<Down1>>,up<>,dn<iDown1>>{})
+              *...*
+              ein<te<up<>,dn<Downs>>,up<>,dn<iDowns>>{});
 }
 
 
 template <class ...Ups0, class ...iUps0,class ...Downs0, class ...iDowns0>
 constexpr auto operator * (ein<te<up<Ups0...>,dn<Downs0...>>,up<iUps0...>,dn<iDowns0...>>,
-               Nothing)
+                         Nothing)
 {
 
-      return Nothing{};
+  return Nothing{};
 
 }
 
@@ -237,7 +234,7 @@ template <class ...Ups0, class ...iUps0,class ...Downs0, class ...iDowns0,
           class ...Ups1, class ...iUps1,class ...Downs1, class ...iDowns1>
 
 constexpr auto operator * (ein<te<up<Ups0...>,dn<Downs0...>>,up<iUps0...>,dn<iDowns0...>>,
-               ein<te<up<Ups1...>,dn<Downs1...>>,up<iUps1...>,dn<iDowns1...>>)
+                         ein<te<up<Ups1...>,dn<Downs1...>>,up<iUps1...>,dn<iDowns1...>>)
 {
 
   /**
@@ -248,8 +245,8 @@ constexpr auto operator * (ein<te<up<Ups0...>,dn<Downs0...>>,up<iUps0...>,dn<iDo
         -**         -**                                -****
 
   **/
-  return ein<te<up<Ups0...,Ups1...>,dn<>>,up<iUps0...,iUps1...>,dn<>>{}*
-         ein<te<up<>,dn<Downs0...,Downs1...>>,up<>,dn<iDowns0...,iDowns1...>>{};
+      return ein<te<up<Ups0...,Ups1...>,dn<>>,up<iUps0...,iUps1...>,dn<>>{}*
+      ein<te<up<>,dn<Downs0...,Downs1...>>,up<>,dn<iDowns0...,iDowns1...>>{};
 
 }
 
@@ -269,24 +266,42 @@ public:
 
   typedef typename Value_type::element_type element_type;
 
-  typedef typename get_myIndexes<Value_type>::type myIndexes;
-
 
   typedef  Value_type value_type;
 private:
   Value_type value_;
 public:
+
   x_i(value_type&& x):value_{std::move(x)}{}
   x_i(e_i,value_type&& x):value_{std::move(x)}{}
   x_i(e_i,const value_type& x):value_{x}{}
   x_i()=default;
   x_i const& operator[](e_i)const & {return *this;}
   x_i& operator[](e_i) & {return *this;}
+
+
   x_i operator[](e_i)&& {return *this;}
+
+
+  inline friend
+      bool operator==(const x_i& me, const x_i& ti)
+  {
+    return me()==ti();
+  }
+
 
   auto& operator()()const &{ return value_;}
   auto& operator()()&{ return value_;}
   auto operator()()&& {return value_;}
+
+
+  template<class...Is>
+  void insert_at(const Position<Is...>& p, x_i<e_i,element_type>&& r)
+  {
+    this->operator()().insert_at(p,std::move(r)());
+  }
+
+
 
 
   template<class Position>
@@ -302,6 +317,22 @@ public:
   {
     return os<<me();
   }
+  inline friend std::istream& operator>>(std::istream& is,  x_i& me)
+  {
+    return is>>me();
+  }
+
+
+  template<class... Ts>
+  friend  auto operator +( Position<Ts...>& p,const x_i& me)->decltype (p+me())
+  {
+    return p+me();
+  }
+  friend  bool operator +(bool p,const x_i& )
+  {
+    return p;
+  }
+
 
   x_i& operator+=(const x_i& other){ (*this)()+=other(); return *this;}
 
@@ -387,6 +418,14 @@ auto operator*(const x_i<e_i0,value_0> &one,const x_i<e_i1,value_1> &two )
     return x_i(e_i0{}*e_i1{},one()*two());
 }
 
+template<class e_i,class Value_type,class... Xs> struct get_Field_Indexes <x_i<e_i,vector_field< vec<Xs...>,Value_type>>>
+{
+  typedef vec<Xs...> type;
+};
+template<class e_i,class Value_type> struct get_Field_Indexes <x_i<e_i,Value_type>>
+{
+  typedef vec<> type;
+};
 
 
 template <class...> struct vector_space;
@@ -431,12 +470,83 @@ template<> struct vector_space<>
 };
 
 
+template<class ...Is, class x1, class x2>
+auto operator&&(std::pair<Position<Is...>,bool>&& p, const  std::pair<const x1&, const x2&>& x)
+    ->std::enable_if_t<is_in_pack<typename x1::ei,Is...>()
+                            &&!std::is_same_v<x1,x2>,std::pair<Position<Is...>,bool>>
+{
+  if (p.second) return p;
+  else if (x.first(p.first)==x.second()) return p;
+  else
+  {
+   p.second=true;
+   p.first.inc(typename x1::ei{});
+   return p;
+  }
+}
+
+template<class ...Is, class x1, class x2>
+auto operator&&(std::pair<Position<Is...>,bool>&& p, const std::pair<const x1&, const x2&>& )
+    ->std::enable_if_t<!is_in_pack<typename x1::ei,Is...>()
+                            ||std::is_same_v<x1,x2>
+                        ,std::pair<Position<Is...>,bool>>
+{
+  return p;
+}
+
 
 template<class...x_is> struct vector_space: public x_is...
 {
   using x_is::operator[]...;
   typedef Cs<typename x_is::ei...> my_eis;
   typedef Cs<typename x_is::myId...> myIds;
+
+  using position=transfer_t<get_Field_Indexes_t<vector_space>,Position<>>;
+
+  using row_type=std::tuple<x_i<typename x_is::ei,typename x_is::element_type>...>;
+
+  friend constexpr row_type row_vector(const vector_space&) {return  row_type{};}
+
+
+  friend   constexpr position begin(const vector_space& ) {return position{};}
+
+
+  template<class...Is>
+  position next_pos(const Position<Is...>& p,const row_type& r)
+  {
+    auto pres=(std::pair{p,false}&&...&&
+                 (std::pair
+                  <std::decay_t<decltype ((*this)[Is{}])>const &,
+                   x_i<Is,typename std::decay_t<decltype ((*this)[Is{}])>::element_type>const & >
+                  {(*this)[Is{}],
+                   std::get<x_i<Is,typename std::decay_t<decltype ((*this)[Is{}])>::element_type>>(r)}));
+
+    return pres.first;
+  }
+
+  void insert_at(position p, row_type&& r)
+  {
+    ((*this)[typename x_is::ei{}].insert_at(p,std::get<x_i<typename x_is::ei,typename x_is::element_type>>(std::move(r))),...);
+  }
+
+  position insert(const position& p, row_type&& r)
+  {
+    auto p1=next_pos(p,r);
+    insert_at(p1,std::move(r));
+    return p1;
+  }
+
+
+
+
+
+
+  template<class ...Is>
+  friend auto next(const vector_space& me, Position<Is...>& p)
+  {
+    return (p+...+me[typename x_is::ei{}]);
+  }
+
 
 
   template<class andId>
@@ -460,6 +570,13 @@ template<class...x_is> struct vector_space: public x_is...
 
 
   vector_space(x_is&&...xs):x_is{std::move(xs)}...{}
+
+
+  inline friend
+      bool operator==(const vector_space& me, const vector_space& ti)
+  {
+    return (true&&...&&(me[typename x_is::ei{}]==ti[typename x_is::ei{}]));
+  }
 
 
   auto operator+=(const vector_space& other)
@@ -564,14 +681,63 @@ template<class...x_is> struct vector_space: public x_is...
 };
 
 
+template<class...x_is> struct get_Field_Indexes <vector_space<x_is...>>
+{
+  typedef get_Field_Indexes_t<x_is...> type;
+};
 
+
+
+template<class...x_is>
+std::ostream& to_DataFrame(std::ostream& os, const vector_space<x_is...>& v)
+{
+
+  ((os<<typename x_is::ei{}<<"\t"),...)<<"\n";
+  auto p=begin(v);
+  //typedef typename decltype (p)::sge eg;
+  do{
+    ((os<<v[typename x_is::ei{}](p)<<"\t"),...)<<"\n";
+  }while( next(v,p));
+
+  return os;
+}
+
+
+template<class...x_is>
+std::istream& from_DataFrame(std::istream& is,  vector_space<x_is...>& v)
+{
+  std::string s;
+  std::getline(is, s);
+  std::stringstream ss(s);
+  ((ss>>typename x_is::ei{}),...);
+  auto p=begin(v);
+  auto r=row_vector(v);
+  if (ss)
+  {
+    std::getline(is, s);
+    ss.clear();
+    ss.str(s);
+    ss>>r;
+    v.insert_at(p,std::move(r));
+  }
+  while (ss)
+  {
+    std::getline(is, s);
+    ss.clear();
+    ss.str(s);
+    ss>>r;
+    p=v.insert(p,std::move(r));
+  }
+
+  return is;
+}
 
 
 
 template<class x_i>
 auto operator | (x_i&& one, Nothing)
 {
-    return vector_space<x_i>{std::move(one)};
+  return vector_space<x_i>{std::move(one)};
 }
 template<class x_i>
 auto operator | (Nothing,x_i&& one)
@@ -645,6 +811,83 @@ Is_Complete<false,vector_space<Ds...>> operator |(Is_Complete<Complete,vector_sp
 {
   return Is_Complete(std::bool_constant<false>{},std::move(d.value));
 }
+
+
+
+template <class Vector, class Position, class... Datum>
+void fill_vector_field(Vector&,Position& ,vec<>, const Datum&...  )
+{}
+
+template <class Vector, class Position, class... X1>
+void fill_vector_field(Vector&,Position& ,vec<X1...>)
+{}
+
+
+template <class Vector, class X, class... X1, class Position,class Id, class Value, class... Datum1>
+void fill_vector_field(Vector&v,Position& p,vec<X,X1...> ,const x_i<Id,Value>& one,const Datum1&... two)
+{
+  if constexpr (is_in_pack(X{},get_Field_Indexes_t<Value>{}))
+  {
+    auto n=one().size(X{},p);
+    v.resize(n);
+    auto& i=p[X{}]();
+    for (i=0; i<n; ++i)
+      fill_vector_field(v[i],p,vec<X1...>{},one,two...);
+  }
+  else fill_vector_field(v,p,vec<X,X1...>{},two...);
+}
+
+
+
+
+template< class Value_type,class...Datas>
+auto consolidate(const Datas...d)
+{
+  typedef decltype ((vec<>{}<<...<<typename get_Field_Indexes<Datas>::type{})) myvec;
+
+  typedef vector_field<myvec,Value_type> myField;
+
+
+
+  typedef typename myField::value_type myValue_type;
+
+  myValue_type out;
+  auto p=myField::begin();
+
+  fill_vector(out,p,myvec{},d...);
+
+  return myField(std::move(out));
+}
+
+template< class Value_type,class... myIndex,class...Datas>
+auto consolidate(vec<myIndex...>,const Datas...d)
+{
+  typedef decltype ((...<<get_Field_Indexes_t<Datas>{})<<vec<myIndex...>{}) myvec;
+
+
+
+  if constexpr (myvec::index_size==0)
+  {
+    return Value_type{};
+  }
+  else
+  {
+    typedef vector_field<myvec,Value_type> myField;
+
+    typedef typename myField::value_type myValue_type;
+
+    myValue_type out;
+    auto p=myField::begin();
+
+    fill_vector_field(out,p,myvec{},d...);
+
+    return myField(std::move(out));
+  }
+}
+
+
+
+
 
 
 

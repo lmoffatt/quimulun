@@ -5,6 +5,8 @@
 #include <array>
 #include <string>
 #include <iomanip>
+#include <cstring>
+
 
 //namespace qm {
 
@@ -74,6 +76,36 @@ auto operator<<(std::ostream& os, T x)->decltype (x.className,os)
 {
   return os<<x.className.c_str();
 }
+
+template <class T>
+auto operator>>(std::istream& is, T x)->decltype (x.className,is)
+{
+  std::string s;
+  is>>s;
+  std::string name(x.className.c_str());
+  if (s==name)
+  {
+    return is;
+  }
+  else
+  {
+    is.setstate(std::ios::failbit);
+    return is;
+   }
+}
+
+
+template <class ...T>
+std::istream& operator>>(std::istream& is, std::tuple<T...>& tu)
+{
+   std::apply([&is](auto&... e){((
+                                       is>>e
+                                       ),...);},tu);
+
+   std::cerr<<"\n end reading tuple\n";
+   return is;
+}
+
 
 
 template<class...> struct Cs{};
@@ -201,6 +233,7 @@ using pack_union_t =typename pack_union<One,Two>::type;
 
 template<class... Ts, class T>
 auto operator>>(Cs<Ts...>,Cs<T>){return Cs<Ts...>{};}
+
 template<class... Ts, class T1, class T2, class... T2s>
 auto operator>>(Cs<Ts...>,Cs<T1,T2,T2s...>){return Cs<Ts...,T1,T2,T2s...>{};}
 

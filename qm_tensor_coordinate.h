@@ -132,7 +132,7 @@ public:
   }
 
 
-  Coord(Id id,G&& g, Xs&&...):g_{std::move(g)}{}
+  Coord(Id ,G&& g, Xs&&...):g_{std::move(g)}{}
 };
 
 

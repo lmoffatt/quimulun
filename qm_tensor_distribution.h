@@ -156,7 +156,7 @@ public:
   }
 
 
-  D(Id id,Distribution&& g, Xs&&...):g_{std::move(g)}{}
+  D(Id ,Distribution&& g, Xs&&...):g_{std::move(g)}{}
 };
 
 

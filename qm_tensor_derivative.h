@@ -176,15 +176,15 @@ public:
 
 
   static auto begin() {return Position<>{};}
-  bool next(Position<>& p)const
+  bool next(Position<>& )const
   {
     return false;
   }
   template<class Position>
-  auto& operator()(const Position& p){ return *this;}
+  auto& operator()(const Position& ){ return *this;}
 
   template<class Position>
-  auto& operator()(const Position& p)const{ return *this;}
+  auto& operator()(const Position& )const{ return *this;}
 
 
 
@@ -203,7 +203,7 @@ auto& center(const Derivative<dependent_type,vector_space<Ds...>>& f){return f.f
 
 
 template<class T>
-auto Df(const T& f){return logP_zero{};}
+auto Df(const T& ){return logP_zero{};}
 
 
 
@@ -224,7 +224,7 @@ Derivative(logv<T,units...>&& f,vector_space<Ds...>&& Df)
 
 
 template<class Id_datum, class T, class unit>
- auto  self_derivative(const x_i<Id_datum,v<T,unit>>& x)
+ auto  self_derivative(const x_i<Id_datum,v<T,unit>>& )
 {
   return der_t<v<T,unit>,x_i<Id_datum,v<T,unit>>>(v<T,dimension_less>(1.0));
 }

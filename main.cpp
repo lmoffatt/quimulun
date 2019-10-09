@@ -1,5 +1,6 @@
 #include <iostream>
 #include <random>
+#include <fstream>
 #include "qm_unit.h"
 //#include "qm_distribution.h"
 //#include "qm_models.h"
@@ -9,6 +10,7 @@
 #include "qm_tensor_distribution.h"
 #include "qm_tensor_model.h"
 #include "qm_tensor_coordinate.h"
+#include <cassert>
 //using namespace qm;
 typedef p<u<m,1>> meter;
 typedef p<u<s,1>> second;
@@ -154,6 +156,24 @@ int main()
     std::cerr <<"logL"<< logL<<std::endl;
     std::cerr << "dlogL"<< dlogL<<std::endl;
     std::cerr<<"FIM "<<fim<<"\n";
+    std::string fname="out.txt";
+    std::ofstream f(fname.c_str());
+    to_DataFrame(f,s);
+    f.close();
+    auto snew=decltype (s){};
+    std::ifstream fe;
+    fe.open(fname.c_str());
+    if (fe.is_open())
+    {
+      from_DataFrame(fe,snew);
+
+    }
+    std::cerr<<"\ns\n"<<s;
+    std::cerr<<"\nsnew\n"<<snew;
+
+
+    assert(s==snew);
+
   }
   return 0;
 }

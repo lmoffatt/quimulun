@@ -30,7 +30,7 @@ public:
     } while (out.next(p));
     return x_i(Id{},std::move(out));
   }
-  F(Id id,G&& g, Xs&&...):g_{std::move(g)}{}
+  F(Id ,G&& g, Xs&&...):g_{std::move(g)}{}
 };
 
 template<class Id,class G, class... Xs,class... Datas>
@@ -131,7 +131,7 @@ auto operator << (vector_space<Fs...> q1,vector_space<Fs2...> q2)
 
 
 template <class...Ids,class...Ids2>
-constexpr const bool test(Cs<Ids...>,Cs<Ids2...>)
+constexpr  bool test(Cs<Ids...>,Cs<Ids2...>)
 {
   return ((is_in_pack<Ids,Ids2...>()&&...));
 }

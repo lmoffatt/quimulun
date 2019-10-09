@@ -26,22 +26,40 @@ auto operator||( Something&& s, Nothing){return std::forward<Something>(s);}
 
 template <class...> class Position;
 
-template <class Id> struct Position<Id>
+template<>struct Position<>
+{
+
+};
+
+
+
+template <class Id, class... Ids> struct Position<Id,Ids...>:Position<Ids...>
 {
 private :
   std::size_t i;
 public:
+  using Position<Ids>::operator[]...;
   auto& operator[](Id)const {return *this;}
   auto& operator[](Id) {return *this;}
   auto& operator()()const {return  i;}
   auto& operator()() {return  i;}
+  template<class Idn>
+  auto inc(Idn)->std::enable_if_t<is_in_pack<Idn,Ids...>(),std::size_t>
+  {
+    return Position<Ids...>::inc(Idn{});
+
+  }
+  std::size_t inc(Id)
+  {
+    ++i;
+    (((*this)[Ids{}]()=0),...);
+    return i;
+  }
 };
 
-template <class...Ids> struct Position: Position<Ids>...
-{
 
-  using Position<Ids>::operator[]...;
-};
+
+
 
 
 
@@ -133,6 +151,27 @@ template<class ...ms, int...Ns>
 std::ostream& operator<<(std::ostream& os,p<u<ms,Ns>...> )
 {
   return os<<p<u<ms,Ns>...>::className.c_str();
+}
+
+template<class ...ms, int...Ns>
+std::istream& operator>>(std::istream& is,p<u<ms,Ns>...> )
+{
+  std::string s;
+  std::string expected(p<u<ms,Ns>...>::className.c_str());
+  is>>s;
+  std::cerr<<"\n"<<s<< " vs "<<expected<<":";
+  if (s==expected)
+  {
+    std::cerr<<"succed\n";
+    return is;
+  }
+  else
+  {
+    std::cerr<<"fails\n";
+      is.setstate(std::ios::failbit);
+      return is;
+  }
+
 }
 
 
@@ -273,22 +312,53 @@ public:
   v(TYPE&& x): value_{std::move(x)}{}
   v()=default;
   const TYPE& value()const &{return value_;}
+  TYPE& value() &{return value_;}
   TYPE value()&& {return value_;}
 
   static auto begin() {return Position<>{};}
-  bool next(Position<>& p)const {return false;}
+  bool next(Position<>& )const {return false;}
+
+  friend inline bool operator==(const v& one, const v& two) { return one.value()==two.value();}
+
+
+  template<class...Is>
+  void insert_at(const Position<Is...>& , element_type&& r)
+  {
+    *this=std::move(r);
+  }
+
+
+
+
+
+  template<class... Ts>
+  friend  Position<Ts...>& operator +( Position<Ts...>& p,const v& )
+  {
+    return p;
+  }
+  friend  bool operator +(bool p,const v& )
+  {
+    return p;
+  }
+
+
 
   template<class Position>
-  auto& operator()(const Position& p){ return *this;}
+  auto& operator()(const Position& ){ return *this;}
 
   template<class Position>
-  auto& operator()(const Position& p)const { return *this;}
+  auto& operator()(const Position& )const { return *this;}
 
   friend std::ostream& operator<<(std::ostream& os, const v& m)
   {
-    return os<<m.value()<<" "<<myunit{};
+    return os<<std::setprecision(std::numeric_limits<TYPE>::digits10+2)<<m.value()<<" "<<myunit{};
   }
   v& operator+=(const v& other){value_+=other.value(); return *this;}
+
+  friend std::istream& operator>>(std::istream& is,  v& m)
+  {
+    return is>>m.value()>>myunit{};
+  }
 
 };
 
@@ -535,144 +605,6 @@ std::ostream& operator<<(std::ostream& os, const std::vector<T>& me)
 
 
 
-template<class...> struct vec;
-
-template<> struct vec<>
-{
-  template <class T>
-  using to_vector=T;
-
-  static inline constexpr auto index_size=0;
-
-  template <class Vector, class Position>
-  static auto& get(Vector& x, const Position&)
-  {
-    return x;
-  }
-  template <class Vector, class Position>
-  static auto& get(const Vector& x,const Position&)
-  {
-    return x;
-  }
-  template <class Vector, class Position>
-  static bool next(const Vector& x,Position& p) {return false;}
-
-};
-template<class I0, class...I> struct vec<I0,I...>{
-
-  static inline constexpr auto index_size=sizeof... (I)+1;
-
-  template <class T>
-  using to_vector=std::vector<typename vec<I...>::template to_vector<T>>;
-
-  template <class Vector, class Positionx>
-  static auto& get(Vector& x,const Positionx& p)
-  {
-    return vec<I...>::get(x.at(p[I0{}]()),p);
-  }
-  template <class Vector, class Positionx>
-  static auto& get(const Vector& x,const Positionx& p)
-  {
-    return vec<I...>::get(x.at(p[I0{}]()),p);
-  }
-
-  template <class Vector, class Position>
-  static auto& get_I(I0,const Vector& x,const Position& p)
-  {
-    return x;
-  }
-
-
-  template <class In,class Vector, class Position>
-  static auto& get_I(In i,const Vector& x,const Position& p)
-  {
-    return vec<I...>::get_I(i,x.at(p[I0{}]()),p);
-  }
-
-
-
-  template <class Vector, class Position>
-  static auto& get_I(I0,Vector& x,const Position& p)
-  {
-    return x;
-  }
-
-
-  template <class In,class Vector, class Position>
-  static auto& get_I(In i, Vector& x,const Position& p)
-  {
-    return vec<I...>::get_I(i,x.at(p[I0{}]()),p);
-  }
-
-
-
-
-
-  template <class Vector, class Position>
-  static auto size(I0,const Vector& x,const Position& p)
-  {
-    return x.size();
-  }
-
-  template <class In,class Vector, class Position>
-  static auto size(In i,const Vector& x,const Position& p)->std::enable_if_t<is_in_pack<In,I...>(),std::size_t>
-  {
-    return vec<I...>::size(i,x.at(p[I0{}]()),p);
-  }
-
-
-  template <class Vector, class Position>
-  static bool next(const Vector& x,Position& p)
-  {
-    if(vec<I...>::next(x.at(p[I0{}]()),p))
-      return true;
-    else {
-      ++p[I0{}]();
-      if (p[I0{}]()<x.size())
-        return true;
-      else {
-        p[I0{}]()=0; return false;
-      }
-    }
-  }
-};
-
-
-
-
-
-
-template<class...I0, class...I1>
-auto operator<<(vec<I0...>, vec<I1...>)
-{
-
-  return transfer_t<pack_difference_t<Cs<I1...>,Cs<I0...>>,vec<I0...>>{};
-
-
-}
-
-
-
-
-
-template<class T, class U>
-void copy_size(const U& source,T& destination)
-{
-}
-
-template<class T, class U>
-void copy_size(const std::vector<U>& source,std::vector<T>& destination)
-{
-  destination.resize(source.size());
-}
-
-template<class T, class U>
-void copy_size(const std::vector<std::vector<U>>& source,std::vector<std::vector<T>>& destination)
-{
-  destination.resize(source.size());
-  for (std::size_t i=0; i<source.size(); ++i) copy_size(source[i],destination[i]);
-
-}
 
 
 /*
@@ -705,11 +637,11 @@ auto operator+( logP_zero,T&& x){return std::forward<T>(x);}
 inline auto operator+(logP_zero ,logP_zero ){return logP_zero {};}
 
 template<class T>
-auto operator*( logP_zero,const T& x){return logP_zero{};}
+auto operator*( logP_zero,const T& ){return logP_zero{};}
 template<class T>
-auto operator/( logP_zero,const T& x){return logP_zero{};}
+auto operator/( logP_zero,const T& ){return logP_zero{};}
 template<class T>
-auto operator*( const T& x,logP_zero){return logP_zero{};}
+auto operator*( const T& ,logP_zero){return logP_zero{};}
 inline auto operator*(logP_zero,logP_zero){return logP_zero{};}
 
 template<bool complete,class Data>
