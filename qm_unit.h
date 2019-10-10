@@ -159,15 +159,15 @@ std::istream& operator>>(std::istream& is,p<u<ms,Ns>...> )
   std::string s;
   std::string expected(p<u<ms,Ns>...>::className.c_str());
   is>>s;
-  std::cerr<<"\n"<<s<< " vs "<<expected<<":";
+ //  std::cerr<<"\n"<<s<< " vs "<<expected<<":";
   if (s==expected)
   {
-    std::cerr<<"succed\n";
+//    std::cerr<<"succed\n";
     return is;
   }
   else
   {
-    std::cerr<<"fails\n";
+//    std::cerr<<"fails\n";
       is.setstate(std::ios::failbit);
       return is;
   }

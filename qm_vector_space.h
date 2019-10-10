@@ -264,8 +264,10 @@ public:
 
   typedef e_i myId;
 
-  typedef typename Value_type::element_type element_type;
+  using element_type= typename Value_type::element_type ;
 
+
+  using element_xi= x_i<e_i,element_type>;
 
   typedef  Value_type value_type;
 private:
@@ -503,7 +505,13 @@ template<class...x_is> struct vector_space: public x_is...
 
   using position=transfer_t<get_Field_Indexes_t<vector_space>,Position<>>;
 
-  using row_type=std::tuple<x_i<typename x_is::ei,typename x_is::element_type>...>;
+  using row_type=std::tuple<typename x_is::element_xi...>;
+
+  template<class Is>
+  using get_xi_t=std::decay_t<decltype (std::declval<vector_space&>()[Is{}])>;
+
+  template<class Is>
+  using get_element_xi_t=typename get_xi_t<Is>::element_xi;
 
   friend constexpr row_type row_vector(const vector_space&) {return  row_type{};}
 
@@ -512,21 +520,21 @@ template<class...x_is> struct vector_space: public x_is...
 
 
   template<class...Is>
-  position next_pos(const Position<Is...>& p,const row_type& r)
+  position next_pos(const Position<Is...>& p,const row_type& r)const
   {
     auto pres=(std::pair{p,false}&&...&&
                  (std::pair
-                  <std::decay_t<decltype ((*this)[Is{}])>const &,
-                   x_i<Is,typename std::decay_t<decltype ((*this)[Is{}])>::element_type>const & >
+                  <get_xi_t<Is> const &,
+                   get_element_xi_t<Is> const & >
                   {(*this)[Is{}],
-                   std::get<x_i<Is,typename std::decay_t<decltype ((*this)[Is{}])>::element_type>>(r)}));
+                   std::get<get_element_xi_t<Is>>(r)}));
 
     return pres.first;
   }
 
   void insert_at(position p, row_type&& r)
   {
-    ((*this)[typename x_is::ei{}].insert_at(p,std::get<x_i<typename x_is::ei,typename x_is::element_type>>(std::move(r))),...);
+    ((*this)[typename x_is::ei{}].insert_at(p,std::get<typename x_is::element_xi>(std::move(r))),...);
   }
 
   position insert(const position& p, row_type&& r)

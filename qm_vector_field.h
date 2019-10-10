@@ -156,12 +156,6 @@ template<class I0, class...I> struct vec<I0,I...>{
   }
 
 
-
-
-
-
-
-
   template <class Vector, class Position>
   static auto size(I0,const Vector& x,const Position& )
   {
@@ -185,7 +179,8 @@ template<class I0, class...I> struct vec<I0,I...>{
       if (p[I0{}]()<x.size())
         return true;
       else {
-        p[I0{}]()=0; return false;
+        p[I0{}]()=0;
+        return false;
       }
     }
   }
@@ -265,7 +260,7 @@ private:
 
 public:
   vector_field(value_type&& x):value_{std::move(x)}{}
- // vector_field(up<Xs...>,value_type&& x):value_{std::move(x)}{}
+  // vector_field(up<Xs...>,value_type&& x):value_{std::move(x)}{}
 
 
   vector_field()=default;
@@ -357,7 +352,7 @@ public:
     do{
       os<<me(p)<<" ";
     }  while(me.next(p));
-      return os;
+    return os;
   }
 };
 

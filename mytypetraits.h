@@ -102,7 +102,6 @@ std::istream& operator>>(std::istream& is, std::tuple<T...>& tu)
                                        is>>e
                                        ),...);},tu);
 
-   std::cerr<<"\n end reading tuple\n";
    return is;
 }
 
