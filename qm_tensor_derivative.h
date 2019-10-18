@@ -150,6 +150,8 @@ struct Der<vector_space<Ds...>,vector_space<Ds2...>>
 };
 
 
+struct primitive_k{  constexpr static auto  className=my_static_string("f");};
+struct derivative_k{   constexpr static auto  className=my_static_string("der");};
 
 template<class dependent_type,class... Ds>
 class Derivative<dependent_type,vector_space<Ds...>>
@@ -160,15 +162,57 @@ public:
 
   typedef vector_space<Ds...> independent_type;
   typedef der_t<dependent_type,independent_type> derivative_type;
+
+
+  using cols=pack_concatenation_t<
+               recursive_t<primitive_k,typename dependent_type::cols>,
+      recursive_t<derivative_k,typename derivative_type::cols>>;
+
+
+  using row_type=decltype(std::tuple_cat(
+      typename dependent_type::row_type{},typename derivative_type::row_type{}));
+
+
+  template<class...Is>
+  void insert_at(const Position<Is...>& p, row_type&& r)
+  {
+    auto [f_r,Df_r]=distribute(transfer_t<typename dependent_type::row_type,Cs<>>{},
+                                  transfer_t<typename derivative_type::row_type,Cs<>>{},
+                                  std::move(r));
+    f().insert_at(p,std::move(f_r));
+    Df().insert_at(p,std::move(Df_r));
+
+  }
+
+
 private:
   dependent_type f_;
   derivative_type Df_;
 public:
+
+  friend   constexpr auto begin(const Derivative& me) {
+    return
+        //Position<Index<primitive_k,derivative_k>>{}&&
+        me.f().begin()&& ::begin(me.Df());
+  }
+
+
+
+
   auto& f()const {return f_;}
   auto& f() {return f_;}
 
   auto& Df()const {return Df_;}
   auto& Df() {return Df_;}
+
+  template<class Position, class ind, typename=std::enable_if_t<is_in_pack(ind{},typename dependent_type::cols{}),bool>>
+  auto operator()(const Position& p,recursive<primitive_k,ind>)const->decltype (f()(p,ind{}))
+  {return f()(p,ind{});}
+
+  template<class Position, class ind, typename=std::enable_if_t<is_in_pack(ind{},typename derivative_type::cols{}),bool>>
+  auto operator()(const Position& p,recursive<derivative_k,ind> r)const ->decltype (Df()(p,ind{}))
+  {return Df()(p,ind{});}
+
 
 
   Derivative(dependent_type&& f,derivative_type&& Df):f_{std::move(f)},Df_{std::move(Df)}{}
@@ -176,10 +220,8 @@ public:
 
 
   static auto begin() {return Position<>{};}
-  bool next(Position<>& )const
-  {
-    return false;
-  }
+  bool next(Position<>& )const   {     return false;}
+
   template<class Position>
   auto& operator()(const Position& ){ return *this;}
 
@@ -192,6 +234,13 @@ public:
   {
     return os<<"f="<<me.f()<<" df="<<me.Df();
   }
+
+  friend bool operator==(const Derivative& me, const Derivative& ti)
+  {
+    return (me.f()==ti.f())&&(me.Df()==ti.Df());
+  }
+
+
 };
 
 

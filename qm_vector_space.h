@@ -58,18 +58,27 @@ struct te<up<Ups...>,dn<Downs...>>{
   //  Nothing operator()(const ve<as...>&, const co<bs...>& ){return Nothing{};}
   //  Scalar operator()(ve<Ups...>,co<Downs...>){return Scalar{};};
 
-  friend auto &operator<<(std::ostream& os, te)
+
+constexpr static auto myClassNameDown()
   {
+
     if constexpr (sizeof... (Downs)>0)
-      ((os<<"d/d"<<Downs{}<<"_"),...);
-    if constexpr (sizeof... (Ups)>0)
-      ((os<<Ups{}<<"_"),...);
-    return os;
-
-
-
+      return (my_static_string("d/d")+...+(Downs::className+my_static_string("_")));
+    else return my_static_string("");
   }
 
+  constexpr static auto myClassNameUp()
+  {
+
+    if constexpr (sizeof... (Ups)>0)
+      return ((Ups::className+my_static_string("_"))+...);
+    else return my_static_string("");
+  }
+  constexpr static auto myClassName()
+  {
+    return myClassNameDown()+myClassNameUp();
+  }
+  constexpr static auto  className=myClassName();
 
   template<class... iUps, class... iDowns>
   auto operator()(up<iUps...>, dn<iDowns...>){return ein<te,up<iUps...>,dn<iDowns...>>{};}
@@ -79,6 +88,9 @@ struct te<up<Ups...>,dn<Downs...>>{
       auto operator*(te,te<up<Ups2...>,dn<Downs2...>>){
     return te<up<Ups...,Ups2...>,dn<Downs...,Downs2...>>{};
   }
+
+  friend constexpr bool operator==(const te& me, const te& ti){return true;}
+
 };
 
 
@@ -262,6 +274,8 @@ public:
 
   typedef e_i ei;
 
+
+
   typedef e_i myId;
 
   using element_type= typename Value_type::element_type ;
@@ -270,6 +284,10 @@ public:
   using element_xi= x_i<e_i,element_type>;
 
   typedef  Value_type value_type;
+
+  using cols=recursive_t<ei,typename value_type::cols>;
+  using row_type=typename value_type::row_type;
+
 private:
   Value_type value_;
 public:
@@ -281,8 +299,13 @@ public:
   x_i const& operator[](e_i)const & {return *this;}
   x_i& operator[](e_i) & {return *this;}
 
+  friend auto begin(const x_i& me){ return begin(me());}
 
   x_i operator[](e_i)&& {return *this;}
+
+  auto& get(e_i)const  {return *this;}
+  auto& get(e_i)  {return *this;}
+
 
 
   inline friend
@@ -294,7 +317,7 @@ public:
 
   auto& operator()()const &{ return value_;}
   auto& operator()()&{ return value_;}
-  auto operator()()&& {return value_;}
+  //auto operator()()&& {return value_;}
 
 
   template<class...Is>
@@ -303,6 +326,11 @@ public:
     this->operator()().insert_at(p,std::move(r)());
   }
 
+  template<class...Is>
+  void insert_at(const Position<Is...>& p, row_type&& r)
+  {
+    this->operator()().insert_at(p,std::move(r));
+  }
 
 
 
@@ -481,9 +509,9 @@ auto operator&&(std::pair<Position<Is...>,bool>&& p, const  std::pair<const x1&,
   else if (x.first(p.first)==x.second()) return p;
   else
   {
-   p.second=true;
-   p.first.inc(typename x1::ei{});
-   return p;
+    p.second=true;
+    p.first.inc(typename x1::ei{});
+    return p;
   }
 }
 
@@ -496,6 +524,11 @@ auto operator&&(std::pair<Position<Is...>,bool>&& p, const std::pair<const x1&, 
   return p;
 }
 
+struct index_k{  constexpr static auto  className=my_static_string("index");};
+
+
+
+
 
 template<class...x_is> struct vector_space: public x_is...
 {
@@ -503,41 +536,167 @@ template<class...x_is> struct vector_space: public x_is...
   typedef Cs<typename x_is::ei...> my_eis;
   typedef Cs<typename x_is::myId...> myIds;
 
-  using position=transfer_t<get_Field_Indexes_t<vector_space>,Position<>>;
+  using myIndex=Index<typename x_is::ei...>;
 
-  using row_type=std::tuple<typename x_is::element_xi...>;
+
+  using myCols=pack_concatenation_t<typename x_is::cols...>;
+  using myrow_type=decltype (std::tuple_cat(typename x_is::row_type{}...));
+
+  using cols=pack_unique_t<pack_concatenation_t<Cs<index_k>,pack_concatenation_t<typename x_is::value_type::cols...>>>;
+
+  using row_type=decltype(std::tuple_cat(std::tuple<std::variant<typename x_is::ei...>>{},typename x_is::value_type::row_type{}...));
+
+  template<class Is>
+  static constexpr auto index_to_myCol_number(){
+    using xi=std::decay_t<decltype(std::declval<vector_space>()[Is{}])>;
+    using coli=typename xi::cols;
+    return pack_index_cs(coli{},myCols{});
+  }
+
+
+  //using gsdg=typename cols::ger;
+
+  template<class J, class Position, class =std::enable_if_t<is_in_pack<J,typename x_is::ei...>(),int>>
+  auto operator()(const Position& i, J)const {return (*this)[J{}](i);}
+
+  template< class...Is, class J,class =std::enable_if_t<is_in_pack<Index<typename x_is::ei...>,Is...>(),float>>
+  auto operator()(const Position<Is...>& i, J j)const-> decltype((*this)(i[Index<typename x_is::ei...>{}]())()(i,j))
+  {
+    return (*this)(i[Index<typename x_is::ei...>{}]())()(i,j);
+  }
+
+  template< class...Is, class =std::enable_if_t<is_in_pack<Index<typename x_is::ei...>,Is...>(),float>>
+  auto& operator()(const Position<Is...>& i, index_k j)const {
+    return i[Index<typename x_is::ei...>{}]();
+  }
+
+
+
+  template<class J, class j_in, class Position,class =std::enable_if_t<is_in_pack<J,typename x_is::ei...>(),int>>
+  auto operator()(const Position& i,recursive<J,j_in> r)const ->decltype ((*this)[J{}](i)(i,j_in{}))
+  {return (*this)[J{}](i)(i,j_in{});}
+
+
+
+
+  auto & operator()(const std::variant<typename x_is::ei...>& ind)const
+  {
+    return std::visit([this](auto& id)->decltype ((*this)[id]) {return (*this)[id];},ind);
+  }
+
+
+
+
+
 
   template<class Is>
   using get_xi_t=std::decay_t<decltype (std::declval<vector_space&>()[Is{}])>;
 
-  template<class Is>
-  using get_element_xi_t=typename get_xi_t<Is>::element_xi;
+  template<class Position,class Is>
+  using get_element_xi_t=std::decay_t<decltype (std::declval<vector_space&>()(std::declval<Position>(),Is{}))>;
 
-  friend constexpr row_type row_vector(const vector_space&) {return  row_type{};}
+  friend constexpr myrow_type row_vector(const vector_space&) {return  myrow_type{};}
 
 
-  friend   constexpr position begin(const vector_space& ) {return position{};}
+  template <class... I, class... Is, std::size_t...In>
+  bool is_same(const Position<Is...>& p,const myrow_type& r, Cs<I...>,std::index_sequence<In...>)const
+  {
+    return ((std::get<In>(r)==(*this)(p,I{}))&&...);
+
+  }
+
+  template <class... Ind, class... Is, std::size_t...In>
+  static bool is_same_index(Index<Ind...>,const Position<Is...>& p,const myrow_type& r, std::index_sequence<In...>)
+  {
+    return ((std::get<In>(r)==p[Index<Ind...>{}]())&&...);
+
+  }
+
+
+  template <class I, class... Is>
+  bool is_same(I,const Position<Is...>& p,const myrow_type& r)const
+  {
+    using xi=std::decay_t<decltype(std::declval<vector_space>()[I{}])>;
+    using colsi=typename xi::cols;
+    auto index_cols=pack_index_cs(colsi{},myCols{});
+    return is_same(p,r,colsi{},index_cols);
+  }
+
+  template <class... Ind, class... Is>
+  bool is_same(Index<Ind...>,const Position<Is...>& p,const myrow_type& r)const
+  {
+    auto index_rows=pack_multindex<std::variant<Ind...>>(transfer_t<myrow_type,Cs<>>{});
+    return is_same_index(Index<Ind...>{},p,r,index_rows);
+  }
+
+
+
+  template <class I, class... Is, std::size_t...In>
+  void insert_at(const Position<Is...>& p, myrow_type&& r,std::index_sequence<In...>)
+  {
+    ((*this)[I{}].insert_at(p,std::make_tuple(std::get<In>(std::move(r))...)));
+
+  }
+
+
+  template <class xi, class... Is>
+  void insert_at(const Position<Is...>& p, myrow_type&& r)
+  {
+    using colsi=typename xi::cols;
+    auto index_cols=pack_index_cs(colsi{},myCols{});
+    insert_at<typename xi::ei>(p,std::move(r),index_cols);
+  }
+
+  template <class... Is>
+  void insert_at(const Position<Is...>& p, myrow_type&& r)
+  {
+
+    (insert_at<x_is>(p,std::move(r)),...);
+  }
+
+
+  template <class... Is>
+  void insert_at(const Position<Is...>& p, row_type&& r)
+  {
+    auto v=p[Index<typename x_is::ei...>{}]();
+    auto [r_ei, r_value]=distribute(Cs<std::variant<typename x_is::ei...>>{},
+                                      transfer_t<decltype(std::tuple_cat(typename x_is::value_type::row_type{}...)),Cs<>>{},std::move(r));
+    std::visit([this,&r_value,&p](auto ei){(*this)[ei].insert_at(p,std::move(r_value));},v);
+
+
+  }
+
 
 
   template<class...Is>
-  position next_pos(const Position<Is...>& p,const row_type& r)const
+  auto next_pos(const Position<Is...>& p,const myrow_type& r)const
   {
-    auto pres=(std::pair{p,false}&&...&&
-                 (std::pair
-                  <get_xi_t<Is> const &,
-                   get_element_xi_t<Is> const & >
-                  {(*this)[Is{}],
-                   std::get<get_element_xi_t<Is>>(r)}));
+     auto pres=(std::pair{p,false}|...|
+                 [this,&r](auto p)
+                 {
+                   if (p.second)
+                   {
+                     /// lower indexes set to zero after high index increases
+                     p.first[Is{}]={};
+                     return p;
+                   }
+                   else
+                       if (is_same(Is{},p.first,r)) return p;
+                   else
+                   {
+                     p.second=true;
+                     ++p.first[Is{}];
+                     return p;
+                   }
+                 });
 
     return pres.first;
   }
 
-  void insert_at(position p, row_type&& r)
-  {
-    ((*this)[typename x_is::ei{}].insert_at(p,std::get<typename x_is::element_xi>(std::move(r))),...);
-  }
 
-  position insert(const position& p, row_type&& r)
+
+  template<class...Is>
+  auto insert(const Position<Is...>& p, myrow_type&& r)
   {
     auto p1=next_pos(p,r);
     insert_at(p1,std::move(r));
@@ -550,11 +709,44 @@ template<class...x_is> struct vector_space: public x_is...
 
 
   template<class ...Is>
-  friend auto next(const vector_space& me, Position<Is...>& p)
+  friend auto next_old(const vector_space& me, Position<Is...>& p)
   {
     return (p+...+me[typename x_is::ei{}]);
   }
+  template<class... I, class Is, typename =std::enable_if_t<is_in_pack<Is,I...>(),int>>
+  bool next(Is,Position<I...>& p)const
+  {
+    if (p[Is{}]()+1<(*this)[Is{}]().size(Is{},p)){
+      ++p[Is{}]();
+      return true;}
+    else{
+      p[Is{}]()={};
+      return false;}
 
+  }
+
+  template<class... I, class... eis, typename =std::enable_if_t<is_in_pack<Index<eis...>,I...>(),int>>
+  bool next(Index<eis...>,Position<I...>& p)const
+  {
+    return next_variant(p[Index<eis...>{}]());
+  }
+
+
+
+  template<class ...Is>
+  friend auto next(const vector_space& me, Position<Is...>& p)
+  {
+    return (
+               [&me,&p](auto b){
+                 if (b.first)
+                   return b;
+                 else if (me.next(Is{},p))
+                   return std::pair{true,true};
+                 else
+                   return std::pair{false,false};
+               }
+               |...|std::pair(false,false)).second;
+  }
 
 
   template<class andId>
@@ -562,6 +754,9 @@ template<class...x_is> struct vector_space: public x_is...
   {
     return Nothing{};
   }
+
+
+
 
 
   template<class Value_2>
@@ -688,23 +883,57 @@ template<class...x_is> struct vector_space: public x_is...
 
 };
 
+template<class...x_is>
+constexpr auto begin(const vector_space<x_is...>& ) {
+  return Position<Index<typename x_is::ei...>>{};
+}
+
+
+template<class...x_is>
+constexpr
+    auto d_begin(const vector_space<x_is...>& )  {
+  return (begin(x_is{})&&...);
+}
+
+
 
 template<class...x_is> struct get_Field_Indexes <vector_space<x_is...>>
 {
   typedef get_Field_Indexes_t<x_is...> type;
 };
 
+template<class I, class... Is>
+std::ostream& operator<<(std::ostream& os, const std::variant<I,Is...>& v) { std::visit([&os](auto& e){os<<e;},v); return os;}
+
+template<class... Is>
+std::istream& operator>>(std::istream& is,  std::variant<Is...>& v) {
+
+  std::string s;
+  is>>s;
+  auto scopy=s;
+  bool res=false;
+  (v|...|[s,&res](auto& v )->auto&
+   {auto  i=Is{}; std::stringstream ss(s);
+if (ss>>i)
+    {v=i; res=true;}
+return v;});
+  if (!res)
+    is.setstate(std::ios::failbit);
+  return is;
+
+}
 
 
-template<class...x_is>
-std::ostream& to_DataFrame(std::ostream& os, const vector_space<x_is...>& v)
+
+template<class...x_is, class... col_is>
+std::ostream& to_DataFrame(std::ostream& os, const vector_space<x_is...>& v, Cs<col_is...>)
 {
 
-  ((os<<typename x_is::ei{}<<"\t"),...)<<"\n";
-  auto p=begin(v);
-  //typedef typename decltype (p)::sge eg;
+  ((os<<col_is{}<<"\t"),...)<<"\n";
+  auto p=d_begin(v);
+  os<<std::setprecision(std::numeric_limits<double>::digits10+2);
   do{
-    ((os<<v[typename x_is::ei{}](p)<<"\t"),...)<<"\n";
+    ((os<<v(p,col_is{})<<"\t"),...)<<"\n";
   }while( next(v,p));
 
   return os;
@@ -712,7 +941,43 @@ std::ostream& to_DataFrame(std::ostream& os, const vector_space<x_is...>& v)
 
 
 template<class...x_is>
+std::ostream& to_DataFrame(std::ostream& os, const vector_space<x_is...>& v)
+{
+  return to_DataFrame(os,v,typename vector_space<x_is...>::myCols{});
+}
+
+template<class...x_is>
 std::istream& from_DataFrame(std::istream& is,  vector_space<x_is...>& v)
+{
+  std::string s;
+  std::getline(is, s);
+  std::stringstream ss(s);
+  ((ss>>typename x_is::cols{}),...);
+  auto p=d_begin(v);
+  auto r=row_vector(v);
+  if (ss)
+  {
+    std::getline(is, s);
+    auto scopy=s;
+    ss.clear();
+    ss.str(s);
+    ss>>r;
+    v.insert_at(p,std::move(r));
+  }
+  while (ss)
+  {
+    std::getline(is, s);
+    ss.clear();
+    ss.str(s);
+    ss>>r;
+    p=v.insert(p,std::move(r));
+  }
+
+  return is;
+}
+
+template<class...x_is>
+std::istream& from_DataFrame_new(std::istream& is,  vector_space<x_is...>& v)
 {
   std::string s;
   std::getline(is, s);
@@ -806,7 +1071,7 @@ auto operator * (const vector_space<x_is...>& one,const vector_space<x_js...>&  
 
 template<bool Complete,class... Ds, class Id2, class Value_type>
 Is_Complete<Complete,vector_space<Ds...,x_i<Id2,Value_type>>>
-operator |
+operator &&
     (Is_Complete<Complete,vector_space<Ds...>>&& d, x_i<Id2,Value_type>&& d2)
 {
   return Is_Complete(std::bool_constant<Complete>{},
@@ -815,7 +1080,7 @@ operator |
 
 
 template<bool Complete,class... Ds>
-Is_Complete<false,vector_space<Ds...>> operator |(Is_Complete<Complete,vector_space<Ds...>>&& d, Nothing)
+Is_Complete<false,vector_space<Ds...>> operator &&(Is_Complete<Complete,vector_space<Ds...>>&& d, Nothing)
 {
   return Is_Complete(std::bool_constant<false>{},std::move(d.value));
 }
@@ -871,8 +1136,6 @@ template< class Value_type,class... myIndex,class...Datas>
 auto consolidate(vec<myIndex...>,const Datas...d)
 {
   typedef decltype ((...<<get_Field_Indexes_t<Datas>{})<<vec<myIndex...>{}) myvec;
-
-
 
   if constexpr (myvec::index_size==0)
   {

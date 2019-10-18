@@ -156,7 +156,7 @@ constexpr void check_if_reacheable(Cs<Ids_Not_Reachead...>)
 template <class Fid,class...F,class...Ds2,  class... Fields,class Random>
 auto sample(const quimulun<Fid,F...>& qui,const vector_space<Ds2...>& d, Cs<Fields...>,Random& mt)
 {
-  return (Is_Complete<true,vector_space<>>()|...|sample(qui,Fields{},d,mt));
+  return (Is_Complete<true,vector_space<>>()&&...&&sample(qui,Fields{},d,mt));
 }
 
 
@@ -188,7 +188,7 @@ auto calculate(const quimulun<Fid,Fs...>& qui,Id0,const Datas&... data)
 template <class Fid,class...F,class... Fields,class...Ds1,class...Datas>
 auto calculate(const quimulun<Fid,F...>& qui, Cs<Fields...>,const vector_space<Ds1...>& variables, const Datas&... parameters)
 {
-  return (Is_Complete<true,vector_space<>>()|...|calculate(qui,Fields{},variables, parameters...));
+  return (Is_Complete<true,vector_space<>>()&&...&&calculate(qui,Fields{},variables, parameters...));
 
 }
 

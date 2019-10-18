@@ -43,6 +43,11 @@ template<> struct vec<>
   {
     x=std::move(e);
   }
+  template <class ValueType, class Positionx>
+  static void insert_at(ValueType& x,const Positionx& p,typename ValueType::row_type&& e)
+  {
+    x.insert_at(p,std::move(e));
+  }
 
   template <class Vector, class Position>
   static auto& get(Vector& x, const Position&)
@@ -77,6 +82,7 @@ template<class I0, class...I> struct vec<I0,I...>{
   }
 
 
+
   template <class ValueType, class Positionx, class elementType>
   static void insert_at(std::vector<ValueType>& x,const Positionx& p,elementType&& e)
   {
@@ -85,6 +91,7 @@ template<class I0, class...I> struct vec<I0,I...>{
     else
       vec<I...>::insert_at(x.at(p[I0{}]()),p, std::forward<elementType>(e));
   }
+
 
   template <class ValueType>
   static std::vector<ValueType>& push_back(std::vector<ValueType>& x,ValueType&& e)
@@ -99,18 +106,41 @@ template<class I0, class...I> struct vec<I0,I...>{
     return x;
   }
 
+  template <class ValueType,class... e_types>
+  static auto push_back(std::vector<ValueType>& x,std::tuple<e_types...>&& e)
+      ->std::enable_if_t<std::is_same_v<std::tuple<e_types...>,typename ValueType::row_type >,std::vector<ValueType>&>{
 
-  template <class ValueType, class elementType>
-  static std::vector<ValueType>& push_back(std::vector<ValueType>& x,elementType&& e)
+    x.emplace_back(std::move(e));
+    return x;
+  }
+  template <class ValueType,class... e_types>
+  static auto push_back(std::vector<ValueType>&& x,std::tuple<e_types...>&& e)
+      ->std::enable_if_t<std::is_same_v<std::tuple<e_types...>,typename ValueType::row_type >,std::vector<ValueType>>{
+
+    x.emplace_back(std::move(e));
+    return x;
+  }
+
+
+
+
+  template <class ValueType, class elementType, typename=std::enable_if_t<!std::is_same_v<ValueType,elementType >,int>>
+  static std::vector<ValueType>&  push_back(std::vector<ValueType>& x,elementType&& e)
   {
     auto v=ValueType{};
     return push_back(x,push_back(std::move(v),std::forward<elementType>(e)));
   }
-  template <class ValueType, class elementType>
-  static std::vector<ValueType> push_back(std::vector<ValueType>&& x,elementType&& e)
+  template <class ValueType, class elementType, typename=std::enable_if_t<!std::is_same_v<ValueType,elementType >,int>>
+  static std::vector<ValueType>  push_back(std::vector<ValueType>&& x,elementType&& e)
   {
-    return push_back(std::move(x),push_back(ValueType{},std::forward<elementType>(e)));
+    auto v=ValueType{};
+    return push_back(x,push_back(std::move(v),std::forward<elementType>(e)));
   }
+
+
+
+
+
 
 
   template <class ValueType, class Positionx>
@@ -253,6 +283,10 @@ public:
   typedef typename vec<Xs...>::template to_vector<Value_type> value_type;
 
   typedef vec<Xs...> myIndexes;
+
+  using cols=typename element_type::cols;
+  using row_type=typename element_type::row_type;
+
 private:
   value_type value_;
 
@@ -284,6 +318,11 @@ public:
     vec<Xs...>::insert_at(value_,p,std::move(r));
   }
 
+  template<class...Is>
+  void insert_at(const Position<Is...>& p, row_type&& r)
+  {
+    vec<Xs...>::insert_at(value_,p,std::move(r));
+  }
 
 
   template<class I,class Position>

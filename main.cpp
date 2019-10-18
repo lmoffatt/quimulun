@@ -141,38 +141,39 @@ int main()
     auto data=s| myselect<data_fields>{};
 
 
-    std::cerr << "parameters \n"<<par <<std::endl;
-    std::cerr << "dparameters \n"<<dpar <<std::endl;
+    //std::cerr << "parameters \n"<<par <<std::endl;
+    //std::cerr << "dparameters \n"<<dpar <<std::endl;
 
-    std::cerr << "data \n"<<data <<std::endl;
+    //std::cerr << "data \n"<<data <<std::endl;
 
     auto logL=logP(qui,s);
     auto dlogL=logP(qui,data,dpar);
 
 
     auto fim=FIM(qui,data,dpar);
-
-
     std::cerr <<"logL"<< logL<<std::endl;
     std::cerr << "dlogL"<< dlogL<<std::endl;
     std::cerr<<"FIM "<<fim<<"\n";
     std::string fname="out.txt";
     std::ofstream f(fname.c_str());
-    to_DataFrame(f,s);
+    to_DataFrame(f,dpar);
     f.close();
+    auto dpar_new=decltype (dpar){};
+
     auto snew=decltype (s){};
     std::ifstream fe;
     fe.open(fname.c_str());
     if (fe.is_open())
     {
-      from_DataFrame(fe,snew);
+      from_DataFrame(fe,dpar_new);
+     // from_DataFrame(fe,snew);
 
     }
-    std::cerr<<"\ns\n"<<s;
-    std::cerr<<"\nsnew\n"<<snew;
+    std::cerr<<"\ndpar\n"<<dpar;
+    std::cerr<<"\ndpar_new\n"<<dpar_new;
 
 
-    assert(s==snew);
+    assert(dpar==dpar_new);
 
   }
   return 0;

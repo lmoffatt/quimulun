@@ -7,7 +7,7 @@
 #include <tuple>
 #include <cmath>
 #include <vector>
-
+#include <variant>
 //namespace qm {
 
 struct Nothing{};
@@ -24,38 +24,140 @@ template<class Something>
 auto operator||( Something&& s, Nothing){return std::forward<Something>(s);}
 
 
-template <class...> class Position;
 
-template<>struct Position<>
+template <class...> class CycleIndex;
+
+template<class Id0, class Id>struct CycleIndex<Id0,Id>
 {
+  inline constexpr auto next(Id){return Id0{};}
 
 };
 
 
 
-template <class Id, class... Ids> struct Position<Id,Ids...>:Position<Ids...>
+template <class Id0, class Id,class Idnext,class... Ids> struct CycleIndex<Id0,Id,Idnext,Ids...>:CycleIndex<Id0,Idnext,Ids...>
 {
+  using CycleIndex<Id0,Idnext,Ids...>::next;
+  inline constexpr auto next(Id){return Idnext{};}
+
+  template<class anId>
+  auto operator()(anId)->std::enable_if_t<is_in_pack<anId,Id,Idnext,Ids...>(),std::variant<Id,Idnext,Ids...>>
+  {
+    return std::variant<Id,Idnext,Ids...>{next(anId{})};
+  }
+
+};
+
+
+
+
+template <class... Ids> struct Index{};
+
+
+template<class Id, class... Ids>
+bool next_variant ( std::variant<Id, Ids...>& v)
+{
+  v=std::visit([&v](auto e){return std::variant<Id,Ids...>{CycleIndex<Id,Id,Ids...>{}.next(e)};},v );
+  return v.index()!=0;
+}
+
+
+
+
+
+template <class...> class Position;
+
+template< >class Position<>{};
+
+template <class Id> struct Position<Id>{
 private :
   std::size_t i;
 public:
-  using Position<Ids>::operator[]...;
+  using innerId=Id;
   auto& operator[](Id)const {return *this;}
   auto& operator[](Id) {return *this;}
   auto& operator()()const {return  i;}
   auto& operator()() {return  i;}
-  template<class Idn>
-  auto inc(Idn)->std::enable_if_t<is_in_pack<Idn,Ids...>(),std::size_t>
-  {
-    return Position<Ids...>::inc(Idn{});
 
-  }
+  auto& operator++(){ ++i; return *this;}
   std::size_t inc(Id)
   {
     ++i;
-    (((*this)[Ids{}]()=0),...);
     return i;
   }
 };
+
+
+
+template <class... Ids> struct Position<Index<Ids...>>{
+private :
+  std::variant<Ids...> i;
+public:
+  auto& operator[](Index<Ids...>)const {return *this;}
+  auto& operator[](Index<Ids...>) {return *this;}
+  auto& operator()()const {return  i;}
+  auto& operator()() {return  i;}
+  auto& operator++(){ next_variant(i); return *this;}
+
+
+};
+
+
+
+template <class id0, class id_in> struct recursive{
+  constexpr static auto  className=id0::className+my_static_string("_")+id_in::className;
+  using type=recursive;
+};
+
+template <class id0, class... id_in> struct recursive<id0,Cs<id_in...>>{
+  using type=Cs<recursive<id0,id_in>...>;
+};
+
+
+template <class id0, class id_in>
+using recursive_t=typename recursive<id0,id_in>::type;
+
+
+
+template <class Id, class... Ids> struct Position<Id,Ids...>:Position<Id>,Position<Ids>...
+{
+  using Position<Id>::operator[];
+  using Position<Ids>::operator[]...;
+};
+
+
+template<class ...Ids,class IdOther>
+auto operator && (Position<Ids...>&& me, Position<IdOther>&&  )
+    ->std::enable_if_t<is_in_pack<IdOther,Ids...>(),Position<Ids...>>
+{
+  return std::move(me);
+}
+
+template<class ...Ids>
+auto operator && (Position<Ids...>&& me, Position<>  ){return std::move(me);}
+
+
+template<class ...Ids,class IdOther>
+auto operator && (Position<Ids...> , Position<IdOther>  )
+    ->std::enable_if_t<!is_in_pack<IdOther,Ids...>(),Position<Ids...,IdOther>>
+{
+  return Position<Ids...,IdOther>{};
+}
+
+template<class ...Ids,class... Is>
+auto operator && (Position<Ids...>&& me, Position<Is...>&&  )
+{
+  return (std::move(me)&&...&&Position<Is>{});
+}
+
+
+
+
+
+
+
+
+
 
 
 
@@ -131,6 +233,11 @@ template<> struct p<>
 {
   constexpr static auto  className=my_static_string("") ;
 
+  constexpr bool operator==(const p&)const {return true;}
+
+  friend std::istream& operator>>(std::istream& is, p<>&){return is;}
+
+
 };
 
 
@@ -138,15 +245,18 @@ template<> struct p<>
 template<class m, int N> struct p<u<m,N>>
 {
   constexpr static auto  className=u<m,N>::className ;
+  constexpr bool operator==(const p&)const {return true;}
 
 };
 
 template<class m, int N,class ...ms, int...Ns> struct p<u<m,N>,u<ms,Ns>...>
 {
   constexpr static auto  className=(u<m,N>::className+(my_static_string(".")+...+u<ms,Ns>::className)) ;
+  constexpr bool operator==(const p&)const {return true;}
 
 };
 
+/*
 template<class ...ms, int...Ns>
 std::ostream& operator<<(std::ostream& os,p<u<ms,Ns>...> )
 {
@@ -174,7 +284,7 @@ std::istream& operator>>(std::istream& is,p<u<ms,Ns>...> )
 
 }
 
-
+*/
 
 
 
@@ -295,7 +405,9 @@ typedef simplify_t<my_scalar_unit> dimension_less;
 template<class ...> struct v;
 template<class ...> struct logv;
 
+struct value_k{ constexpr static auto  className=my_static_string("value");};
 
+struct unit_k{ constexpr static auto  className=my_static_string("unit");};
 
 
 
@@ -308,24 +420,37 @@ public:
  typedef v element_type;
 
 
+ using cols=Cs<value_k,unit_k>;
+
+ using row_type=std::tuple<TYPE,myunit>;
+
   v(TYPE&& x,myunit): value_{std::move(x)}{}
   v(TYPE&& x): value_{std::move(x)}{}
+  v(row_type&& x):value_{std::get<TYPE>(std::move(x))}{}
   v()=default;
   const TYPE& value()const &{return value_;}
   TYPE& value() &{return value_;}
   TYPE value()&& {return value_;}
 
-  static auto begin() {return Position<>{};}
+  auto& operator[](value_k){return value();}
+  auto& operator[](value_k)const {return value();}
+  auto operator[](unit_k)const {return unit{};}
+
+  template<class...Is>
+  void insert_at(const Position<Is...>& , row_type&& r)
+  {
+    value()=std::get<TYPE>(std::move(r));
+  }
+
+
+  static constexpr auto begin() {return Position<>{};}
+
+  friend constexpr auto begin(const v& ){ return Position<>{};}
+
   bool next(Position<>& )const {return false;}
 
   friend inline bool operator==(const v& one, const v& two) { return one.value()==two.value();}
 
-
-  template<class...Is>
-  void insert_at(const Position<Is...>& , element_type&& r)
-  {
-    *this=std::move(r);
-  }
 
 
 
@@ -348,6 +473,20 @@ public:
 
   template<class Position>
   auto& operator()(const Position& )const { return *this;}
+
+
+  template<class I>
+  auto& operator()(const I& , value_k){ return value();}
+
+  template<class I>
+  auto& operator()(const I& , value_k)const{ return value();}
+
+  template<class I>
+  unit operator()(const I& , unit_k)const { return unit{};}
+
+
+
+
 
   friend std::ostream& operator<<(std::ostream& os, const v& m)
   {
@@ -417,6 +556,8 @@ template<class T,class... Units> class logv<T,Units...>
 
 
 public:
+  using cols=Cs<value_k,unit_k>;
+  using row_type=std::tuple<T,logv_units<Units...>>;
 
   logv(T&& x,std::pair<long,Units>... us): value_{std::move(x)}, us_{std::move(us)...}{}
   logv(T&& x,logv_units<Units...>&& us): value_{std::move(x)}, us_{std::move(us)}{}
