@@ -250,7 +250,7 @@ auto operator<<(vec<I0...>, vec<I1...>)
 
 
 
-
+/*
 template<class T, class U>
 void copy_size(const U& ,T& )
 {
@@ -269,7 +269,7 @@ void copy_size(const std::vector<std::vector<U>>& source,std::vector<std::vector
   for (std::size_t i=0; i<source.size(); ++i) copy_size(source[i],destination[i]);
 
 }
-
+*/
 
 
 template<class...> class vector_field;

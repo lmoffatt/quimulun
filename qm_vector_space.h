@@ -1,470 +1,6 @@
 #ifndef QM_VECTOR_SPACE_H
 #define QM_VECTOR_SPACE_H
-
-//#include "qm_data.h"
-#include "mytypetraits.h"
-#include "qm_vector_field.h"
-
-
-
-
-
-struct Iu_{};
-struct Ju_{};
-struct Id_{};
-struct Jd_{};
-
-
-
-
-template<class ...Is> struct dn;
-
-template<class ...Is> struct up;
-
-template <class, class> struct te;
-
-
-
-struct Scalar{};
-
-template<class ...Is> struct dn{
-
-  template<class... as>
-  Nothing operator()(const up<as...>& ){return Nothing{};}
-
-  Scalar operator()(const up<Is...>& ){return Scalar{};};
-};
-
-template<class ...Is> struct up{
-  template<class... as>
-  Nothing operator()(const dn<as...>& ){return Nothing{};}
-
-  Scalar operator()(const dn<Is...>& ){return Scalar{};};
-
-};
-
-
-template<class ...>struct ein;
-
-template<class te,class Up, class Down>
-struct ein<te,Up,Down>{
-
-};
-
-
-template <class ...Ups, class ...Downs>
-struct te<up<Ups...>,dn<Downs...>>{
-  //  template<class... as, class... bs>
-  //  Nothing operator()(const ve<as...>&, const co<bs...>& ){return Nothing{};}
-  //  Scalar operator()(ve<Ups...>,co<Downs...>){return Scalar{};};
-
-
-constexpr static auto myClassNameDown()
-  {
-
-    if constexpr (sizeof... (Downs)>0)
-      return (my_static_string("d/d")+...+(Downs::className+my_static_string("_")));
-    else return my_static_string("");
-  }
-
-  constexpr static auto myClassNameUp()
-  {
-
-    if constexpr (sizeof... (Ups)>0)
-      return ((Ups::className+my_static_string("_"))+...);
-    else return my_static_string("");
-  }
-  constexpr static auto myClassName()
-  {
-    return myClassNameDown()+myClassNameUp();
-  }
-  constexpr static auto  className=myClassName();
-
-  template<class... iUps, class... iDowns>
-  auto operator()(up<iUps...>, dn<iDowns...>){return ein<te,up<iUps...>,dn<iDowns...>>{};}
-
-  template <class ...Ups2, class ...Downs2>
-  friend
-      auto operator*(te,te<up<Ups2...>,dn<Downs2...>>){
-    return te<up<Ups...,Ups2...>,dn<Downs...,Downs2...>>{};
-  }
-
-  friend constexpr bool operator==(const te& , const te& ){return true;}
-
-};
-
-
-
-template <class ...Ups0, class ...iUps0,class a, class ia,
-          class b>
-
-constexpr auto operator * (ein<te<up<Ups0...>,dn<a>>,up<iUps0...>,dn<ia>>,
-                         ein<te<up<b>,dn<>>,up<ia>,dn<>>)
-{
-
-  /**
-        -**         -A
-       |          |
-       |      *   |
-       |          |
-        -A
-
-  **/
-      if constexpr (std::is_same_v<a,b >)
-          return ein<te<up<Ups0...>,dn<>>,up<iUps0...>,dn<>>{};
-  else
-      return Nothing{};
-
-}
-
-template <class ...Ups0, class ...iUps0,
-          class Up1, class iUp1>
-constexpr auto operator * (ein<te<up<Ups0...>,dn<>>,up<iUps0...>,dn<>>,
-                         ein<te<up<Up1>,dn<>>,up<iUp1>,dn<>>)
-{
-
-  /**
-        -**         -A            -**A
-       |          |              |
-       |      *   |        -->   |
-       |          |              |
-
-
-  **/
-      return ein<te<up<Ups0...,Up1>,dn<>>,up<iUps0...,iUp1>,dn<>>{};
-
-}
-
-
-
-template <class ...Ups0, class ...iUps0,class A, class iA,
-          class B, class iB>
-
-constexpr auto operator * (ein<te<up<Ups0...>,dn<A>>,up<iUps0...>,dn<iA>>,
-                         ein<te<up<B>,dn<>>,up<iB>,dn<>>)
-{
-
-  /**
-        -**         -B            -**B
-       |          |              |
-       |      *   |        -->   |
-       |          |              |
-        -A                        -A
-
-  **/
-      return ein<te<up<Ups0...,B>,dn<A>>,up<iUps0...,iB>,dn<iA>>{};
-
-}
-
-template <class ...Downs0, class ...iDowns0>
-constexpr Nothing join(ein<te<up<>,dn<Downs0...>>,up<>,dn<iDowns0...>>,Nothing)
-{
-  return Nothing{};
-}
-
-
-
-template <class ...Downs0, class ...iDowns0,
-          class ...Ups1, class ...iUps1,class ...Downs1, class ...iDowns1>
-constexpr auto join(ein<te<up<>,dn<Downs0...>>,up<>,dn<iDowns0...>>,
-                    ein<te<up<Ups1...>,dn<Downs1...>>,up<iUps1...>,dn<iDowns1...>>)
-{
-  return ein<te<up<Ups1...>,dn<Downs0...,Downs1...>>,up<iUps1...>,dn<iDowns0...,iDowns1...>>{};
-}
-
-
-
-template <class Up0, class iUp0,class Up00, class iUp00,class ...Ups0, class ...iUps0,class Down1, class iDown1,class ...Downs0, class ...iDowns0>
-
-constexpr auto operator * (ein<te<up<Up0,Up00,Ups0...>,dn<Downs0...>>,up<iUp0,iUp00,iUps0...>,dn<iDowns0...>>,
-                         ein<te<up<>,dn<Down1>>,up<>,dn<iDown1>>)
-{
-
-  /**
-             -***                                                         -*      -*    -*
-            |          |                        |             |          |       |     |
-            |      *   |           --> join (   |      ,      |      *   |   *   |  *  |     )
-            |          |                        |             |          |       |     |
-             -***       -*                       -***          -*
-
-  **/
-
-
-      return  join(ein<te<up<>,dn<Downs0...>>,up<>,dn<iDowns0...>>{},
-                  ((ein<te<up<>,dn<Down1>>,up<>,dn<iDown1>>{}*
-                    ein<te<up<Up0>,dn<>>,up<iUp0>,dn<>>{}*
-                    ein<te<up<Up00>,dn<>>,up<iUp00>,dn<>>{})*...*
-                   ein<te<up<Ups0>,dn<>>,up<iUps0>,dn<>>{})
-                  );
-
-}
-
-
-
-
-template <class ...Ups, class ...iUps,class Down0, class iDown0,class Down1, class iDown1,class ...Downs, class ...iDowns>
-
-constexpr auto operator * (ein<te<up<Ups...>,dn<>>,up<iUps...>,dn<>>,
-                         ein<te<up<>,dn<Down0,Down1,Downs...>>,up<>,dn<iDown0,iDown1,iDowns...>>)
-{
-  /**
-             -***                                       -***
-            |          |                                |          |       |     |
-            |      *   |           -->                  |      *   |   *   |  *  |
-            |          |                                |          |       |     |
-                        -***                                       -*      -*    -*
-
-  **/
-
-      return ((ein<te<up<Ups...>,dn<>>,up<iUps...>,dn<>>{}*
-               ein<te<up<>,dn<Down0>>,up<>,dn<iDown0>>{}*ein<te<up<>,dn<Down1>>,up<>,dn<iDown1>>{})
-              *...*
-              ein<te<up<>,dn<Downs>>,up<>,dn<iDowns>>{});
-}
-
-
-template <class ...Ups0, class ...iUps0,class ...Downs0, class ...iDowns0>
-constexpr auto operator * (ein<te<up<Ups0...>,dn<Downs0...>>,up<iUps0...>,dn<iDowns0...>>,
-                         Nothing)
-{
-
-  return Nothing{};
-
-}
-
-template <          class ...Ups1, class ...iUps1,class ...Downs1, class ...iDowns1>
-constexpr auto operator * (Nothing,ein<te<up<Ups1...>,dn<Downs1...>>,up<iUps1...>,dn<iDowns1...>>)
-{
-  return Nothing{};
-
-}
-
-
-
-
-template <class ...Ups0, class ...iUps0,class ...Downs0, class ...iDowns0,
-          class ...Ups1, class ...iUps1,class ...Downs1, class ...iDowns1>
-
-constexpr auto operator * (ein<te<up<Ups0...>,dn<Downs0...>>,up<iUps0...>,dn<iDowns0...>>,
-                         ein<te<up<Ups1...>,dn<Downs1...>>,up<iUps1...>,dn<iDowns1...>>)
-{
-
-  /**
-        -**         -**                     -****
-       |          |                        |          |
-       |      *   |            -->         |      *   |
-       |          |                        |          |
-        -**         -**                                -****
-
-  **/
-      return ein<te<up<Ups0...,Ups1...>,dn<>>,up<iUps0...,iUps1...>,dn<>>{}*
-      ein<te<up<>,dn<Downs0...,Downs1...>>,up<>,dn<iDowns0...,iDowns1...>>{};
-
-}
-
-//template <class...> struct x_i;
-
-
-template<class e_i, class Value_type>
-struct x_i
-{
-public:
-  //typedef typename Id::T T;
-  //typedef typename Id::unit unit;
-
-  typedef e_i ei;
-
-
-
-  typedef e_i myId;
-
-  using element_type= typename Value_type::element_type ;
-
-
-  using element_xi= x_i<e_i,element_type>;
-
-  typedef  Value_type value_type;
-
-  using cols=recursive_t<ei,typename value_type::cols>;
-  using row_type=typename value_type::row_type;
-
-private:
-  Value_type value_;
-public:
-
-  explicit x_i(value_type&& x):value_{std::move(x)}{}
-  explicit x_i(e_i,value_type&& x):value_{std::move(x)}{}
-  explicit x_i(e_i,const value_type& x):value_{x}{}
-  x_i()=default;
-  x_i const& operator[](e_i)const & {return *this;}
-  x_i& operator[](e_i) & {return *this;}
-
-  friend auto begin(const x_i& me){ return begin(me());}
-
-  x_i operator[](e_i)&& {return *this;}
-
-  auto& get(e_i)const  {return *this;}
-  auto& get(e_i)  {return *this;}
-
-
-
-  inline friend
-      bool operator==(const x_i& me, const x_i& ti)
-  {
-    return me()==ti();
-  }
-
-
-  auto& operator()()const &{ return value_;}
-  auto& operator()()&{ return value_;}
-  //auto operator()()&& {return value_;}
-
-
-  template<class...Is>
-  void insert_at(const Position<Is...>& p, x_i<e_i,element_type>&& r)
-  {
-    this->operator()().insert_at(p,std::move(r)());
-  }
-
-  template<class...Is>
-  void insert_at(const Position<Is...>& p, row_type&& r)
-  {
-    this->operator()().insert_at(p,std::move(r));
-  }
-
-
-
-  template<class Position>
-  auto& operator()(const Position& p){ return value_(p);}
-
-  template<class Position>
-  auto& operator()(const Position& p)const { return value_(p);}
-
-  template<class... iUps, class... iDowns>
-  auto operator()(up<iUps...> u, dn<iDowns...> d){return x_i<decltype (ei{}(u,d)),value_type>{ei{}(u,d),(*this)()};}
-
-  inline friend std::ostream& operator<<(std::ostream& os, const x_i& me)
-  {
-    return os<<me();
-  }
-  inline friend std::istream& operator>>(std::istream& is,  x_i& me)
-  {
-    return is>>me();
-  }
-
-
-  template<class... Ts>
-  friend  auto operator +( Position<Ts...>& p,const x_i& me)//->decltype (p+me())
-  {
-    return p+me();
-  }
-  friend  bool operator +(bool p,const x_i& )
-  {
-    return p;
-  }
-
-
-  x_i& operator+=(const x_i& other){ (*this)()+=other(); return *this;}
-
-
-  template<class Value_type_2>
-  auto operator*=(const Value_type_2& x)->std::enable_if_t<std::is_same_v<Value_type,decltype (value_*x) >,x_i&>
-  {
-    (*this)()*=x;
-    return *this;
-  }
-
-  template<class unit,class T>
-  friend auto operator*(const x_i& me,const v<T,unit>& a)->x_i<e_i,decltype (Value_type{}*v<T,unit>{})>
-  {
-    return x_i<e_i,std::decay_t<decltype (me()*a)>>{e_i{},me()*a};
-  }
-
-  template<class unit,class T>
-  friend auto operator*(const v<T,unit>& a,const x_i& me)->x_i<e_i,decltype (v<T,unit>{}*Value_type{})>
-  {
-    return x_i<e_i,std::decay_t<decltype (me()*a)>>{e_i{},a*me()};
-  }
-
-  friend x_i operator*(const x_i& me,double a)
-  {
-    return x_i{e_i{},me()*a};
-  }
-
-  friend x_i operator*(double a,const x_i& me)
-  {
-    return x_i<e_i,std::decay_t<decltype (a*me())>>{e_i{},a*me()};
-  }
-
-
-  template< class e_i1,  class value_1>
-  friend auto operator*(const x_i<e_i,Value_type> &one,const x_i<e_i1,value_1> &two )
-  {
-    if constexpr (std::is_same_v<Nothing,decltype (e_i{}*e_i1{}) >)
-      return Nothing{};
-    else
-      return x_i<decltype (e_i{}*e_i1{}),std::decay_t<decltype(one()*two())>>(one()*two());
-  }
-
-  template<class Value_type_2>
-  friend auto operator/(const x_i& me,const Value_type_2& a)->x_i<e_i,decltype (Value_type{}/Value_type_2{})>
-  {
-    return x_i<e_i,std::decay_t<decltype (me()/a)>>{e_i{},me()/a};
-  }
-
-
-
-  friend x_i operator+(const x_i& me, const x_i& other)
-  {
-    x_i out{me};
-    out()+=other();
-    return out;
-  }
-
-
-  friend x_i operator-(const x_i& me, const x_i& other)
-  {
-    x_i out{me};
-    out()-=other();
-    return out;
-  }
-
-};
-
-
-template<class Id, class Value_type,class Datas, class Rand>
-x_i<Id,Value_type> sample(const x_i<Id,Value_type>& d, const Datas& , Rand& ){return d;}
-
-template<class Id, class Value_type,class... Datas>
-x_i<Id,Value_type> calculate(const x_i<Id,Value_type>& d, const Datas&... ){return d;}
-
-
-template<class Id, class Value_type,class... Datas>
-auto logP(const x_i<Id,Value_type>& , const Datas&... ){return logP_zero{};}
-
-template<class Id, class Value_type,class... Datas>
-auto FIM(const x_i<Id,Value_type>& , const Datas&... ){return logP_zero{};}
-
-
-/*
-template< class e_i0,class e_i1, class value_0, class value_1>
-auto operator*(const x_i<e_i0,value_0> &one,const x_i<e_i1,value_1> &two )
-{
-  if constexpr (std::is_same_v<Nothing,decltype (e_i0{}*e_i1{}) >)
-    return Nothing{};
-  else
-    return x_i(e_i0{}*e_i1{},one()*two());
-}
-*/
-template<class e_i,class Value_type,class... Xs> struct get_Field_Indexes <x_i<e_i,vector_field< vec<Xs...>,Value_type>>>
-{
-  typedef vec<Xs...> type;
-};
-template<class e_i,class Value_type> struct get_Field_Indexes <x_i<e_i,Value_type>>
-{
-  typedef vec<> type;
-};
-
+#include "qm_vector_basis.h"
 
 template <class...> struct vector_space;
 
@@ -549,7 +85,15 @@ template<class...x_is> struct vector_space: private x_is...
 
   using cols=pack_unique_t<pack_concatenation_t<Cs<index_k>,pack_concatenation_t<typename x_is::value_type::cols...>>>;
 
-  using row_type=decltype(std::tuple_cat(std::tuple<std::variant<typename x_is::ei...>>{},typename x_is::value_type::row_type{}...));
+ // using print_cols=typename cols::print;
+
+  using cell_type=pack_to_column_t<typename x_is::value_type::row_type...>;
+
+  using row_type=pack_concatenation_t<
+std::tuple<std::variant<typename x_is::ei...>>,cell_type>;
+
+  //using print_rowtype=typename row_type::print;
+
 
   template<class Is>
   static constexpr auto index_to_myCol_number(){
@@ -564,10 +108,12 @@ template<class...x_is> struct vector_space: private x_is...
   template<class J, class Position, class =std::enable_if_t<is_in_pack<J,typename x_is::ei...>(),int>>
   auto operator()(const Position& i, J)const {return (*this)[J{}](i);}
 
-  template< class...Is, class J,class =std::enable_if_t<is_in_pack<Index<typename x_is::ei...>,Is...>(),float>>
-  auto operator()(const Position<Is...>& i, J j)const-> decltype((*this)(i[Index<typename x_is::ei...>{}]())()(i,j))
+  template< class...Is, class J,
+            class =std::enable_if_t<is_in_pack<Index<typename x_is::ei...>,Is...>()
+                                     &&!std::is_same_v<J,index_k>,float>>
+  auto operator()(const Position<Is...>& i, J j)const-> decltype((*this)(i[Index<typename x_is::ei...>{}](),j))
   {
-    return (*this)(i[Index<typename x_is::ei...>{}]())()(i,j);
+    return (*this)(i[Index<typename x_is::ei...>{}](),j);
   }
 
   template< class...Is, class =std::enable_if_t<is_in_pack<Index<typename x_is::ei...>,Is...>(),float>>
@@ -581,12 +127,23 @@ template<class...x_is> struct vector_space: private x_is...
   auto operator()(const Position& i,recursive<J,j_in> )const ->decltype ((*this)[J{}](i)(i,j_in{}))
   {return (*this)[J{}](i)(i,j_in{});}
 
+  
+  template<class... iUps, class... iDowns>
+  auto operator()(up<iUps...> u, dn<iDowns...> d){
+    return vector_space<std::decay_t<decltype ((*this)[typename x_is::ei{}](u,d))>...>
+        {(*this)[typename x_is::ei{}](u,d)...};
+
+  }
 
 
-
-  auto & operator()(const std::variant<typename x_is::ei...>& ind)const
+  template<class J>
+  auto  operator()(const std::variant<typename x_is::ei...>& ind,J )const
   {
-    return std::visit([this](auto& id)->decltype ((*this)[id]) {return (*this)[id];},ind);
+    return std::visit([this](auto& id)->
+        transfer_t<pack_unique_t<Cs<std::decay_t<decltype ((*this)[typename x_is::ei{}]()[J{}])>...>>,std::variant<>>
+                      {
+      return (*this)[id]()[J{}];
+    },ind);
   }
 
 
@@ -665,7 +222,7 @@ template<class...x_is> struct vector_space: private x_is...
   {
     auto v=p[Index<typename x_is::ei...>{}]();
     auto [r_ei, r_value]=distribute(Cs<std::variant<typename x_is::ei...>>{},
-                                      transfer_t<decltype(std::tuple_cat(typename x_is::value_type::row_type{}...)),Cs<>>{},std::move(r));
+                                      transfer_t<cell_type,Cs<>>{},std::move(r));
 
     auto& rvalue=r_value;
     std::visit([this,&rvalue,&p](auto ei){(*this)[ei].insert_at(p,std::move(rvalue));},v);
@@ -875,12 +432,7 @@ template<class...x_is> struct vector_space: private x_is...
 
 
 
-  template<class... iUps, class... iDowns>
-  auto operator()(up<iUps...> u, dn<iDowns...> d){
-    return vector_space<std::decay_t<decltype ((*this)[typename x_is::ei{}](u,d))>...>
-        {(*this)[typename x_is::ei{}](u,d)...};
 
-  }
 
 
   friend std::ostream& operator<<(std::ostream& os, const vector_space& me)

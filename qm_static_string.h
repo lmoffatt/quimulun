@@ -4,7 +4,7 @@
 #include <string>
 #include <iomanip>
 #include <cstring>
-
+#include <istream>
 
 
 template <std::size_t N> struct my_static_string {
@@ -32,6 +32,30 @@ public:
   }
 
   constexpr const char *c_str() const { return &c_[0]; }
+
+  friend
+      std::istream& operator>>(std::istream& is, my_static_string&& m)
+  {
+    for (auto i=0u; i<N-1; ++i)
+    {
+      auto c=is.get();
+      if (c!=m.c_[i])    {
+        is.setstate(std::ios::failbit);
+        return is;
+      }
+
+    }
+    return is;
+  }
+  friend
+      std::istream& operator>>(std::istream& is, my_static_string& m)
+  {
+    for (auto i=0u; i<N; ++i)
+    {
+       m.c_[i]=is.get();
+    }
+    return is;
+  }
 
   std::string str() const { return c_str(); }
 };

@@ -120,9 +120,23 @@ struct pack_concatenation
 {
   typedef decltype ((Ts{}|...)) type;
 };
-
 template<class...Ts>
 using pack_concatenation_t=typename pack_concatenation<Ts...>::type;
+
+
+template<class...Ts, class...Us, class... Tu>
+struct pack_concatenation<std::tuple<Ts...>,std::tuple<Us...>,Tu...>
+{
+  using type=pack_concatenation_t<std::tuple<Ts...,Us...>,Tu...>;
+};
+
+template<class...Ts>
+struct pack_concatenation<std::tuple<Ts...>>
+{
+  using type=std::tuple<Ts...>;
+};
+
+
 
 
 template<class One,class Two> struct pack_difference;
@@ -252,11 +266,17 @@ constexpr auto operator||(Cs<Ts...>,Cs<T>)
 
 }
 
-template<class...Ts>
-constexpr auto pack_unique(Cs<Ts...>) { return (...||Cs<Ts>{});}
-
+template<class > struct pack_unique;
 template<class Ts>
-using pack_unique_t=decltype (pack_unique(Ts{}));
+using pack_unique_t=typename pack_unique<Ts>::type;
+
+
+template<class...Ts> struct pack_unique<Cs<Ts...>> { using type=decltype ((...||Cs<Ts>{}));};
+
+template<class...Ts> struct pack_unique<std::tuple<Ts...>> { using type=transfer_t<pack_unique_t<Cs<Ts...>>,std::tuple<>>;};
+
+
+
 
 
 
@@ -273,6 +293,48 @@ std::tuple<std::tuple<Ts0...>, std::tuple<Ts2...>>  distribute(Cs<Ts0...>,Cs<Ts2
 {
   return distribute(Cs<Ts0...>{}, Cs<Ts2...>{},std::move(tu),std::index_sequence_for<Ts0...>{}, std::index_sequence_for<Ts2...>{});
 }
+
+
+template <class Fout,class Fin, class...Ts, class...Us, std::size_t...Is>
+auto apply_twin(Fout&& fout,Fin&& fin, const std::tuple<Ts...>& t1,const std::tuple<Us...>& t2, std::index_sequence<Is...> )
+{
+  return std::invoke(std::forward<Fout>(fout),std::invoke(std::forward<Fin>(fin),std::get<Is>(t1), std::get<Is>(t2))...);
+}
+
+template <class Fout,class Fin, class...Ts, class...Us>
+auto apply_twin(Fout&& fout,Fin&& fin, const std::tuple<Ts...>& t1,const std::tuple<Us...>& t2)
+{
+  return apply_twin(std::forward<Fout>(fout),std::forward<Fin>(fin),t1,t2,std::index_sequence_for<Ts...>());
+}
+
+#include <variant>
+
+template<class ...>struct pack_to_column;
+
+template<class ...Ts > using pack_to_column_t=typename pack_to_column<Ts...>::type;
+
+template <class T> struct pack_to_column<T>{using type=T;};
+template <class... T> struct pack_to_column<std::tuple<T...>>{using type=std::tuple<T...>;};
+
+
+template <class... Ts> struct pack_to_column{using type=std::variant<Ts...>;};
+
+template <class ...Tu, std::size_t I> struct pack_to_column<std::integral_constant<std::size_t,I>,Tu...>
+{
+  using type=typename transfer_t<pack_unique_t<Cs<std::tuple_element_t<I,Tu>...>>,pack_to_column<>>::type;
+};
+
+template <class ...Tu, std::size_t...Is> struct pack_to_column<std::index_sequence<Is...>,Tu...>
+{
+  using type=std::tuple<pack_to_column_t<std::integral_constant<std::size_t,Is>,Tu...>...>;
+};
+
+
+
+template <class...Ts,  class ...Tu> struct pack_to_column<std::tuple<Ts...>,Tu...>
+{
+  using type=pack_to_column_t<std::index_sequence_for<Ts...>,std::tuple<Ts...>,Tu...>;
+};
 
 
 

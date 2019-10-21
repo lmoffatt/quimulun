@@ -2,7 +2,7 @@
 #define QM_VALUE_H
 
 #include "qm_unit.h"
-
+#include <cassert>
 template<class ...> struct v;
 template<class ...> class logv;
 
@@ -40,6 +40,12 @@ public:
   template<class...Is>
   void insert_at(const Position<Is...>& , row_type&& r)
   {
+    value()=std::get<TYPE>(std::move(r));
+  }
+  template<class...Is, class ...us, typename=std::enable_if_t<is_in_pack<myunit,us...>(),int>>
+  void insert_at(const Position<Is...>& , std::tuple<TYPE,std::variant<us...>>&& r)
+  {
+    assert(std::get<myunit>(std::get<1>(r))==myunit{});
     value()=std::get<TYPE>(std::move(r));
   }
 
@@ -103,7 +109,7 @@ public:
 };
 
 template<class...us>
-class logv_units
+struct logv_units
 {
 private:
   std::tuple<std::pair<long,us>...> units;
@@ -123,9 +129,33 @@ public:
   long& get(){return std::get<std::pair<long,u>>(units).first;}
   friend std::ostream& operator<<(std::ostream& os, const logv_units& m)
   {
-    std::apply([&os,&m](auto&... p){
-      ((os<<" "<<p.first<<"*log("<<p.second<<")"),...);},m.units);
+    std::apply([&os](auto&... p){
+      ((os<<p.first<<"*log("<<p.second<<")"),...);},m.units);
     return os;
+  }
+
+  friend std::istream& operator>>(std::istream& is,  logv_units& m)
+  {
+    std::string s;
+    is>>s;
+    auto s_copy=s;
+    std::stringstream ss(s);
+    std::apply([&ss](auto&... p){
+      ((ss>>p.first>>
+        my_static_string("*log(")
+        >>
+        my_static_string(p.second.className)>>
+        my_static_string(")")
+        ),...);},m.units);
+    return is;
+  }
+
+  friend bool operator==(const logv_units& me, const logv_units& ti)
+  {
+    return     apply_twin([](auto... res){return (true&&...&&res);},
+                      [](auto p, auto t){ return (p.first==t.first)&&(p.second==t.second);},
+                      me.units,ti.units);
+
   }
 
 };
@@ -149,11 +179,9 @@ auto operator +(const logv_units<u1...>& x,const logv_units<u2...>& y )
 
 template<class T,class... Units> class logv<T,Units...>
 {
+private:
   T value_;
   logv_units<Units...> us_;
-
-
-
 
 
 public:
@@ -162,18 +190,61 @@ public:
 
   logv(T&& x,std::pair<long,Units>... us): value_{std::move(x)}, us_{std::move(us)...}{}
   logv(T&& x,logv_units<Units...>&& us): value_{std::move(x)}, us_{std::move(us)}{}
+  logv()=default;
   const T& value()const &{return value_;}
+   T& value() &{return value_;}
   T value()&& {return value_;}
   auto& size()const {return us_();}
   auto& units()const {return us_;}
   auto& units() {return us_;}
   auto& size() {return us_();}
+  static constexpr auto begin() {return Position<>{};}
+
+  friend constexpr auto begin(const logv& ){ return Position<>{};}
+
+
+  template<class I>
+  auto& operator()(const I& , value_k){ return value();}
+
+  template<class I>
+  auto& operator()(const I& , value_k)const{ return value();}
+
+  template<class I>
+  auto& operator()(const I& , unit_k)const { return units();}
+
+  template<class I>
+  auto& operator()(const I& , unit_k) { return units();}
+
+
+  template<class...Is>
+  void insert_at(const Position<Is...>& , row_type&& r)
+  {
+    value()=std::get<T>(std::move(r));
+    units()=std::get<logv_units<Units...>>(std::move(r));
+  }
+
+
+
   friend std::ostream& operator<<(std::ostream& os, const logv& m)
   {
     os<<m.value();
     os<<m.units();
     return os;
   }
+  friend std::istream& operator>>(std::istream& is, const logv& m)
+  {
+    is>>m.value();
+    is>>m.units();
+    return is;
+  }
+
+  friend bool operator==(const logv& me, const logv& ti)
+  {
+    return (me.value()==ti.value())&&(me.units()==ti.units());
+  }
+
+
+
   friend logv operator-(logv&& me)
   {
     me.value_=-me.value_;

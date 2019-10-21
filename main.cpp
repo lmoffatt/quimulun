@@ -149,7 +149,7 @@ int main()
     //std::cerr << "data \n"<<data <<std::endl;
 
     auto logL=logP(qui,s);
-    auto dlogL=logP(qui,data,dpar);
+    auto dlogL=vector_space(x_i(logLik{},logP(qui,data,dpar)));
 
 
     auto fim=FIM(qui,data,dpar);
@@ -158,24 +158,34 @@ int main()
     std::cerr<<"FIM "<<fim<<"\n";
     std::string fname="out.txt";
     std::ofstream f(fname.c_str());
-    to_DataFrame(f,dpar);
-    f.close();
     auto dpar_new=decltype (dpar){};
+    auto fim_new=decltype(fim){};
+    auto dlogL_new=decltype(dlogL){};
+   // to_DataFrame(f,s);
+    to_DataFrame(f,dlogL);
+    f.close();
 
-    auto snew=decltype (s){};
+    auto s_new=decltype (s){};
     std::ifstream fe;
     fe.open(fname.c_str());
     if (fe.is_open())
     {
-      from_DataFrame(fe,dpar_new);
-     // from_DataFrame(fe,snew);
+      from_DataFrame(fe,dlogL_new);
+//      from_DataFrame(fe,fim_new);
+ //     from_DataFrame(fe,s_new);
 
     }
-    std::cerr<<"\ndpar\n"<<dpar;
-    std::cerr<<"\ndpar_new\n"<<dpar_new;
+    std::cerr<<"\ndlogL\n"<<dlogL;
+    std::cerr<<"\n dlogL_new\n"<<dlogL_new;
 
 
-    assert(dpar==dpar_new);
+    assert(dlogL==dlogL_new);
+
+   // std::cerr<<"\ns\n"<<s;
+   // std::cerr<<"\n S_new\n"<<s_new;
+
+
+   // assert(s==s_new);
 
   }
   return 0;
