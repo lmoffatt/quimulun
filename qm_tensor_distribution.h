@@ -102,7 +102,8 @@ struct Exponential_Distribution
   {
     auto dvar= Df(var)/center(mean);
     auto dmean= Df(mean)/center(mean);
-    return dvar*dvar+dmean*dmean;
+    return (dvar*dvar)+
+           (dmean*dmean);
   }
 
 

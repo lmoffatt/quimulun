@@ -1,7 +1,7 @@
 #ifndef QM_VECTOR_FIELD_H
 #define QM_VECTOR_FIELD_H
 
-#include "qm_unit.h"
+#include "qm_value.h"
 #include <map>
 #include <vector>
 #include <algorithm>
@@ -158,7 +158,7 @@ template<class I0, class...I> struct vec<I0,I...>{
 
 
   template <class Vector, class Position>
-  static auto& get_I(I0,const Vector& x,const Position& p)
+  static auto& get_I(I0,const Vector& x,const Position& )
   {
     return x;
   }
@@ -224,12 +224,12 @@ using get_Field_Indexes_t=typename get_Field_Indexes<Ts...>::type;
 
 template<class...x_is> struct get_Field_Indexes
 {
-  typedef decltype((vec<>{}<<...<<get_Field_Indexes_t<x_is>{})) type;
+  typedef decltype((vec<>{}<<...<<typename get_Field_Indexes<x_is>::type{})) type;
 };
 
 template<class...x_is> struct get_All_Indexes
 {
-  typedef decltype((vec<>{}<<...<<get_All_Indexes_t<x_is>{})) type;
+  typedef decltype((vec<>{}<<...<<typename get_All_Indexes<x_is>::type{})) type;
 };
 
 template <class V>
@@ -252,7 +252,7 @@ auto operator<<(vec<I0...>, vec<I1...>)
 
 
 template<class T, class U>
-void copy_size(const U& source,T& destination)
+void copy_size(const U& ,T& )
 {
 }
 

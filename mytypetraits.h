@@ -7,68 +7,9 @@
 #include <iomanip>
 #include <cstring>
 #include <functional>
+#include <qm_static_string.h>
 
 //namespace qm {
-
-template <std::size_t N> struct my_static_string {
-private:
-  std::array<char, N> c_;
-public:
-  constexpr my_static_string(const char (&c)[N]) : c_{} {
-    for (std::size_t i = 0; i < N; ++i)
-      c_[i] = c[i];
-  }
-  constexpr my_static_string(std::array<char, N> c) : c_{c} {
-  }
-  constexpr char operator[](std::size_t i) const { return c_[i]; }
-
-  template <std::size_t N0>
-  constexpr my_static_string(my_static_string<N0> one,
-                             my_static_string<N - N0 + 1> two)
-      : c_{} {
-    for (std::size_t i = 0; i < N0 - 1; ++i)
-      c_[i] = one[i];
-    for (std::size_t i = N0 - 1; i < N - 1; ++i)
-      c_[i] = two[i + 1 - N0];
-
-    c_[N - 1] = '\0';
-  }
-
-  constexpr const char *c_str() const { return &c_[0]; }
-
-  std::string str() const { return c_str(); }
-};
-
-template <int N>
-my_static_string(const char (&lit)[N]) // <- match this
-    ->my_static_string<N>;
-
-template <std::size_t N1, std::size_t N2>
-constexpr auto operator+(const my_static_string<N1> &s1,
-                         const my_static_string<N2> &s2)
-    -> my_static_string<N1 + N2 - 1> {
-  return my_static_string<N1 + N2 - 1>(s1, s2);
-}
-
-template <int N>
-constexpr auto to_static_string()
-{
-  if constexpr (N<0)
-  {
-    return my_static_string("-")+to_static_string<-N>();
-  }
-  else if constexpr (N<10)
-  {
-    constexpr char c='0'+N;
-    return my_static_string({c,'\0'});
-  }
-  else
-  {
-    constexpr int N10=N/10;
-    constexpr int N0=N-N10*10;
-    return to_static_string<N10>()+ my_static_string({'0' + N0,'\0'});
-  }
-}
 
 
 template <class T>
@@ -106,269 +47,30 @@ std::istream& operator>>(std::istream& is, std::tuple<T...>& tu)
 }
 
 
-
-template<class...> struct Cs{};
-template<class...> class C{};
-
-template <typename T> struct C<T> { typedef T type; };
-
-template<typename T>
-auto& center(const T& x){ return x;}
-
-template<class ...Ts>
-std::istream& operator>>(std::istream& is,Cs<Ts...>)
+template<class T>
+std::ostream& operator<<(std::ostream& os, const std::vector<T>& me)
 {
-  ((is>>Ts{}),...); return is;
+  os<<"  [";
+  for (auto& x:me)
+    os<<x<<" ";
+  os<<"]   ";
+
+  return os;
 }
 
-template<class Id, class...Ids>
-constexpr bool is_in_pack()
+template<template<class...>class, class>
+struct is_this_template_class
 {
-  return (std::is_same_v<Id,Ids >||...||false);
-}
-
-template<class Id, template<class...>class Cs,class...Ids>
-constexpr bool is_in_pack(Id, Cs<Ids...>)
-{
-  return (std::is_same_v<Id,Ids >||...||false);
-}
-
-
-
-namespace impl {
-template <template <typename...> class Cs, typename... Ts, typename T, std::size_t ...Is>
-auto constexpr index_of_this_type(Cs<Ts...>, T, std::index_sequence<Is...>) {
-  return ((std::is_same_v<Ts,T> ? Is : 0 )+...);
-};
-}
-
-template <template <typename...> class Cs, template <typename> class C,typename... Ts, typename T>
-auto constexpr index_of_this_type(Cs<T,Ts...> c, C<T> t) {
-  return impl::index_of_this_type(c,t,std::index_sequence_for<Ts...>());
-};
-
-
-template <class T, T...I0, T...I1>
-std::integer_sequence<T,I0...,I1...> operator<<(std::integer_sequence<T,I0...>, std::integer_sequence<T,I1...>) {return {};}
-
-namespace impl {
-template <template <typename...> class Cs, typename... Ts, typename T, std::size_t ...Is>
-auto constexpr pack_multindex(T,Cs<Ts...>, std::index_sequence<Is...>) {
-  return (std::index_sequence<>{}|...|
-          [](auto index){ if constexpr (std::is_same_v<Ts,T>)
-      return index<<std::index_sequence<Is>{};
-                                else return index;});
-};
-
-template <template <typename...> class Cs, typename... Ts, typename T, std::size_t ...Is>
-auto constexpr pack_index(T,Cs<Ts...>, std::index_sequence<Is...>) {
-  return ((std::is_same_v<Ts,T> ? Is : 0 )+...);
-};
-
-}
-
-template <template <typename...> class Cs, typename... Ts, typename T, class=std::enable_if_t<is_in_pack<T,Ts...>(),int>>
-auto constexpr pack_index(T,Cs<Ts...> ) {
-  return impl::pack_index(T{},Cs<Ts...>{},std::index_sequence_for<Ts...>());
-};
-
-template <typename T,template <typename...> class Cs, typename... Ts,  class=std::enable_if_t<is_in_pack<T,Ts...>(),int>>
-auto constexpr pack_multindex(Cs<Ts...> ) {
-  return impl::pack_multindex(T{},Cs<Ts...>{},std::index_sequence_for<Ts...>());
+  static constexpr bool value=false;
 };
 
 
 
-template <template <typename...> class Cs, typename... Ts, typename... T>//, class=std::enable_if_t<(is_in_pack<T,Ts...>()&&...),int>>
-auto constexpr pack_index_cs(Cs<T...>,Cs<Ts...> ) {
-  return std::index_sequence<pack_index(T{},Cs<Ts...>{})...>{};
+template<template<class ...>class V, class...Ts>
+struct is_this_template_class<V,V<Ts...>>
+{
+  static constexpr bool value=true;
 };
-
-template<class...Ts0, class ...Ts2, std::size_t... I0, std::size_t... I1>
-std::tuple<std::tuple<Ts0...>, std::tuple<Ts2...>>  distribute(Cs<Ts0...>,Cs<Ts2...>,std::tuple<Ts0...,Ts2...>&& tu,
-                                                              std::index_sequence<I0...>, std::index_sequence<I1...>)
-{
-  return std::tuple(std::tuple<Ts0...>{std::get<I0>(std::move(tu))...},
-                    std::tuple<Ts2...>{std::get<sizeof... (Ts0)+I1>(std::move(tu))...});
-}
-template<class...Ts0, class ...Ts2>
-std::tuple<std::tuple<Ts0...>, std::tuple<Ts2...>>  distribute(Cs<Ts0...>,Cs<Ts2...>,std::tuple<Ts0...,Ts2...>&& tu)
-{
-  return distribute(Cs<Ts0...>{}, Cs<Ts2...>{},std::move(tu),std::index_sequence_for<Ts0...>{}, std::index_sequence_for<Ts2...>{});
-}
-
-
-
-
-template<class, class> struct transfer{};
-
-
-template<template<class...>class Co,template<class...>class D, class...T, class...T0>
-struct transfer<Co<T...>,D<T0...>>
-{
-  typedef D<T0...,T...> type;
-};
-
-template<template<class...>class Co,template<template<class...>class,class...>class D, template<class...>class Tr,class...T>
-struct transfer<Co<T...>,D<Tr>>
-{
-  typedef D<Tr,T...> type;
-};
-
-
-template<class S, class D>
-using transfer_t=typename transfer<S,D>::type;
-
-
-template <template <class> class , class> struct pack_apply;
-
-template <template <class> class F_t, template<class...> class Cs, class... Ts>
-struct pack_apply<F_t,Cs<Ts...>> { using type=Cs<F_t<Ts>...>;};
-
-
-template <template <class> class F_t, class D> using
-    pack_apply_t=typename pack_apply<F_t,D>::type;
-
-
-
-template<class... Fs, class...Us>
-static constexpr auto operator | (Cs<Fs...>,Cs<Us...>)
-{
-  return Cs<Fs...,Us...>{};
-}
-
-template<class...Ts>
-struct pack_concatenation
-{
-  typedef decltype ((Ts{}|...)) type;
-};
-
-template<class...Ts>
-using pack_concatenation_t=typename pack_concatenation<Ts...>::type;
-
-
-template<class One,class Two> struct pack_difference;
-
-template<class T,class... Ts>
-struct pack_difference<Cs<T,Ts...>,Cs<T,Ts...>>
-{
-    typedef Cs<> type;
-};
-
-template<class... Ts>
-struct pack_difference<Cs<>,Cs<Ts...>>
-{
-  typedef Cs<> type;
-};
-
-
-
-template<class... Ts, class...Us>
-struct pack_difference<Cs<Ts...>,Cs<Us...>>
-{
-  typedef pack_concatenation_t<
-      std::conditional_t<
-          (!is_in_pack<Ts,Us...>()),Cs<Ts>,Cs<>
-          >...>
-      type;
-};
-
-template<class One,class Two>
-using pack_difference_t =typename pack_difference<One,Two>::type;
-
-template<class One,class Two> struct pack_union;
-
-
-template<class... Ts, class...Us>
-struct pack_union<Cs<Ts...>,Cs<Us...>>
-{
-  typedef pack_concatenation_t<
-      Cs<Ts...>,
-      pack_difference_t<Cs<Us...>,Cs<Ts...>
-          >>
-      type;
-};
-
-template<class One,class Two>
-using pack_union_t =typename pack_union<One,Two>::type;
-
-
-
-
-
-template<class... Ts, class T>
-auto operator>>(Cs<Ts...>,Cs<T>){return Cs<Ts...>{};}
-
-template<class... Ts, class T1, class T2, class... T2s>
-auto operator>>(Cs<Ts...>,Cs<T1,T2,T2s...>){return Cs<Ts...,T1,T2,T2s...>{};}
-
-template <class> struct pack_drop_back;
-template <template<class...>class Cs,class...Ts>
-struct pack_drop_back<Cs<Ts...>>
-{
-  typedef decltype ((...>> Cs<Ts>{})) type;
-};
-
-template <class CsTs>
-using pack_drop_back_t=typename pack_drop_back<CsTs>::type;
-
-constexpr bool is_contained_in(Cs<>, Cs<>)
-{
-  return  true;
-}
-
-
-template<class...Us>
-constexpr bool is_contained_in(Cs<>, Cs<Us...>)
-{
-  return  true;
-}
-
-template<class...Us>
-constexpr bool is_contained_in(Cs<Us...>, Cs<>)
-{
-  return  false;
-}
-
-template<class T, class...Ts,class U, class...Us>
-constexpr bool is_contained_in(Cs<T,Ts...>, Cs<U,Us...>)
-{
-  if constexpr (!std::is_same_v<T, U>) return false;
-  else
-    return is_contained_in(Cs<Ts...>{},Cs<Us...>{});
-}
-
-
-namespace impl {
-
-}
-template<class...> struct pack_until_this;
-
-
-struct pack_end{};
-template<class...Ts> struct Cs_end{};
-
-template <class...Ts>
-auto operator| (Cs<Ts...>, Cs<pack_end>){return Cs_end<Ts...>{};}
-template <class...Ts, class...Us>
-auto operator| (Cs_end<Ts...>, Cs<Us...>){return Cs_end<Ts...>{};}
-
-
-template<class I, template <class...>class vec,class...Xs>
-struct pack_until_this<I,vec<I,Xs...>>
-{
-  typedef vec<> type;
-};
-
-template<class I, template <class...>class vec,class...Xs>
-struct pack_until_this<I,vec<Xs...>>
-{
-  typedef transfer_t<decltype ((std::conditional_t<std::is_same_v<I,Xs>,Cs<pack_end>,Cs<Xs>>{}|...)),vec<>> type;
-};
-
-
-template <class A, class B>
-using pack_until_this_t=typename pack_until_this<A,B>::type;
 
 
 
@@ -383,22 +85,6 @@ auto operator |(T&& t , F&& f)->decltype (std::invoke(f,t))
 {
   return std::invoke(std::forward<F>(f),std::forward<T>(t));
 }
-
-
-
-template <class... Ts,class T>
-constexpr auto operator||(Cs<Ts...>,Cs<T>)
-{
-  if constexpr (is_in_pack<T,Ts...>()) return Cs<Ts...>{};
-  else return Cs<Ts...,T>{};
-
-}
-
-template<class...Ts>
-constexpr auto pack_unique(Cs<Ts...>) { return (...||Cs<Ts>{});}
-
-template<class Ts>
-using pack_unique_t=decltype (pack_unique(Ts{}));
 
 
 

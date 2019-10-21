@@ -1,6 +1,8 @@
 #include <iostream>
 #include <random>
 #include <fstream>
+#include "mytypetraits.h"
+
 #include "qm_unit.h"
 //#include "qm_distribution.h"
 //#include "qm_models.h"

@@ -2,7 +2,7 @@
 #define QM_VECTOR_SPACE_H
 
 //#include "qm_data.h"
-
+#include "mytypetraits.h"
 #include "qm_vector_field.h"
 
 
@@ -89,7 +89,7 @@ constexpr static auto myClassNameDown()
     return te<up<Ups...,Ups2...>,dn<Downs...,Downs2...>>{};
   }
 
-  friend constexpr bool operator==(const te& me, const te& ti){return true;}
+  friend constexpr bool operator==(const te& , const te& ){return true;}
 
 };
 
@@ -292,9 +292,9 @@ private:
   Value_type value_;
 public:
 
-  x_i(value_type&& x):value_{std::move(x)}{}
-  x_i(e_i,value_type&& x):value_{std::move(x)}{}
-  x_i(e_i,const value_type& x):value_{x}{}
+  explicit x_i(value_type&& x):value_{std::move(x)}{}
+  explicit x_i(e_i,value_type&& x):value_{std::move(x)}{}
+  explicit x_i(e_i,const value_type& x):value_{x}{}
   x_i()=default;
   x_i const& operator[](e_i)const & {return *this;}
   x_i& operator[](e_i) & {return *this;}
@@ -354,7 +354,7 @@ public:
 
 
   template<class... Ts>
-  friend  auto operator +( Position<Ts...>& p,const x_i& me)->decltype (p+me())
+  friend  auto operator +( Position<Ts...>& p,const x_i& me)//->decltype (p+me())
   {
     return p+me();
   }
@@ -377,13 +377,13 @@ public:
   template<class unit,class T>
   friend auto operator*(const x_i& me,const v<T,unit>& a)->x_i<e_i,decltype (Value_type{}*v<T,unit>{})>
   {
-    return {e_i{},me()*a};
+    return x_i<e_i,std::decay_t<decltype (me()*a)>>{e_i{},me()*a};
   }
 
   template<class unit,class T>
   friend auto operator*(const v<T,unit>& a,const x_i& me)->x_i<e_i,decltype (v<T,unit>{}*Value_type{})>
   {
-    return {e_i{},a*me()};
+    return x_i<e_i,std::decay_t<decltype (me()*a)>>{e_i{},a*me()};
   }
 
   friend x_i operator*(const x_i& me,double a)
@@ -393,15 +393,23 @@ public:
 
   friend x_i operator*(double a,const x_i& me)
   {
-    return {e_i{},a*me()};
+    return x_i<e_i,std::decay_t<decltype (a*me())>>{e_i{},a*me()};
   }
 
 
+  template< class e_i1,  class value_1>
+  friend auto operator*(const x_i<e_i,Value_type> &one,const x_i<e_i1,value_1> &two )
+  {
+    if constexpr (std::is_same_v<Nothing,decltype (e_i{}*e_i1{}) >)
+      return Nothing{};
+    else
+      return x_i<decltype (e_i{}*e_i1{}),std::decay_t<decltype(one()*two())>>(one()*two());
+  }
 
   template<class Value_type_2>
   friend auto operator/(const x_i& me,const Value_type_2& a)->x_i<e_i,decltype (Value_type{}/Value_type_2{})>
   {
-    return {e_i{},me()/a};
+    return x_i<e_i,std::decay_t<decltype (me()/a)>>{e_i{},me()/a};
   }
 
 
@@ -438,7 +446,7 @@ template<class Id, class Value_type,class... Datas>
 auto FIM(const x_i<Id,Value_type>& , const Datas&... ){return logP_zero{};}
 
 
-
+/*
 template< class e_i0,class e_i1, class value_0, class value_1>
 auto operator*(const x_i<e_i0,value_0> &one,const x_i<e_i1,value_1> &two )
 {
@@ -447,7 +455,7 @@ auto operator*(const x_i<e_i0,value_0> &one,const x_i<e_i1,value_1> &two )
   else
     return x_i(e_i0{}*e_i1{},one()*two());
 }
-
+*/
 template<class e_i,class Value_type,class... Xs> struct get_Field_Indexes <x_i<e_i,vector_field< vec<Xs...>,Value_type>>>
 {
   typedef vec<Xs...> type;
@@ -527,10 +535,7 @@ auto operator&&(std::pair<Position<Is...>,bool>&& p, const std::pair<const x1&, 
 struct index_k{  constexpr static auto  className=my_static_string("index");};
 
 
-
-
-
-template<class...x_is> struct vector_space: public x_is...
+template<class...x_is> struct vector_space: private x_is...
 {
   using x_is::operator[]...;
   typedef Cs<typename x_is::ei...> my_eis;
@@ -566,14 +571,14 @@ template<class...x_is> struct vector_space: public x_is...
   }
 
   template< class...Is, class =std::enable_if_t<is_in_pack<Index<typename x_is::ei...>,Is...>(),float>>
-  auto& operator()(const Position<Is...>& i, index_k j)const {
+  auto& operator()(const Position<Is...>& i, index_k )const {
     return i[Index<typename x_is::ei...>{}]();
   }
 
 
 
   template<class J, class j_in, class Position,class =std::enable_if_t<is_in_pack<J,typename x_is::ei...>(),int>>
-  auto operator()(const Position& i,recursive<J,j_in> r)const ->decltype ((*this)[J{}](i)(i,j_in{}))
+  auto operator()(const Position& i,recursive<J,j_in> )const ->decltype ((*this)[J{}](i)(i,j_in{}))
   {return (*this)[J{}](i)(i,j_in{});}
 
 
@@ -661,7 +666,9 @@ template<class...x_is> struct vector_space: public x_is...
     auto v=p[Index<typename x_is::ei...>{}]();
     auto [r_ei, r_value]=distribute(Cs<std::variant<typename x_is::ei...>>{},
                                       transfer_t<decltype(std::tuple_cat(typename x_is::value_type::row_type{}...)),Cs<>>{},std::move(r));
-    std::visit([this,&r_value,&p](auto ei){(*this)[ei].insert_at(p,std::move(r_value));},v);
+
+    auto& rvalue=r_value;
+    std::visit([this,&rvalue,&p](auto ei){(*this)[ei].insert_at(p,std::move(rvalue));},v);
 
 
   }
@@ -681,7 +688,7 @@ template<class...x_is> struct vector_space: public x_is...
                      return p;
                    }
                    else
-                       if (is_same(Is{},p.first,r)) return p;
+                       if (this->is_same(Is{},p.first,r)) return p;
                    else
                    {
                      p.second=true;
@@ -736,8 +743,7 @@ template<class...x_is> struct vector_space: public x_is...
   template<class ...Is>
   friend auto next(const vector_space& me, Position<Is...>& p)
   {
-    return (
-               [&me,&p](auto b){
+    return ([&me,&p](auto b){
                  if (b.first)
                    return b;
                  else if (me.next(Is{},p))
@@ -765,14 +771,17 @@ template<class...x_is> struct vector_space: public x_is...
     return vector_space<decltype (x_is{}/a)...>{(*this)[typename x_is::ei{}]/a...};
   }
 
-  template<class x_j>
+  template<class x_j,
+            typename=std::enable_if_t<!is_this_template_class<vector_space,x_j>::value,int>>
   auto operator * (const x_j&  two)const
   {
     return (vector_space<>{}|...|((*this)[typename x_is::ei{}]*two));
   }
 
 
-  vector_space(x_is&&...xs):x_is{std::move(xs)}...{}
+
+
+  explicit vector_space(x_is&&...xs):x_is{std::move(xs)}...{}
 
 
   inline friend
@@ -788,17 +797,18 @@ template<class...x_is> struct vector_space: public x_is...
     return *this;
   }
 
-  template<class x_i>
-  auto operator + (x_i&& x)&&
+  template<class ax_i,
+            typename=std::enable_if_t<is_this_template_class<x_i,ax_i>::value,int>>
+  auto operator + (ax_i&& x)&&
   {
-    if constexpr (is_in_pack<x_i,x_is...>())
+    if constexpr (is_in_pack<ax_i,x_is...>())
     {
-      (*this)[typename x_i::ei{}]=std::forward<x_i>(x);
+      (*this)[typename ax_i::ei{}]=std::forward<ax_i>(x);
       return *this;
     }
     else
     {
-      return    vector_space<x_is...,std::decay_t<x_i>>{std::move(*this)[typename x_is::ei{}]...,std::forward<x_i>(x)};
+      return    vector_space<x_is...,std::decay_t<ax_i>>{std::move(*this)[typename x_is::ei{}]...,std::forward<ax_i>(x)};
     }
   }
 

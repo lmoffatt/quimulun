@@ -210,7 +210,7 @@ public:
   {return f()(p,ind{});}
 
   template<class Position, class ind, typename=std::enable_if_t<is_in_pack(ind{},typename derivative_type::cols{}),bool>>
-  auto operator()(const Position& p,recursive<derivative_k,ind> r)const ->decltype (Df()(p,ind{}))
+  auto operator()(const Position& p,recursive<derivative_k,ind> )const ->decltype (Df()(p,ind{}))
   {return Df()(p,ind{});}
 
 
