@@ -32,6 +32,12 @@ public:
   explicit x_i(value_type&& x):value_{std::move(x)}{}
   explicit x_i(e_i,value_type&& x):value_{std::move(x)}{}
   explicit x_i(e_i,const value_type& x):value_{x}{}
+
+  template<class...Index,typename=std::enable_if_t<
+                                std::is_same_v<Value_type,
+                                               vector_field<vec<Index...>,v<typename e_i::T, typename e_i::unit> > >,int>>
+  x_i(e_i,vec<Index...>):value_{}{}
+
   x_i()=default;
   x_i const& operator[](e_i)const & {return *this;}
   x_i& operator[](e_i) & {return *this;}
@@ -172,6 +178,14 @@ public:
   }
 
 };
+
+
+template <class varName, class...Index>
+x_i(varName,vec<Index...>)->x_i<varName,vector_field<vec<Index...>,v_t<varName>>>;
+
+template <class varName, class... indexName>
+using field_t=x_i<varName,vector_field<vec<indexName...>,v_t<varName>>>;
+
 
 
 template<class Id, class Value_type,class Datas, class Rand>

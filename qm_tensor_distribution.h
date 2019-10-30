@@ -6,7 +6,7 @@
 
 #include "qm_tensor_derivative.h"
 #include "qm_tensor_coordinate.h"
-//#include "qm_derivative.h"
+#include "qm_probability_base.h"
 #include <random>
 
 inline constexpr double PI = 3.14159265358979323846;
@@ -133,7 +133,7 @@ public:
       out(p)=g_.sample(par[Xs{}](p)...,mt);
 
     } while (out.next(p));
-    return x_i(Id{},std::move(out));
+    return x_i(pr<up<Id>,dn<Xs...>>{},std::move(out));
   }
   template<class... Param>
   auto logP(const Param&... par)const
@@ -143,7 +143,7 @@ public:
     auto logProb=g_.logP(x()(p),get_from<Xs>(par...)(p)...);
     while (x().next(p))
       logProb=std::move(logProb)+g_.logP(x()(p),get_from<Xs>(par...)(p)...);
-    return logProb;
+    return x_i(logpr<up<Id>,dn<Xs...>>{},std::move(logProb));
   }
   template<class... Param>
   auto FIM(const Param&... par)const
@@ -158,6 +158,17 @@ public:
 
 
   D(Id ,Distribution&& g, Xs&&...):g_{std::move(g)}{}
+};
+
+
+template<class... Ids,class Distribution, class... Xs>
+class  D<Cs<Ids...>,Distribution,Xs...>: public D<Ids,Distribution,Xs...>...
+{
+
+public:
+  using D<Ids,Distribution,Xs...>::operator[]...;
+  D(Cs<Ids...> ,Distribution&& g, Xs&&...):
+                                              D<Ids,Distribution,Xs...>{Ids{},Distribution{g},Xs{}...}...{}
 };
 
 

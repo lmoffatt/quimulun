@@ -108,6 +108,9 @@ public:
 
 };
 
+template<class varName>
+using v_t=v<typename varName::T, typename varName::unit>;
+
 template<class...us>
 struct logv_units
 {

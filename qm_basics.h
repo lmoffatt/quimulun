@@ -7,6 +7,8 @@
 
 struct Nothing{};
 
+struct Something{  constexpr bool operator==(Something)const {return true;}
+};
 
 inline Nothing operator+(Nothing, Nothing ){return Nothing{};}
 

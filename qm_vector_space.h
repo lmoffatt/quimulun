@@ -723,6 +723,10 @@ auto consolidate(vec<myIndex...>,const Datas...d)
 
 
 
+template<class ...xi>
+using Matrix_t=decltype (vector_space<xi...>{}*vector_space<xi...>{});
+
+
 
 
 
