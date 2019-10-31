@@ -138,6 +138,16 @@ constexpr  bool test(Cs<Ids...>,Cs<Ids2...>)
 
 
 
+template <class ...Ups, class ...Downs, class value_one,
+          class ...Ups2, class ...Downs2, class value_two>
+ auto operator + (const x_i<logpr<up<Ups...>,dn<Downs...>>,value_one>& one,
+                         const x_i<logpr<up<Ups2...>,dn<Downs2...>>,value_two>& two)
+
+{
+  return x_i(logpr<up<Ups...>,dn<Downs...>>{}+logpr<up<Ups2...>,dn<Downs2...>>{},one()+two());
+    };
+
+
 
 
 template < class Fid, class... Fs,class Id,class...Ds2, class Random>

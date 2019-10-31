@@ -24,6 +24,26 @@ template <class, class> struct te;
 
 
 struct Scalar{};
+struct Ide{
+
+  using T=Ide;
+  using unit=p<>;
+  constexpr static auto  className=my_static_string("_");
+
+  friend std::ostream& operator<<(std::ostream& os, Ide){return os<<"_";}
+  template<class T>
+  friend auto operator*(Ide,T&& other){ return std::forward<T>(other);}
+  template<class T>
+  friend auto operator*(T&& other,Ide){ return std::forward<T>(other);}
+
+  template<class T>
+  friend auto operator/(T&& other,Ide){ return std::forward<T>(other);}
+
+
+
+};
+
+
 
 template<class ...Is> struct dn{
 
@@ -55,6 +75,9 @@ struct te<up<Ups...>,dn<Downs...>>{
   //  template<class... as, class... bs>
   //  Nothing operator()(const ve<as...>&, const co<bs...>& ){return Nothing{};}
   //  Scalar operator()(ve<Ups...>,co<Downs...>){return Scalar{};};
+
+  using T=decltype (sizeof... (Ups)>1 ? (typename Ups::T{}*...*1)/(typename Downs::T{}*...*1):(typename Downs::T{}*...*1));
+  using unit=decltype ((typename Ups::unit{}*...*p<>{})/(typename Downs::unit{}*...*Ide{}));
 
 
   constexpr static auto myClassNameDown()

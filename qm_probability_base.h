@@ -12,9 +12,12 @@ struct pr<up<Ups...>,dn<Downs...>>{
   constexpr static auto  className=my_static_string("p(")+((Ups::className+my_static_string("_"))+...)+my_static_string("|")
                                     +((Downs::className+my_static_string("_"))+...) + my_static_string(")");
 
+
   template<class... iUps, class... iDowns>
   auto operator()(up<iUps...>, dn<iDowns...>){return ein<pr,up<iUps...>,dn<iDowns...>>{};}
 
+  using T=double;
+  using unit=p<>;
 
   /// multiplication of independent probabilities...
   template <class ...Ups2, class ...Downs2>
@@ -63,12 +66,14 @@ struct logpr<up<Ups...>,dn<Downs...>>{
   template<class... iUps, class... iDowns>
   auto operator()(up<iUps...>, dn<iDowns...>){return ein<logpr,up<iUps...>,dn<iDowns...>>{};}
 
+  using T=decltype ((typename Ups::T{}*...)/(typename Downs::T{}*...*Ide{}));
+  using unit=decltype ((typename Ups::unit{}*...*p<>{})/(typename Downs::unit{}*...*Ide{}));
 
   /// multiplication of independent probabilities...
   template <class ...Ups2, class ...Downs2>
   friend
       auto operator+(logpr,logpr<up<Ups2...>,dn<Downs2...>>){
-    return pr<up<Ups...,Ups2...>,dn<Downs...,Downs2...>>{};
+    return logpr<up<Ups...,Ups2...>,dn<Downs...,Downs2...>>{};
   }
 
   friend constexpr bool operator==(const logpr& , const logpr& ){return true;}
@@ -94,6 +99,8 @@ constexpr auto operator + (ein<logpr<up<Ups0...>,dn<Downs0...>>,up<iUps0...>,dn<
   return typename logpr_transfer<decltype (ein<te<up<Ups0...>,dn<Downs0...>>,up<iUps0...>,dn<iDowns0...>>{}*
                               ein<te<up<Ups1...>,dn<Downs1...>>,up<iUps1...>,dn<iDowns1...>>{})>::type{};
 }
+
+
 
 
 

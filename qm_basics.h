@@ -5,40 +5,41 @@
 #include "qm_static_string.h"
 #include <variant>
 
-struct Nothing{};
+struct Nothing{
+  friend Nothing operator+(Nothing, Nothing ){return Nothing{};}
+  friend Nothing operator||(Nothing, Nothing ){return Nothing{};}
+  template<class Something>
+  friend auto operator||(Nothing, Something&& s){return std::forward<Something>(s);}
+  template<class Something>
+  friend auto operator||( Something&& s, Nothing){return std::forward<Something>(s);}
+
+};
 
 struct Something{  constexpr bool operator==(Something)const {return true;}
 };
 
-inline Nothing operator+(Nothing, Nothing ){return Nothing{};}
 
-inline Nothing operator||(Nothing, Nothing ){return Nothing{};}
 
-template<class Something>
-auto operator||(Nothing, Something&& s){return std::forward<Something>(s);}
-
-template<class Something>
-auto operator||( Something&& s, Nothing){return std::forward<Something>(s);}
 
 
 
 struct logP_zero{
   constexpr static auto  className=my_static_string("logP_is_zero");
+  template<class T>
+  friend auto operator+(T&& x,logP_zero){return std::forward<T>(x);}
+  template<class T>
+  friend auto operator+( logP_zero,T&& x){return std::forward<T>(x);}
+  friend inline auto operator+(logP_zero ,logP_zero ){return logP_zero {};}
+
+  template<class T>
+  friend auto operator*( logP_zero,const T& ){return logP_zero{};}
+  template<class T>
+  friend auto operator/( logP_zero,const T& ){return logP_zero{};}
+  template<class T>
+  friend auto operator*( const T& ,logP_zero){return logP_zero{};}
+  friend  auto operator*(logP_zero,logP_zero){return logP_zero{};}
 };
 
-template<class T>
-auto operator+(T&& x,logP_zero){return std::forward<T>(x);}
-template<class T>
-auto operator+( logP_zero,T&& x){return std::forward<T>(x);}
-inline auto operator+(logP_zero ,logP_zero ){return logP_zero {};}
-
-template<class T>
-auto operator*( logP_zero,const T& ){return logP_zero{};}
-template<class T>
-auto operator/( logP_zero,const T& ){return logP_zero{};}
-template<class T>
-auto operator*( const T& ,logP_zero){return logP_zero{};}
-inline auto operator*(logP_zero,logP_zero){return logP_zero{};}
 
 
 

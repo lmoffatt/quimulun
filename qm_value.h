@@ -191,6 +191,8 @@ public:
   using cols=Cs<value_k,unit_k>;
   using row_type=std::tuple<T,logv_units<Units...>>;
 
+  typedef logv element_type;
+
   logv(T&& x,std::pair<long,Units>... us): value_{std::move(x)}, us_{std::move(us)...}{}
   logv(T&& x,logv_units<Units...>&& us): value_{std::move(x)}, us_{std::move(us)}{}
   logv()=default;

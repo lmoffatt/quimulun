@@ -13,20 +13,11 @@
 template<class...> struct der;
 template<class...> struct der_tmp;
 
-struct Ide{
-  constexpr static auto  className=my_static_string("_");
-
-  friend std::ostream& operator<<(std::ostream& os, Ide){return os<<"_";}
-
-};
-
 
 
 
 template<class F, class X> struct der<F,X>
 {
-  //typedef typename F::T T;
-  //typedef decltype (typename F::unit{}/typename X::unit{}) unit;
   constexpr static auto  className=my_static_string("d_")+F::className+my_static_string("_d_")+X::className;
   typedef te<up<F>,dn<X>> type;
 };
@@ -321,6 +312,20 @@ operator +( Derivative<v<T,unit>,vector_space<Ds...>>&& one,  Derivative<v<T,uni
   return Derivative(std::move(one.f())+std::move(two.f()),std::move(one.Df())+std::move(two.Df()));
 }
 
+template<class T, class... unit1,class... unit2,class... Ds, class ...Ds2>
+auto
+operator +( Derivative<logv<T,unit1...>,vector_space<Ds...>>&& one,  Derivative<logv<T,unit2...>,vector_space<Ds2...>>&& two)
+{
+  return Derivative(std::move(one.f())+std::move(two.f()),std::move(one.Df())+std::move(two.Df()));
+}
+
+template<class T, class... unit1,class... unit2,class... Ds, class ...Ds2>
+auto
+operator +(const Derivative<logv<T,unit1...>,vector_space<Ds...>>& one, const Derivative<logv<T,unit2...>,vector_space<Ds2...>>& two)
+{
+  return Derivative(one.f()+two.f(),one.Df()+two.Df());
+}
+
 
 template<class T, class unit,class... Ds>
 Derivative<v<T,unit>,vector_space<Ds...>>
@@ -351,12 +356,6 @@ operator +( Derivative<logv<T,units...>,vector_space<Ds...>>&& one,  Derivative<
   return Derivative<logv<T,units...>,vector_space<Ds...>>(std::move(one.f())+std::move(two.f()),std::move(one.Df())+std::move(two.Df()));
 }
 
-template<class T, class... unit,class... unit2,class... Ds, class ...Ds2>
-auto
-operator +( Derivative<logv<T,unit...>,vector_space<Ds...>>&& one,  Derivative<logv<T,unit2...>,vector_space<Ds2...>>&& two)
-{
-  return Derivative(std::move(one.f())+std::move(two.f()),std::move(one.Df())+std::move(two.Df()));
-}
 
 
 template<class T, class... units,class... Ds>

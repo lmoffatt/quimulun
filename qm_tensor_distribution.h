@@ -133,7 +133,7 @@ public:
       out(p)=g_.sample(par[Xs{}](p)...,mt);
 
     } while (out.next(p));
-    return x_i(pr<up<Id>,dn<Xs...>>{},std::move(out));
+    return x_i(Id{},std::move(out));
   }
   template<class... Param>
   auto logP(const Param&... par)const

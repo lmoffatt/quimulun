@@ -149,7 +149,7 @@ int main()
     //std::cerr << "data \n"<<data <<std::endl;
 
     auto logL=logP(qui,s);
-    auto dlogL=vector_space(x_i(logLik{},logP(qui,data,dpar)));
+    auto dlogL=vector_space(logP(qui,data,dpar));
 
 
     auto fim=FIM(qui,data,dpar);
