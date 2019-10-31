@@ -83,14 +83,26 @@ template<class...x_is> struct vector_space: private x_is...
   using myCols=pack_concatenation_t<typename x_is::cols...>;
   using myrow_type=decltype (std::tuple_cat(typename x_is::row_type{}...));
 
+  using myCols_w_unit=pack_concatenation_t<typename x_is::cols_w_unit...>;
+  using myrow_type_w_unit=decltype (std::tuple_cat(typename x_is::row_type_w_unit{}...));
+
+
   using cols=pack_unique_t<pack_concatenation_t<Cs<index_k>,pack_concatenation_t<typename x_is::value_type::cols...>>>;
+
+  using cols_w_unit=pack_unique_t<pack_concatenation_t<Cs<index_k>,pack_concatenation_t<typename x_is::value_type::cols_w_unit...>>>;
+
 
  // using print_cols=typename cols::print;
 
   using cell_type=pack_to_column_t<typename x_is::value_type::row_type...>;
+  using cell_type_w_unit=pack_to_column_t<typename x_is::value_type::row_type_w_unit...>;
+
 
   using row_type=pack_concatenation_t<
 std::tuple<std::variant<typename x_is::ei...>>,cell_type>;
+
+  using row_type_w_unit=pack_concatenation_t<
+      std::tuple<std::variant<typename x_is::ei...>>,cell_type_w_unit>;
 
   //using print_rowtype=typename row_type::print;
 
@@ -100,6 +112,12 @@ std::tuple<std::variant<typename x_is::ei...>>,cell_type>;
     using xi=std::decay_t<decltype(std::declval<vector_space>()[Is{}])>;
     using coli=typename xi::cols;
     return pack_index_cs(coli{},myCols{});
+  }
+  template<class Is>
+  static constexpr auto index_to_myCol_number_w_unit(){
+    using xi=std::decay_t<decltype(std::declval<vector_space>()[Is{}])>;
+    using coli_w_unit=typename xi::cols_w_unit;
+    return pack_index_cs(coli_w_unit{},myCols_w_unit{});
   }
 
 
@@ -159,9 +177,17 @@ std::tuple<std::variant<typename x_is::ei...>>,cell_type>;
 
   friend constexpr myrow_type row_vector(const vector_space&) {return  myrow_type{};}
 
+  friend constexpr myrow_type_w_unit row_vector_w_unit(const vector_space&) {return  myrow_type_w_unit{};}
 
   template <class... I, class... Is, std::size_t...In>
   bool is_same(const Position<Is...>& p,const myrow_type& r, Cs<I...>,std::index_sequence<In...>)const
+  {
+    return ((std::get<In>(r)==(*this)(p,I{}))&&...);
+
+  }
+
+  template <class... I, class... Is, std::size_t...In>
+  bool is_same(const Position<Is...>& p,const myrow_type_w_unit& r, Cs<I...>,std::index_sequence<In...>)const
   {
     return ((std::get<In>(r)==(*this)(p,I{}))&&...);
 
@@ -184,6 +210,15 @@ std::tuple<std::variant<typename x_is::ei...>>,cell_type>;
     return is_same(p,r,colsi{},index_cols);
   }
 
+  template <class I, class... Is>
+  bool is_same(I,const Position<Is...>& p,const myrow_type_w_unit& r)const
+  {
+    using xi=std::decay_t<decltype(std::declval<vector_space>()[I{}])>;
+    using colsi_w_unit=typename xi::cols_w_unit;
+    auto index_cols_w_unit=pack_index_cs(colsi_w_unit{},myCols_w_unit{});
+    return is_same(p,r,colsi_w_unit{},index_cols_w_unit);
+  }
+
   template <class... Ind, class... Is>
   bool is_same(Index<Ind...>,const Position<Is...>& p,const myrow_type& r)const
   {
@@ -199,6 +234,12 @@ std::tuple<std::variant<typename x_is::ei...>>,cell_type>;
     ((*this)[I{}].insert_at(p,std::make_tuple(std::get<In>(std::move(r))...)));
 
   }
+  template <class I, class... Is, std::size_t...In>
+  void insert_at(const Position<Is...>& p, myrow_type_w_unit&& r,std::index_sequence<In...>)
+  {
+    ((*this)[I{}].insert_at(p,std::make_tuple(std::get<In>(std::move(r))...)));
+
+  }
 
 
   template <class xi, class... Is>
@@ -209,6 +250,14 @@ std::tuple<std::variant<typename x_is::ei...>>,cell_type>;
     insert_at<typename xi::ei>(p,std::move(r),index_cols);
   }
 
+  template <class xi, class... Is>
+  void insert_at(const Position<Is...>& p, myrow_type_w_unit&& r)
+  {
+    using colsi=typename xi::cols_w_unit;
+    auto index_cols=pack_index_cs(colsi{},myCols_w_unit{});
+    insert_at<typename xi::ei>(p,std::move(r),index_cols);
+  }
+
   template <class... Is>
   void insert_at(const Position<Is...>& p, myrow_type&& r)
   {
@@ -216,6 +265,12 @@ std::tuple<std::variant<typename x_is::ei...>>,cell_type>;
     (insert_at<x_is>(p,std::move(r)),...);
   }
 
+  template <class... Is>
+  void insert_at(const Position<Is...>& p, myrow_type_w_unit&& r)
+  {
+
+    (insert_at<x_is>(p,std::move(r)),...);
+  }
 
   template <class... Is>
   void insert_at(const Position<Is...>& p, row_type&& r)
@@ -230,6 +285,19 @@ std::tuple<std::variant<typename x_is::ei...>>,cell_type>;
 
   }
 
+  template <class... Is
+            >//,std::enable_if_t<!std::is_same_v<row_type_w_unit,row_type >,int>>
+  void insert_at(const Position<Is...>& p, row_type_w_unit&& r)
+  {
+    auto v=p[Index<typename x_is::ei...>{}]();
+    auto [r_ei, r_value]=distribute(Cs<std::variant<typename x_is::ei...>>{},
+                                      transfer_t<cell_type_w_unit,Cs<>>{},std::move(r));
+
+    auto& rvalue=r_value;
+    std::visit([this,&rvalue,&p](auto ei){(*this)[ei].insert_at(p,std::move(rvalue));},v);
+
+
+  }
 
 
   template<class...Is>
@@ -258,6 +326,31 @@ std::tuple<std::variant<typename x_is::ei...>>,cell_type>;
   }
 
 
+  template<class...Is>
+  auto next_pos(const Position<Is...>& p,const myrow_type_w_unit& r)const
+  {
+    auto pres=(std::pair{p,false}|...|
+                 [this,&r](auto p)
+                 {
+                   if (p.second)
+                   {
+                     /// lower indexes set to zero after high index increases
+                     p.first[Is{}]={};
+                     return p;
+                   }
+                   else
+                       if (this->is_same(Is{},p.first,r)) return p;
+                   else
+                   {
+                     p.second=true;
+                     ++p.first[Is{}];
+                     return p;
+                   }
+                 });
+
+    return pres.first;
+  }
+
 
   template<class...Is>
   auto insert(const Position<Is...>& p, myrow_type&& r)
@@ -267,6 +360,13 @@ std::tuple<std::variant<typename x_is::ei...>>,cell_type>;
     return p1;
   }
 
+  template<class...Is>
+  auto insert(const Position<Is...>& p, myrow_type_w_unit&& r)
+  {
+    auto p1=next_pos(p,r);
+    insert_at(p1,std::move(r));
+    return p1;
+  }
 
 
 
@@ -505,11 +605,51 @@ std::ostream& to_DataFrame(std::ostream& os, const vector_space<x_is...>& v, Cs<
 template<class...x_is>
 std::ostream& to_DataFrame(std::ostream& os, const vector_space<x_is...>& v)
 {
-  return to_DataFrame(os,v,typename vector_space<x_is...>::myCols{});
+  return to_DataFrame(os,v,typename vector_space<x_is...>::myCols_w_unit{});
 }
 
 template<class...x_is>
+std::ostream& to_DataTable(std::ostream& os, const vector_space<x_is...>& v)
+{
+  return to_DataFrame(os,v,typename vector_space<x_is...>::myCols{});
+}
+
+
+
+
+template<class...x_is>
 std::istream& from_DataFrame(std::istream& is,  vector_space<x_is...>& v)
+{
+  std::string s;
+  std::getline(is, s);
+  std::stringstream ss(s);
+  ((ss>>typename x_is::cols_w_unit{}),...);
+  auto p=d_begin(v);
+  auto r=row_vector_w_unit(v);
+  if (ss)
+  {
+    std::getline(is, s);
+    auto scopy=s;
+    ss.clear();
+    ss.str(s);
+    ss>>r;
+    v.insert_at(p,std::move(r));
+  }
+  while (ss)
+  {
+    std::getline(is, s);
+    ss.clear();
+    ss.str(s);
+    ss>>r;
+    p=v.insert(p,std::move(r));
+  }
+
+  return is;
+}
+
+
+template<class...x_is>
+std::istream& from_DataTable(std::istream& is,  vector_space<x_is...>& v)
 {
   std::string s;
   std::getline(is, s);
@@ -537,6 +677,10 @@ std::istream& from_DataFrame(std::istream& is,  vector_space<x_is...>& v)
 
   return is;
 }
+
+
+
+
 
 template<class...x_is>
 std::istream& from_DataFrame_new(std::istream& is,  vector_space<x_is...>& v)

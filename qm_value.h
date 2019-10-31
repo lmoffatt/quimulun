@@ -21,17 +21,20 @@ public:
   typedef v element_type;
 
 
-  using cols=Cs<value_k,unit_k>;
+  using cols=Cs<value_k>;
+  using cols_w_unit=Cs<value_k,unit_k>;
 
-  using row_type=std::tuple<TYPE,myunit>;
+  using row_type=std::tuple<TYPE>;
+  using row_type_w_unit=std::tuple<TYPE,myunit>;
 
-  explicit v(TYPE&& x,myunit): value_{std::move(x)}{}
+  explicit constexpr v(TYPE&& x,myunit): value_{std::move(x)}{}
   explicit v(TYPE&& x): value_{std::move(x)}{}
   explicit v(row_type&& x):value_{std::get<TYPE>(std::move(x))}{}
+  explicit v(row_type_w_unit&& x):value_{std::get<TYPE>(std::move(x))}{}
   v()=default;
-  const TYPE& value()const &{return value_;}
-  TYPE& value() &{return value_;}
-  TYPE value()&& {return value_;}
+  constexpr const TYPE& value()const &{return value_;}
+  constexpr TYPE& value() &{return value_;}
+  constexpr TYPE value()&& {return value_;}
 
   auto& operator[](value_k){return value();}
   auto& operator[](value_k)const {return value();}
@@ -39,6 +42,11 @@ public:
 
   template<class...Is>
   void insert_at(const Position<Is...>& , row_type&& r)
+  {
+    value()=std::get<TYPE>(std::move(r));
+  }
+  template<class...Is>
+  void insert_at(const Position<Is...>& , row_type_w_unit&& r)
   {
     value()=std::get<TYPE>(std::move(r));
   }
@@ -188,8 +196,11 @@ private:
 
 
 public:
-  using cols=Cs<value_k,unit_k>;
-  using row_type=std::tuple<T,logv_units<Units...>>;
+  using cols=Cs<value_k>;
+  using row_type=std::tuple<T>;
+  using cols_w_unit=Cs<value_k,unit_k>;
+  using row_type_w_unit=std::tuple<T,logv_units<Units...>>;
+
 
   typedef logv element_type;
 
@@ -321,7 +332,7 @@ auto operator*(  double other,const v<T,unit1>& one)
 
 
 template <class T, class U,class unit1, class unit2>
-auto operator/( const v<T,unit1>& one, const  v<U,unit2>& other)
+constexpr auto operator/( const v<T,unit1>& one, const  v<U,unit2>& other)
 {
   return v(one.value()/other.value(),unit1{}/unit2{});
 }

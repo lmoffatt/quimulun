@@ -234,7 +234,7 @@ auto operator*(p<units1...>,p<units2...>)
 }
 
 template<class... units1, class ...units2>
-auto operator/(p<units1...>,p<units2...>)
+constexpr auto operator/(p<units1...>,p<units2...>)
 { return  simplify_t<substr_exponent_t<add_exponent_t<my_scalar_unit,units1...>,units2...>>{};
 }
 template<class ...units2>

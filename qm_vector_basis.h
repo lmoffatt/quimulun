@@ -25,6 +25,10 @@ public:
   using cols=recursive_t<ei,typename value_type::cols>;
   using row_type=typename value_type::row_type;
 
+  using cols_w_unit=recursive_t<ei,typename value_type::cols_w_unit>;
+  using row_type_w_unit=typename value_type::row_type_w_unit;
+
+
 private:
   Value_type value_;
 public:

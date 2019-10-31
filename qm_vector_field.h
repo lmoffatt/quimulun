@@ -49,6 +49,13 @@ template<> struct vec<>
     x.insert_at(p,std::move(e));
   }
 
+  template <class ValueType, class Positionx>
+  static void insert_at(ValueType& x,const Positionx& p,typename ValueType::row_type_w_unit&& e)
+  {
+    x.insert_at(p,std::move(e));
+  }
+
+
   template <class Vector, class Position>
   static auto& get(Vector& x, const Position&)
   {
@@ -121,6 +128,20 @@ template<class I0, class...I> struct vec<I0,I...>{
     return x;
   }
 
+  template <class ValueType,class... e_types>
+  static auto push_back(std::vector<ValueType>& x,std::tuple<e_types...>&& e)
+      ->std::enable_if_t<std::is_same_v<std::tuple<e_types...>,typename ValueType::row_type_w_unit >,std::vector<ValueType>&>{
+
+    x.emplace_back(std::move(e));
+    return x;
+  }
+  template <class ValueType,class... e_types>
+  static auto push_back(std::vector<ValueType>&& x,std::tuple<e_types...>&& e)
+      ->std::enable_if_t<std::is_same_v<std::tuple<e_types...>,typename ValueType::row_type_w_unit >,std::vector<ValueType>>{
+
+    x.emplace_back(std::move(e));
+    return x;
+  }
 
 
 
@@ -287,6 +308,10 @@ public:
   using cols=typename element_type::cols;
   using row_type=typename element_type::row_type;
 
+  using cols_w_unit=typename element_type::cols_w_unit;
+  using row_type_w_unit=typename element_type::row_type_w_unit;
+
+
 private:
   value_type value_;
 
@@ -324,6 +349,11 @@ public:
     vec<Xs...>::insert_at(value_,p,std::move(r));
   }
 
+  template<class...Is>
+  void insert_at(const Position<Is...>& p, row_type_w_unit&& r)
+  {
+    vec<Xs...>::insert_at(value_,p,std::move(r));
+  }
 
   template<class I,class Position>
   auto size(I,const Position& p)const->std::enable_if_t<is_in_pack(I{},Cs<Xs...>{}),std::size_t>

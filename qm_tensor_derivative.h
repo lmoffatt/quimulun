@@ -163,12 +163,27 @@ public:
   using row_type=decltype(std::tuple_cat(
       typename dependent_type::row_type{},typename derivative_type::row_type{}));
 
+  using row_type_w_unit=decltype(std::tuple_cat(
+      typename dependent_type::row_type_w_unit{},typename derivative_type::row_type_w_unit{}));
+
+
 
   template<class...Is>
   void insert_at(const Position<Is...>& p, row_type&& r)
   {
     auto [f_r,Df_r]=distribute(transfer_t<typename dependent_type::row_type,Cs<>>{},
                                   transfer_t<typename derivative_type::row_type,Cs<>>{},
+                                  std::move(r));
+    f().insert_at(p,std::move(f_r));
+    Df().insert_at(p,std::move(Df_r));
+
+  }
+
+  template<class...Is>
+  void insert_at(const Position<Is...>& p, row_type_w_unit&& r)
+  {
+    auto [f_r,Df_r]=distribute(transfer_t<typename dependent_type::row_type_w_unit,Cs<>>{},
+                                  transfer_t<typename derivative_type::row_type_w_unit,Cs<>>{},
                                   std::move(r));
     f().insert_at(p,std::move(f_r));
     Df().insert_at(p,std::move(Df_r));
