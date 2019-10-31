@@ -236,6 +236,11 @@ public:
   void insert_at(const Position<Is...>& , row_type&& r)
   {
     value()=std::get<T>(std::move(r));
+  }
+  template<class...Is>
+  void insert_at(const Position<Is...>& , row_type_w_unit&& r)
+  {
+    value()=std::get<T>(std::move(r));
     units()=std::get<logv_units<Units...>>(std::move(r));
   }
 

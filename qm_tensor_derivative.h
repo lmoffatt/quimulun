@@ -159,6 +159,9 @@ public:
                recursive_t<primitive_k,typename dependent_type::cols>,
       recursive_t<derivative_k,typename derivative_type::cols>>;
 
+  using cols_w_unit=pack_concatenation_t<
+      recursive_t<primitive_k,typename dependent_type::cols_w_unit>,
+      recursive_t<derivative_k,typename derivative_type::cols_w_unit>>;
 
   using row_type=decltype(std::tuple_cat(
       typename dependent_type::row_type{},typename derivative_type::row_type{}));
@@ -211,14 +214,14 @@ public:
   auto& Df()const {return Df_;}
   auto& Df() {return Df_;}
 
-  template<class Position, class ind, typename=std::enable_if_t<is_in_pack(ind{},typename dependent_type::cols{}),bool>>
+
+  template<class Position, class ind, typename=std::enable_if_t<is_in_pack(ind{},typename dependent_type::cols_w_unit{}),int>>
   auto operator()(const Position& p,recursive<primitive_k,ind>)const->decltype (f()(p,ind{}))
   {return f()(p,ind{});}
 
-  template<class Position, class ind, typename=std::enable_if_t<is_in_pack(ind{},typename derivative_type::cols{}),bool>>
+  template<class Position, class ind, typename=std::enable_if_t<is_in_pack(ind{},typename derivative_type::cols_w_unit{}),bool>>
   auto operator()(const Position& p,recursive<derivative_k,ind> )const ->decltype (Df()(p,ind{}))
   {return Df()(p,ind{});}
-
 
 
   Derivative(dependent_type&& f,derivative_type&& Df):f_{std::move(f)},Df_{std::move(Df)}{}

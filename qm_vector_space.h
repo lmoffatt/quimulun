@@ -199,6 +199,12 @@ std::tuple<std::variant<typename x_is::ei...>>,cell_type>;
     return ((std::get<In>(r)==p[Index<Ind...>{}]())&&...);
 
   }
+  template <class... Ind, class... Is, std::size_t...In>
+  static bool is_same_index(Index<Ind...>,const Position<Is...>& p,const myrow_type_w_unit& r, std::index_sequence<In...>)
+  {
+    return ((std::get<In>(r)==p[Index<Ind...>{}]())&&...);
+
+  }
 
 
   template <class I, class... Is>
@@ -226,6 +232,12 @@ std::tuple<std::variant<typename x_is::ei...>>,cell_type>;
     return is_same_index(Index<Ind...>{},p,r,index_rows);
   }
 
+  template <class... Ind, class... Is>
+  bool is_same(Index<Ind...>,const Position<Is...>& p,const myrow_type_w_unit& r)const
+  {
+    auto index_rows=pack_multindex<std::variant<Ind...>>(transfer_t<myrow_type_w_unit,Cs<>>{});
+    return is_same_index(Index<Ind...>{},p,r,index_rows);
+  }
 
 
   template <class I, class... Is, std::size_t...In>
@@ -338,8 +350,10 @@ std::tuple<std::variant<typename x_is::ei...>>,cell_type>;
                      p.first[Is{}]={};
                      return p;
                    }
-                   else
-                       if (this->is_same(Is{},p.first,r)) return p;
+                   else if (
+                       this->is_same(Is{},p.first,r)
+                       )
+                     return p;
                    else
                    {
                      p.second=true;
