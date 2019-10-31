@@ -1,6 +1,6 @@
 #ifndef QM_UNIT_H
 #define QM_UNIT_H
-#include "qm_static_string.h"
+#include "static_string.h"
 #include "mytypetraits.h"
 #include "qm_pack_operations.h"
 #include "qm_basics.h"

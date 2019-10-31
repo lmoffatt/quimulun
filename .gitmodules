@@ -1,0 +1,3 @@
+[submodule "static_Utilities"]
+	path = static_Utilities
+	url = https://github.com/lmoffatt/static_Utilities.git

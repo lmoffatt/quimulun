@@ -2,7 +2,7 @@
 #define QM_BASICS_H
 
 #include "qm_pack_operations.h"
-#include "qm_static_string.h"
+#include "static_string.h"
 #include <variant>
 
 struct Nothing{
