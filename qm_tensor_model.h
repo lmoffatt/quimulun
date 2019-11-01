@@ -114,6 +114,19 @@ auto operator + (const quimulun<Fs...>& q1,const quimulun<Fs2...>& q2)
   return quimulun(q1[typename Fs::myId{}]...,q2[typename Fs2::myId{}]...);
 }
 
+template<class...Fs, class...Ids2>
+auto operator + (const quimulun<Fs...>& q1,const vector_space<Ids2...>& q2)
+    ->std::enable_if_t<!(is_in_pack(typename Ids2::myId{},Cs<typename Fs::myId...>{})&&...),quimulun<Fs...,Ids2...>>
+{
+  return quimulun(q1[typename Fs::myId{}]...,q2[typename Ids2::myId{}]...);
+}
+template<class...Fs, class...Ids2>
+auto operator + (const vector_space<Ids2...>& q2,const quimulun<Fs...>& q1)
+    ->std::enable_if_t<!(is_in_pack(typename Ids2::myId{},Cs<typename Fs::myId...>{})&&...),quimulun<Fs...,Ids2...>>
+{
+  return quimulun(q2[typename Ids2::myId{}]...,q1[typename Fs::myId{}]...);
+}
+
 
 template< class...Fs,  class...Fs2>
 auto operator << (const quimulun<Fs...>& q1,const quimulun<Fs2...>& q2)
