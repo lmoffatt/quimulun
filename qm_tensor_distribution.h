@@ -47,6 +47,14 @@ struct Normal_Distribution
     return v<double,unit>(std::normal_distribution<double>
                            {mean.value(),stddev.value()}(mt));
   }
+  template<class unit,class Rnd>
+  auto sample(const logv<double,unit>& mean, const logv<double>& stddev,Rnd& mt)const
+  {
+
+    return logv<double,unit>(std::normal_distribution<double>
+                              {mean.value(),stddev.value()}(mt),{1,unit{}});
+  }
+
 
   template<class unit>
   auto logP(const v<double,unit>& x,const v<double,unit>& mean, const v<double,unit>& stddev)const

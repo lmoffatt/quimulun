@@ -269,6 +269,16 @@ public:
 
   friend constexpr auto begin(const logv& ){ return Position<>{};}
 
+  bool next(Position<>& )const {return false;}
+
+
+  template<class Position>
+  auto& operator()(const Position& ){ return *this;}
+
+  template<class Position>
+  auto& operator()(const Position& )const { return *this;}
+
+
 
   template<class I>
   auto& operator()(const I& , value_k){ return value();}
@@ -359,6 +369,12 @@ auto operator+(const logv<T,units1...>& me, const logv<T,units2...>& ti)
 
 }
 
+template <class T, class unit>
+auto pow(double base,const logv<T,unit>& me)
+{
+  return v(std::pow(base,me.value()),unit{});
+}
+
 
 
 template <class T>
@@ -424,11 +440,20 @@ inline v<double,dimension_less> exp(const v<double,dimension_less>& x)
   return v<double,dimension_less>(std::exp(x.value()));
 }
 
+inline v<double,dimension_less> cos(const v<double,dimension_less>& x)
+{
+  return v<double,dimension_less>(std::cos(x.value()));
+}
+
+
+
 template <class unit1>
-auto sqrt(const v<double,unit1>& x) { return v<double,div_exponent_t<unit1,2>>(std::sqrt(x.value())); }
+auto sqrt(const v<double,unit1>& x) { return v(std::sqrt(x.value()), pow_inv<2>(unit1{})); }
 
 template <class unit1>
 auto log(const v<double,unit1>& x) { return logv<double,unit1>(std::log(x.value()),{1,unit1{}}); }
+
+
 
 template<class ei>
 struct Log10_t{
@@ -437,7 +462,12 @@ struct Log10_t{
   constexpr static auto className=my_static_string("log10_")+ei::className;
 };
 
-
+struct Log10_rev{
+  template<typename T>
+  auto operator()(const T& x)const {
+    using std::pow;
+    return pow(10.0,x);}
+};
 
 
 
