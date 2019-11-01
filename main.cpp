@@ -97,7 +97,6 @@ int main()
 
 
   auto qui=quimulun{
-      model_position{},
       x_i(Start<Start<mytime>>{},v(0.0,second{})),
       x_i(Step<Start<mytime>>{}, v(100.0,second{})),
       x_i(Duration<Start<mytime>>{}, v(200.0,second{})),
