@@ -120,21 +120,73 @@ template<class varName>
 using v_t=v<typename varName::T, typename varName::unit>;
 
 template<class...us>
-struct logv_units
+struct logv_units;
+template<class u,class...us>
+struct logv_units<u,us...>
 {
 private:
-  std::tuple<std::pair<long,us>...> units;
+  std::tuple<std::pair<long,u>,std::pair<long,us>...> units;
 public:
   auto& operator()(){return units;}
   auto const& operator()()const {return units;}
 
   logv_units()=default;
-  logv_units(std::pair<long,us>... myunits):units{std::move(myunits)...}{}
+  logv_units(std::pair<long,u> myunit,std::pair<long,us>... myunits):units{std::move(myunit),std::move(myunits)...}{}
+  template<class u0>
+  long get_number()const
+  {
+    if constexpr (std::is_same_v<u0,u >||is_in_pack<u,us...>()) return std::get<std::pair<long,u0>>(units).first;
+    else return 0;
+  }
+  template<class u0>
+  long& get(){return std::get<std::pair<long,u0>>(units).first;}
+  friend std::ostream& operator<<(std::ostream& os, const logv_units& m)
+  {
+    std::apply([&os](auto&... p){
+      ((os<<p.first<<"*log("<<p.second<<")"),...);},m.units);
+    return os;
+  }
+
+  friend std::istream& operator>>(std::istream& is,  logv_units& m)
+  {
+    std::string s;
+    is>>s;
+    auto s_copy=s;
+    std::stringstream ss(s);
+    std::apply([&ss](auto&... p){
+      ((ss>>p.first>>
+        my_static_string("*log(")
+        >>
+        my_static_string(p.second.className)>>
+        my_static_string(")")
+        ),...);},m.units);
+    return is;
+  }
+
+  friend bool operator==(const logv_units& me, const logv_units& ti)
+  {
+    return     apply_twin([](auto... res){return (true&&...&&res);},
+                      [](auto p, auto t){ return (p.first==t.first)&&(p.second==t.second);},
+                      me.units,ti.units);
+
+  }
+
+};
+
+template<>
+struct logv_units<>
+{
+private:
+  std::tuple<> units;
+public:
+  auto& operator()(){return units;}
+  auto const& operator()()const {return units;}
+
+  logv_units()=default;
   template<class u>
   long get_number()const
   {
-    if constexpr (is_in_pack<u,us...>()) return std::get<std::pair<long,u>>(units).first;
-    else return 0;
+      return 0;
   }
   template<class u>
   long& get(){return std::get<std::pair<long,u>>(units).first;}
@@ -170,7 +222,6 @@ public:
   }
 
 };
-
 
 
 template<class ...u1, class... u2>
@@ -379,7 +430,12 @@ auto sqrt(const v<double,unit1>& x) { return v<double,div_exponent_t<unit1,2>>(s
 template <class unit1>
 auto log(const v<double,unit1>& x) { return logv<double,unit1>(std::log(x.value()),{1,unit1{}}); }
 
-
+template<class ei>
+struct Log10_t{
+  using T=typename ei::T;
+  using unit=typename ei::unit;
+  constexpr static auto className=my_static_string("log10_")+ei::className;
+};
 
 
 
