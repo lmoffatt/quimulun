@@ -102,7 +102,6 @@ constexpr auto operator| (Cs<p<us...>,p<>>, u<m,N>)
 
 template<class... us,class m0, int N0,class ...ms, int...Ns,  int N, typename =std::enable_if_t<N+N0!=0,int>>
 constexpr auto operator| (Cs<p<us...>,p<u<m0,N0>,u<ms,Ns>...>>, u<m0,N>){
-  using t=typename m0::he;
         return p<us...,u<m0,N+N0>,u<ms,Ns>...>{};
  }
 
