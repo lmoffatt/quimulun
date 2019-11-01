@@ -385,7 +385,7 @@ v(T&& x,unit)->v<T,unit>;
 
 
 template <class T, class U,class unit1, class unit2>
-auto operator*( const v<T,unit1>& one, const  v<U,unit2>& other)
+constexpr auto operator*( const v<T,unit1>& one, const  v<U,unit2>& other)
 {
   return v(one.value()*other.value(),unit1{}*unit2{});
 }

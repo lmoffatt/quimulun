@@ -32,11 +32,6 @@ template <class m, int N> struct u{
 
   using type=u<m,N>;
 
-  template<int N2>
-  friend constexpr u_t<m,N+N2> operator*(u<m,N>,u<m,N2>) {return {};};
-
-  template<class m2, int N2>
-  friend constexpr u<m,N> operator*(u<m,N>,u<m2,N2>) {return {};};
 };
 template<int N2,class m, int N>
 constexpr u<m,N*N2> pow(u<m,N>) {return {};}
@@ -107,6 +102,7 @@ constexpr auto operator| (Cs<p<us...>,p<>>, u<m,N>)
 
 template<class... us,class m0, int N0,class ...ms, int...Ns,  int N, typename =std::enable_if_t<N+N0!=0,int>>
 constexpr auto operator| (Cs<p<us...>,p<u<m0,N0>,u<ms,Ns>...>>, u<m0,N>){
+  using t=typename m0::he;
         return p<us...,u<m0,N+N0>,u<ms,Ns>...>{};
  }
 
@@ -117,24 +113,29 @@ constexpr auto operator| (Cs<p<us...>,p<u<m0,N0>,u<ms,Ns>...>>, u<m0,N>){
 
  template<class... us,class m0, int N0,class ...ms, int...Ns, class m, int N, typename =std::enable_if_t<!std::is_same_v<m,m0 >,int>>
 constexpr auto operator| (Cs<p<us...>,p<u<m0,N0>,u<ms,Ns>...>>, u<m,N>){
-  if constexpr (m::className<m0::className)
-    return p<us...,u<m,N>,u<m0,N0>,u<ms,Ns>...>{};
+
+   if constexpr (m::className<m0::className)
+       return p<us...,u<m,N>,u<m0,N0>,u<ms,Ns>...>{};
   else return Cs<p<us...,u<m0,N0>>,p<u<ms,Ns>...>>{}|u<m,N>{};
 }
 
 
 template<class ...ms, int...Ns, class m, int N>
-auto operator* (p<u<ms,Ns>...>, u<m,N>){
+constexpr auto operator* (p<u<ms,Ns>...>, u<m,N>){
   return Cs<p<>,p<u<ms,Ns>...>>{}|u<m,N>{};
 }
+
+template<class ...us>
+using p_t=decltype ((p<>{}*...*us{}));
 
 
 
 
 template<class ...ms, int...Ns, class... m2s, int... N2s>
-auto operator* (p<u<ms,Ns>...> p1,p<u<m2s,N2s>...>){
-  return (p1*...*u<m2s,N2s>{});
+constexpr auto operator* (p<u<ms,Ns>...>,p<u<m2s,N2s>...>){
 
+  auto res= (p_t<u<ms,Ns>...>{}*...*u<m2s,N2s>{});
+  return res;
 }
 
 template<class ...ms, int...Ns, class... m2s, int... N2s>
