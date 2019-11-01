@@ -73,6 +73,7 @@ template<> struct p<>
   constexpr static auto  className=my_static_string("") ;
   constexpr bool operator==(const p&)const {return true;}
   friend std::istream& operator>>(std::istream& is, p<>&){return is;}
+
 };
 
 template<class m, int N> struct p<u<m,N>>:u<m,N>
@@ -95,25 +96,40 @@ template<class m, int N,class ...ms, int...Ns> struct p<u<m,N>,u<ms,Ns>...>:u<m,
   constexpr p(u<m,N>,u<ms,Ns>...){}
 
 };
+
+
+template<class... us, class m, int N>
+constexpr auto operator| (Cs<p<us...>,p<>>, u<m,N>)
+{
+      return p<us...,u<m,N>>{};
+
+}
+
+template<class... us,class m0, int N0,class ...ms, int...Ns,  int N, typename =std::enable_if_t<N+N0!=0,int>>
+constexpr auto operator| (Cs<p<us...>,p<u<m0,N0>,u<ms,Ns>...>>, u<m0,N>){
+        return p<us...,u<m0,N+N0>,u<ms,Ns>...>{};
+ }
+
+ template<class... us,class m0, int N0,class ...ms, int...Ns>
+ constexpr auto operator| (Cs<p<us...>,p<u<m0,N0>,u<ms,Ns>...>>, u<m0,-N0>){
+   return p<us...,u<ms,Ns>...>{};
+ }
+
+ template<class... us,class m0, int N0,class ...ms, int...Ns, class m, int N, typename =std::enable_if_t<!std::is_same_v<m,m0 >,int>>
+constexpr auto operator| (Cs<p<us...>,p<u<m0,N0>,u<ms,Ns>...>>, u<m,N>){
+  if constexpr (m::className<m0::className)
+    return p<us...,u<m,N>,u<m0,N0>,u<ms,Ns>...>{};
+  else return Cs<p<us...,u<m0,N0>>,p<u<ms,Ns>...>>{}|u<m,N>{};
+}
+
+
 template<class ...ms, int...Ns, class m, int N>
-p<u<ms,Ns>...,u<m,N>> operator| (p<u<ms,Ns>...>, u<m,N>){return{};}
-
-template<class ...ms, int...Ns>
-p<u<ms,Ns>...> operator| (p<u<ms,Ns>...>, p<>){return{};}
-
+auto operator* (p<u<ms,Ns>...>, u<m,N>){
+  return Cs<p<>,p<u<ms,Ns>...>>{}|u<m,N>{};
+}
 
 
-template<class ...ms, int...Ns, class m, int N, typename =std::enable_if_t<!is_in_pack<m,ms...>(),int>>
-p<u<ms,Ns>...,u<m,N>> operator* (p<u<ms,Ns>...>, u<m,N>){return{};}
 
-template<class ...ms, int...Ns, class m, int N, typename =std::enable_if_t<is_in_pack<m,ms...>(),int>>
-auto operator* (p<u<ms,Ns>...>, u<m,N>){return (p<>{}|...|(u<ms,Ns>{}*u<m,N>{}));}
-
-template<class ...ms, int...Ns, class m, int N, typename =std::enable_if_t<!is_in_pack<m,ms...>(),int>>
-p<u<ms,Ns>...,u<m,-N>> operator/ (p<u<ms,Ns>...>, u<m,N>){return{};}
-
-template<class ...ms, int...Ns, class m, int N, typename =std::enable_if_t<is_in_pack<m,ms...>(),int>>
-auto operator/ (p<u<ms,Ns>...>, u<m,N>){return (p<>{}|...|(u<ms,Ns>{}*u<m,-N>{}));}
 
 template<class ...ms, int...Ns, class... m2s, int... N2s>
 auto operator* (p<u<ms,Ns>...> p1,p<u<m2s,N2s>...>){

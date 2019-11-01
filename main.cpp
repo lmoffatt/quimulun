@@ -16,8 +16,8 @@
 //using namespace qm;
 typedef p<u<m,1>> meter;
 typedef p<u<s,1>> second;
-typedef p_t<u<m,1>,u<s,-1>> meters_per_second;
-typedef p_t<u<m,1>,u<s,-2>> meters_per_second2;
+typedef p<u<m,1>,u<s,-1>> meters_per_second;
+typedef p<u<m,1>,u<s,-2>> meters_per_second2;
 
 struct i__{};
 struct j__{};
