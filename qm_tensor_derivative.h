@@ -249,6 +249,11 @@ public:
     return (me.f()==ti.f())&&(me.Df()==ti.Df());
   }
 
+  friend Derivative operator* (double x, const Derivative& me)
+  {
+    return Derivative(x*me.f(),x*me.Df());
+  }
+
 
 };
 

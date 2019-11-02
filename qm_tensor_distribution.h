@@ -149,9 +149,9 @@ public:
   {
     auto const& x=get_from<Id>(par...);
     auto p=x().begin();
-    auto logProb=logvs(g_.logP(x()(p),get_from<Xs>(par...)(p)...));
+    auto logProb=g_.logP(x()(p),get_from<Xs>(par...)(p)...);
     while (x().next(p))
-      logProb=std::move(logProb)+logvs(g_.logP(x()(p),get_from<Xs>(par...)(p)...));
+      logProb=std::move(logProb)+g_.logP(x()(p),get_from<Xs>(par...)(p)...);
     return x_i(logpr<up<Id>,dn<Xs...>>{},std::move(logProb));
   }
   template<class... Param>
