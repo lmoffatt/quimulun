@@ -48,11 +48,11 @@ struct Normal_Distribution
                            {mean.value(),stddev.value()}(mt));
   }
   template<class unit,class Rnd>
-  auto sample(const logv<double,unit>& mean, const logv<double>& stddev,Rnd& mt)const
+  auto sample(const logv<double,unit>& mean, const v<double,dimension_less>& stddev,Rnd& mt)const
   {
 
     return logv<double,unit>(std::normal_distribution<double>
-                              {mean.value(),stddev.value()}(mt),{1,unit{}});
+                              {mean.value(),stddev.value()}(mt));
   }
 
 
@@ -65,8 +65,9 @@ struct Normal_Distribution
   template<class vx, class vm,class vs>
   auto logP(const vx& x,const vm& mean, const vs& stddev)const
   {
+
     return -0.5 * std::log(2 * PI) -  log(stddev) -
-           v(0.5) * sqr((x - mean) / stddev);
+           0.5 * sqr((x - mean) / stddev);
   }
 
   template<class derVar,class derMean, class derStd>
@@ -148,9 +149,9 @@ public:
   {
     auto const& x=get_from<Id>(par...);
     auto p=x().begin();
-    auto logProb=g_.logP(x()(p),get_from<Xs>(par...)(p)...);
+    auto logProb=logvs(g_.logP(x()(p),get_from<Xs>(par...)(p)...));
     while (x().next(p))
-      logProb=std::move(logProb)+g_.logP(x()(p),get_from<Xs>(par...)(p)...);
+      logProb=std::move(logProb)+logvs(g_.logP(x()(p),get_from<Xs>(par...)(p)...));
     return x_i(logpr<up<Id>,dn<Xs...>>{},std::move(logProb));
   }
   template<class... Param>
