@@ -215,6 +215,9 @@ public:
   logv(T&& x,std::pair<long,Units>... us): value_{std::move(x)}, us_{std::move(us)...}{}
   logv(T&& x,logv_units<Units...>&& us): value_{std::move(x)}, us_{std::move(us)}{}
 
+  template<class unit, typename =std::enable_if_t<(std::is_same_v<unit,Units >&&...),int>>
+  logv(T&& x, unit): value_{std::move(x)}, us_{{1,unit{}}}{}
+
   template<class unit, typename =std::enable_if_t<std::is_same_v<unit,dimension_less >,int>>
   logv(v<T,unit>&& x):value_{std::move(x).value()},us_{{1,unit{}}}{}
   logv()=default;
@@ -327,16 +330,6 @@ public:
 
 
 
-template<class T,class... units> logv(T,p<units...>)->logv<T,p<units...>>;
-
-template<class T,class... Units> logv(T&& x,logv_units<Units...>&& us)->logv<T,Units...>;
-
-template<class u1>
-auto operator+(const logv<double,u1>& one, const logv<double,u1>& two)
-{
-  return logv<double,u1>(one.value()+two.value(),{2,u1{}});
-}
-
 
 
 
@@ -346,14 +339,6 @@ auto operator+(const logv<T,units1...>& me, const logv<T,units2...>& ti)
   return logv(me.value()+ti.value(),me.units()+ti.units());
 
 }
-
-template<class T,class... units1, class unit2>
-auto operator+(const logv<T,units1...>& me, const logv<T,unit2>& ti)
-{
-  return logv(me.value()+ti.value(),me.units()+logv_units<unit2>(std::pair<std::size_t,unit2>(1,unit2{})));
-
-}
-
 
 
 template <class T, class unit>
@@ -370,9 +355,11 @@ template<class T,class unit>
 v(T&& x,unit)->v<T,unit>;
 
 template<class T,class unit>
-logv(logv<T,unit>&&)->logv<T,unit>;
+logv(T&&, unit)->logv<T,unit>;
 template<class T>
 logv(v<T,dimension_less>&&)->logv<T,dimension_less>;
+
+template<class T,class... Units> logv(T&& x,logv_units<Units...>&& us)->logv<T,Units...>;
 
 
 template <class T, class U,class unit1, class unit2>
@@ -453,9 +440,6 @@ auto sqrt(const v<double,unit1>& x) { return v(std::sqrt(x.value()), pow_inv<2>(
 
 template <class unit1>
 auto log(const v<double,unit1>& x) { return logv<double,unit1>(std::log(x.value()),{1,unit1{}}); }
-
-inline auto log(const v<double,dimension_less>& x) { return v(std::log(x.value()),dimension_less{}); }
-
 
 
 inline auto pow(double base,const v<double,dimension_less>& x) { return v<double,dimension_less>(pow(base,x.value())); }

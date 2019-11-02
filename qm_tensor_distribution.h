@@ -51,8 +51,8 @@ struct Normal_Distribution
   auto sample(const logv<double,unit>& mean, const v<double,dimension_less>& stddev,Rnd& mt)const
   {
 
-    return logv<double,unit>(std::normal_distribution<double>
-                              {mean.value(),stddev.value()}(mt));
+    return logv(std::normal_distribution<double>
+                {mean.value(),stddev.value()}(mt),unit{});
   }
 
 
