@@ -607,7 +607,7 @@ template<class... Is>
 std::istream& operator>>(std::istream& is,  std::variant<Is...>& v) {
 
   std::string s;
-  read_between_separator(is, s,'\t');
+  read_between_separators(is, s,'\t');
   if(!(is))
     return is;
   auto scopy=s;
