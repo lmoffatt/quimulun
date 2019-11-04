@@ -9,8 +9,8 @@ template <class ...Ups, class ...Downs
           >
           //, typename=std::enable_if_t<(sizeof... (Ups)==sizeof... (Downs))&&(sizeof... (Ups)>0),int>>
 struct pr<up<Ups...>,dn<Downs...>>{
-  constexpr static auto  className=my_static_string("p(")+((Ups::className+my_static_string("_"))+...)+my_static_string("|")
-                                    +((Downs::className+my_static_string("_"))+...) + my_static_string(")");
+  constexpr static auto  className=my_static_string("p(")+((Ups::className+my_static_string("&"))+...)+my_static_string("|")
+                                    +((Downs::className+my_static_string("&"))+...) + my_static_string(")");
 
 
   template<class... iUps, class... iDowns>
@@ -60,8 +60,8 @@ template <class ...Ups, class ...Downs
           >
 //, typename=std::enable_if_t<(sizeof... (Ups)==sizeof... (Downs))&&(sizeof... (Ups)>0),int>>
 struct logpr<up<Ups...>,dn<Downs...>>{
-  constexpr static auto  className=my_static_string("logp(")+((Ups::className+my_static_string("_"))+...)+my_static_string("|")
-                                    +((Downs::className+my_static_string("_"))+...) + my_static_string(")");
+  constexpr static auto  className=my_static_string("logp(")+((Ups::className+my_static_string("&"))+...)+my_static_string("|")
+                                    +((Downs::className+my_static_string("&"))+...) + my_static_string(")");
 
   template<class... iUps, class... iDowns>
   auto operator()(up<iUps...>, dn<iDowns...>){return ein<logpr,up<iUps...>,dn<iDowns...>>{};}

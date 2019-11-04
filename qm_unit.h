@@ -67,7 +67,10 @@ template<> struct p<>
 {
   constexpr static auto  className=my_static_string("") ;
   constexpr bool operator==(const p&)const {return true;}
-  friend std::istream& operator>>(std::istream& is, p<>&){return is;}
+  friend std::istream& operator>>(std::istream& is, p<>&){
+    return is;
+
+  }
 
 };
 

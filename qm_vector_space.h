@@ -607,7 +607,9 @@ template<class... Is>
 std::istream& operator>>(std::istream& is,  std::variant<Is...>& v) {
 
   std::string s;
-  is>>s;
+  read_between_separator(is, s,'\t');
+  if(!(is))
+    return is;
   auto scopy=s;
   bool res=false;
   (v|...|[s,&res](auto& v )->auto&
@@ -674,6 +676,7 @@ std::istream& from_DataFrame(std::istream& is,  vector_space<x_is...>& v)
   while (ss)
   {
     std::getline(is, s);
+    auto scopy=s;
     ss.clear();
     ss.str(s);
     ss>>r;
