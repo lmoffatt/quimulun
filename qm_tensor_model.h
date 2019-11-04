@@ -21,7 +21,8 @@ public:
   auto operator()(const Param&... par)const
   {
     typedef  decltype(std::invoke(g_,std::declval<typename std::decay_t<decltype(get_from<Xs>(par...))>::element_type>()...)) value_type;
-
+//    using pretest=typename Cs<typename std::decay_t<decltype(get_from<Xs...>(par...))>::element_type>::test;
+//    using test=typename value_type::dge;
     auto out=consolidate<value_type>(vec<>{},get_from<Xs>(par...)...);
     auto p=out.begin();
     do {
@@ -71,6 +72,8 @@ template<class... > struct quimulun;
 
 template<class...Fs > struct  quimulun: public Fs...{
   using Fs::operator[]...;
+  using myIds= Cs<typename Fs::myId...>;
+  
   quimulun(Fs&&...f):Fs{std::move(f)}...{}
   quimulun(const Fs&...f):Fs{f}...{}
 

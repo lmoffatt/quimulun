@@ -68,6 +68,15 @@ struct der<logv<T,unit1...>,v<T,unit2>>
   typedef v<T,unit> type;
 };
 
+template<class T,class... unit1, class unit2>
+struct der<logv<T,unit1...>,logv<T,unit2>>
+{
+  typedef decltype (dimension_less{}) unit;
+  typedef v<T,unit> type;
+};
+
+
+
 
 template<class value_type,class value_type2,class I1>
 struct der<value_type,x_i<I1,value_type2>>
@@ -164,10 +173,10 @@ public:
       recursive_t<derivative_k,typename derivative_type::cols_w_unit>>;
 
   using row_type=decltype(std::tuple_cat(
-      typename dependent_type::row_type{},typename derivative_type::row_type{}));
+      row_type_t<dependent_type>{},row_type_t<derivative_type>{}));
 
   using row_type_w_unit=decltype(std::tuple_cat(
-      typename dependent_type::row_type_w_unit{},typename derivative_type::row_type_w_unit{}));
+      row_type_w_unit_t<dependent_type>{},row_type_w_unit_t<derivative_type>{}));
 
 
 
@@ -292,6 +301,11 @@ template<class Id_datum, class T, class unit>
   return der_t<v<T,unit>,x_i<Id_datum,v<T,unit>>>(v<T,dimension_less>(1.0));
 }
 
+template<class Id_datum, class T, class... unit>
+auto  self_derivative(const x_i<Id_datum,logv<T,unit...>>& )
+{
+  return der_t<logv<T,unit...>,x_i<Id_datum,logv<T,unit...>>>(v<T,dimension_less>(1.0));
+}
 
 
 
@@ -303,6 +317,16 @@ auto  Self_Derivative(const x_i<Id_datum,v<T,unit>>& x)
   return x_i(Id_datum{},
              Derivative(std::move(f),vector_space(std::move(df))));
 }
+
+template<class Id_datum, class T, class unit>
+auto  Self_Derivative(const x_i<Id_datum,logv<T,unit>>& x)
+{
+  auto f=x();
+  auto df=self_derivative(x);
+  return x_i(Id_datum{},
+             Derivative(std::move(f),vector_space(std::move(df))));
+}
+
 
 
 template<class... Ds>
@@ -334,6 +358,29 @@ operator +( Derivative<v<T,unit>,vector_space<Ds...>>&& one,  Derivative<v<T,uni
 {
   return Derivative(std::move(one.f())+std::move(two.f()),std::move(one.Df())+std::move(two.Df()));
 }
+template<class T, class unit,class... Ds, class ...Ds2>
+auto
+operator +( const Derivative<v<T,unit>,vector_space<Ds...>>& one,  Derivative<v<T,unit>,vector_space<Ds2...>>&& two)
+{
+  return Derivative(one.f()+std::move(two.f()),one.Df()+std::move(two.Df()));
+}
+
+template<class T, class unit,class... Ds, class ...Ds2>
+auto
+operator +( Derivative<v<T,unit>,vector_space<Ds...>>&& one, const  Derivative<v<T,unit>,vector_space<Ds2...>>& two)
+{
+  return Derivative(std::move(one.f())+two.f(),std::move(one.Df())+two.Df());
+}
+
+template<class T, class unit,class... Ds, class ...Ds2>
+auto
+operator +( const Derivative<v<T,unit>,vector_space<Ds...>>& one, const  Derivative<v<T,unit>,vector_space<Ds2...>>& two)
+{
+  return Derivative(one.f()+two.f(),one.Df()+two.Df());
+}
+
+
+
 
 template<class T, class... unit1,class... unit2,class... Ds, class ...Ds2>
 auto
@@ -436,6 +483,18 @@ operator -( Derivative<v<T,unit>,vector_space<Ds...>> one,  v<T,unit> two)
   return one;
 }
 
+template<class T, class unit,class... Ds>
+Derivative<v<T,dimension_less>,vector_space<Ds...>>
+operator -( const Derivative<logv<T,unit>,vector_space<Ds...>>& one,  const logv<T,unit>& two)
+{
+ auto f=one.f()-two;
+ auto Df=one.Df();
+ return Derivative(std::move(f), std::move(Df));
+}
+
+
+
+
 
 template<class T, class unit,class... Ds>
 Derivative<v<T,unit>,vector_space<Ds...>>
@@ -527,15 +586,34 @@ operator *( const Derivative<v<T,unit>,vector_space<Ds...>>& one,  const Derivat
       one.Df()*two.f()+one.f()*two.Df());
 }
 
-template<class T, class unit,class... Ds, class ...Ds2>
+template<class T, class unit, class unit2,class... Ds, class ...Ds2>
 auto
-operator *(const  Derivative<v<T,unit>,vector_space<Ds...>>& one,  const Derivative<v<T,unit>,vector_space<Ds2...>>& two)
+operator *(const  Derivative<v<T,unit>,vector_space<Ds...>>& one,  const Derivative<v<T,unit2>,vector_space<Ds2...>>& two)
 {
 
-  return Derivative(one.f()+two.f(),one.Df()*two.f()+one.f()*two.Df());
+  return Derivative(one.f()*two.f(),one.Df()*two.f()+one.f()*two.Df());
 }
 
+template<class T, class unit, class unit2,class... Ds, class ...Ds2>
+auto
+operator *(const  Derivative<v<T,unit>,vector_space<Ds...>>& one,  const Derivative<logv<T,unit2>,vector_space<Ds2...>>& two)
+{
 
+  return Derivative(one.f()*two.f(),one.Df()*two.f()+one.f()*two.Df());
+}
+
+template<class T, class unit, class unit2,class... Ds, class ...Ds2,
+          typename=std::enable_if_t<std::is_same_v<dimension_less,unit >|std::is_same_v<dimension_less,unit2 >,int>>
+auto
+operator *(const  Derivative<logv<T,unit>,vector_space<Ds...>>& one,  const Derivative<logv<T,unit2>,vector_space<Ds2...>>& two)
+{
+
+  return Derivative(
+      one.f()*two.f(),
+      one.Df()*two.f()+
+          one.f()*two.Df()
+      );
+}
 
 template<class T, class unit,class unit2,class... Ds>
 Derivative<v<T,decltype(unit{}*unit2{})>,vector_space<Ds...>>
@@ -562,7 +640,7 @@ Derivative<v<T,decltype(unit{}/unit2{})>,vector_space<Ds...>>
 operator /( const Derivative<v<T,unit>,vector_space<Ds...>>& one,  const Derivative<v<T,unit2>,vector_space<Ds...>>& two)
 {
   auto f=one.f()/two.f();
-  auto Df=one.Df()/two.f()+f/two.f()*two.Df();
+  auto Df=one.Df()/two.f()-f/two.f()*two.Df();
   return Derivative<v<T,decltype(unit{}/unit2{})>,vector_space<Ds...>>(std::move(f),std::move(Df));
 }
 
@@ -571,7 +649,7 @@ auto
 operator /(const  Derivative<v<T,unit>,vector_space<Ds...>>& one,  const Derivative<v<T,unit2>,vector_space<Ds2...>>& two)
 {
   auto f=one.f()/two.f();
-  auto Df=one.Df()/two.f()+f/two.f()*two.Df();
+  auto Df=one.Df()/two.f()-f/two.f()*two.Df();
   return Derivative(std::move(f),std::move(Df));
 }
 
@@ -593,10 +671,18 @@ Derivative<v<T,decltype(unit{}/unit2{})>,vector_space<Ds...>>
 operator /( const v<T,unit>& one,  const Derivative<v<T,unit2>,vector_space<Ds...>>& two)
 {
   auto f=one/two.f();
-  auto Df=f/two.f()*two.Df();
+  auto Df=-f/two.f()*two.Df();
   return Derivative<v<T,decltype(unit{}/unit2{})>,vector_space<Ds...>>(std::move(f),std::move(Df));
 }
 
+template<class T, class unit,class unit2,class... Ds>
+Derivative<v<T,decltype(unit{}/unit2{})>,vector_space<Ds...>>
+operator /( const v<T,unit>& one,  const Derivative<logv<T,unit2>,vector_space<Ds...>>& two)
+{
+  auto f=one/two.f();
+  auto Df=-f/two.f()*two.Df();
+  return Derivative<v<T,decltype(unit{})>,vector_space<Ds...>>(std::move(f),std::move(Df));
+}
 
 
 
@@ -625,7 +711,33 @@ log( const Derivative<v<T,unit>,vector_space<Ds...>>& x)
 }
 
 
+template<class T, class unit,class... Ds>
+Derivative<v<T,unit>,vector_space<Ds...>>
+pow(double base, const Derivative<logv<T,unit>,vector_space<Ds...>>& x)
+{
+  auto f=pow(base,x.f());
+  auto Df=pow(base,x.f())*std::log(base)*x.Df();
+  return Derivative(std::move(f),std::move(Df));
 
+}
+
+template<class T, class... Ds>
+Derivative<v<T,dimension_less>,vector_space<Ds...>>
+exp(const Derivative<v<T,dimension_less>,vector_space<Ds...>>& x)
+{
+  auto f=exp(x.f());
+  auto Df=f*x.Df();
+  return Derivative(std::move(f),std::move(Df));
+}
+
+template<class T, class... Ds>
+Derivative<v<T,dimension_less>,vector_space<Ds...>>
+cos(const Derivative<v<T,dimension_less>,vector_space<Ds...>>& x)
+{
+  auto f=cos(x.f());
+  auto Df=-sin(x.f())*x.Df();
+  return Derivative(std::move(f),std::move(Df));
+}
 
 
 

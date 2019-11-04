@@ -71,8 +71,37 @@ auto operator&&(std::pair<Position<Is...>,bool>&& p, const std::pair<const x1&, 
 struct index_k{  constexpr static auto  className=my_static_string("index");};
 
 
+
+template <class> struct cell_type;
+template <class> struct cell_type_w_unit;
+template <class V> using cell_type_t=typename cell_type<V>::type;
+template <class V> using cell_type_w_unit_t=typename cell_type_w_unit<V>::type;
+
+
+template<class...x_is>
+struct cell_type<vector_space<x_is...>>{using type=pack_to_column_t<typename x_is::value_type::row_type...>;};
+
+
+template<class...x_is>
+struct cell_type_w_unit<vector_space<x_is...>>{using type=pack_to_column_t<typename x_is::value_type::row_type_w_unit...>;};
+
+
+
+
+template<class...x_is>
+struct row_type<vector_space<x_is...>>{using type=pack_concatenation_t<
+      std::tuple<std::variant<typename x_is::ei...>>,cell_type_t<vector_space<x_is...>>>;
+};
+
+template<class...x_is>
+struct row_type_w_unit<vector_space<x_is...>>{using type=pack_concatenation_t<
+      std::tuple<std::variant<typename x_is::ei...>>,cell_type_w_unit_t<vector_space<x_is...>>>;
+};
+
+
 template<class...x_is> struct vector_space: private x_is...
 {
+  using  self_type=vector_space;
   using x_is::operator[]...;
   typedef Cs<typename x_is::ei...> my_eis;
   typedef Cs<typename x_is::myId...> myIds;
@@ -94,15 +123,8 @@ template<class...x_is> struct vector_space: private x_is...
 
  // using print_cols=typename cols::print;
 
-  using cell_type=pack_to_column_t<typename x_is::value_type::row_type...>;
-  using cell_type_w_unit=pack_to_column_t<typename x_is::value_type::row_type_w_unit...>;
 
 
-  using row_type=pack_concatenation_t<
-std::tuple<std::variant<typename x_is::ei...>>,cell_type>;
-
-  using row_type_w_unit=pack_concatenation_t<
-      std::tuple<std::variant<typename x_is::ei...>>,cell_type_w_unit>;
 
   //using print_rowtype=typename row_type::print;
 
@@ -284,12 +306,12 @@ std::tuple<std::variant<typename x_is::ei...>>,cell_type>;
     (insert_at<x_is>(p,std::move(r)),...);
   }
 
-  template <class... Is>
-  void insert_at(const Position<Is...>& p, row_type&& r)
+  template <class... Is, class rowtype>
+  void insert_at(const Position<Is...>& p, row_type_t<self_type>&& r)
   {
     auto v=p[Index<typename x_is::ei...>{}]();
     auto [r_ei, r_value]=distribute(Cs<std::variant<typename x_is::ei...>>{},
-                                      transfer_t<cell_type,Cs<>>{},std::move(r));
+                                      transfer_t<cell_type_t<self_type>,Cs<>>{},std::move(r));
 
     auto& rvalue=r_value;
     std::visit([this,&rvalue,&p](auto ei){(*this)[ei].insert_at(p,std::move(rvalue));},v);
@@ -299,11 +321,11 @@ std::tuple<std::variant<typename x_is::ei...>>,cell_type>;
 
   template <class... Is
             >//,std::enable_if_t<!std::is_same_v<row_type_w_unit,row_type >,int>>
-  void insert_at(const Position<Is...>& p, row_type_w_unit&& r)
+  void insert_at(const Position<Is...>& p, row_type_w_unit_t<self_type>&& r)
   {
     auto v=p[Index<typename x_is::ei...>{}]();
     auto [r_ei, r_value]=distribute(Cs<std::variant<typename x_is::ei...>>{},
-                                      transfer_t<cell_type_w_unit,Cs<>>{},std::move(r));
+                                      transfer_t<cell_type_w_unit_t<self_type>,Cs<>>{},std::move(r));
 
     auto& rvalue=r_value;
     std::visit([this,&rvalue,&p](auto ei){(*this)[ei].insert_at(p,std::move(rvalue));},v);

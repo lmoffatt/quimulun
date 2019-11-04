@@ -133,6 +133,13 @@ public:
   }
 
   template<class unit,class T>
+  friend auto operator*(const x_i& me,const logv<T,unit>& a)->x_i<e_i,decltype (Value_type{}*logv<T,unit>{})>
+  {
+    return x_i<e_i,std::decay_t<decltype (me()*a)>>{e_i{},me()*a};
+  }
+
+
+  template<class unit,class T>
   friend auto operator*(const v<T,unit>& a,const x_i& me)->x_i<e_i,decltype (v<T,unit>{}*Value_type{})>
   {
     return x_i<e_i,std::decay_t<decltype (me()*a)>>{e_i{},a*me()};

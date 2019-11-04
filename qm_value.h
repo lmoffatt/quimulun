@@ -10,6 +10,13 @@ struct value_k{ constexpr static auto  className=my_static_string("value");};
 
 struct unit_k{ constexpr static auto  className=my_static_string("unit");};
 
+template <class> struct row_type;
+template <class> struct row_type_w_unit;
+template <class V> using row_type_t=typename row_type<V>::type;
+template <class V> using row_type_w_unit_t=typename row_type_w_unit<V>::type;
+
+template< class C > struct row_type {using type=typename C::row_type;};
+template< class C > struct row_type_w_unit {using type=typename C::row_type_w_unit;};
 
 template<class TYPE,class myunit> struct v
 {
@@ -328,7 +335,17 @@ public:
 
 };
 
+template<class T>
+auto operator*(v<T,dimension_less> me,logv<T,dimension_less> a){
+  a.value()*=me.value();
+  return a;
+}
 
+template<class T>
+auto operator*(logv<T,dimension_less> me,v<T,dimension_less> a){
+  me.value()*=a.value();
+  return me;
+}
 
 
 
@@ -428,6 +445,10 @@ auto exp(const logv<double,unit1>& x) {
 inline v<double,dimension_less> cos(const v<double,dimension_less>& x)
 {
   return v<double,dimension_less>(std::cos(x.value()));
+}
+inline v<double,dimension_less> sin(const v<double,dimension_less>& x)
+{
+  return v<double,dimension_less>(std::sin(x.value()));
 }
 
 
