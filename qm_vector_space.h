@@ -79,11 +79,11 @@ template <class V> using cell_type_w_unit_t=typename cell_type_w_unit<V>::type;
 
 
 template<class...x_is>
-struct cell_type<vector_space<x_is...>>{using type=pack_to_column_t<typename x_is::value_type::row_type...>;};
+struct cell_type<vector_space<x_is...>>{using type=pack_to_column_t<row_type_t<typename x_is::value_type>...>;};
 
 
 template<class...x_is>
-struct cell_type_w_unit<vector_space<x_is...>>{using type=pack_to_column_t<typename x_is::value_type::row_type_w_unit...>;};
+struct cell_type_w_unit<vector_space<x_is...>>{using type=pack_to_column_t<row_type_w_unit_t<typename x_is::value_type>...>;};
 
 
 
