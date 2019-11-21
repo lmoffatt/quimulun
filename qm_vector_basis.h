@@ -2,6 +2,12 @@
 #define QM_VECTOR_BASIS_H
 #include "qm_tensor_base.h"
 
+
+template<class Id> struct non_const{};
+
+
+
+
 template<class e_i, class Value_type>
 struct x_i
 {
@@ -15,36 +21,34 @@ public:
 
   typedef e_i myId;
 
-  using element_type= typename Value_type::element_type ;
+ // using element_type= element_type_t<Value_type> ;
 
 
-  using element_xi= x_i<e_i,element_type>;
+ // using element_xi= x_i<e_i,element_type>;
 
   typedef  Value_type value_type;
 
-  using cols=recursive_t<ei,typename value_type::cols>;
-  using row_type=typename value_type::row_type;
-
-  using cols_w_unit=recursive_t<ei,typename value_type::cols_w_unit>;
-  using row_type_w_unit=typename value_type::row_type_w_unit;
 
 
 private:
   Value_type value_;
 public:
 
+  explicit x_i(const value_type& x):value_{x}{}
   explicit x_i(value_type&& x):value_{std::move(x)}{}
   explicit x_i(e_i,value_type&& x):value_{std::move(x)}{}
   explicit x_i(e_i,const value_type& x):value_{x}{}
 
-  template<class...Index,typename=std::enable_if_t<
-                                std::is_same_v<Value_type,
-                                               vector_field<vec<Index...>,v<typename e_i::T, typename e_i::unit> > >,int>>
+  template<class...Index>
+//  ,typename=std::enable_if_t<
+//                                std::is_same_v<typename Value_type::myIndexes,
+//                                               vec<Index...> >,int>>
   x_i(e_i,vec<Index...>):value_{}{}
 
   x_i()=default;
   x_i const& operator[](e_i)const & {return *this;}
-  x_i& operator[](e_i) & {return *this;}
+  //x_i& operator[](e_i) & {return *this;}
+  x_i& operator[](non_const<e_i>)  {return *this;}
 
   friend auto begin(const x_i& me){ return begin(me());}
 
@@ -66,23 +70,6 @@ public:
   auto& operator()()&{ return value_;}
   //auto operator()()&& {return value_;}
 
-
-  template<class...Is>
-  void insert_at(const Position<Is...>& p, x_i<e_i,element_type>&& r)
-  {
-    this->operator()().insert_at(p,std::move(r)());
-  }
-
-  template<class...Is>
-  void insert_at(const Position<Is...>& p, row_type&& r)
-  {
-    this->operator()().insert_at(p,std::move(r));
-  }
-  template<class...Is, class ...Ts>
-  void insert_at(const Position<Is...>& p, std::tuple<Ts...>&& r)
-  {
-    this->operator()().insert_at(p,std::move(r));
-  }
 
 
 
@@ -191,6 +178,7 @@ public:
 };
 
 
+
 template <class varName, class...Index>
 x_i(varName,vec<Index...>)->x_i<varName,vector_field<vec<Index...>,v_t<varName>>>;
 
@@ -198,7 +186,7 @@ template <class varName, class... indexName>
 using field_t=x_i<varName,vector_field<vec<indexName...>,v_t<varName>>>;
 
 
-
+/*
 template<class Id, class Value_type,class Datas, class Rand>
 x_i<Id,Value_type> sample(const x_i<Id,Value_type>& d, const Datas& , Rand& ){return d;}
 
@@ -211,18 +199,8 @@ auto logP(const x_i<Id,Value_type>& , const Datas&... ){return logP_zero{};}
 
 template<class Id, class Value_type,class... Datas>
 auto FIM(const x_i<Id,Value_type>& , const Datas&... ){return logP_zero{};}
-
-
-/*
-template< class e_i0,class e_i1, class value_0, class value_1>
-auto operator*(const x_i<e_i0,value_0> &one,const x_i<e_i1,value_1> &two )
-{
-  if constexpr (std::is_same_v<Nothing,decltype (e_i0{}*e_i1{}) >)
-    return Nothing{};
-  else
-    return x_i(e_i0{}*e_i1{},one()*two());
-}
 */
+
 template<class e_i,class Value_type,class... Xs> struct get_Field_Indexes <x_i<e_i,vector_field< vec<Xs...>,Value_type>>>
 {
   typedef vec<Xs...> type;

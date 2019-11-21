@@ -3,7 +3,6 @@
 
 
 #include "qm_vector_space.h"
-
 #include<algorithm>
 //namespace qm {
 
@@ -159,53 +158,25 @@ class Derivative<dependent_type,vector_space<Ds...>>
 public:
   // typedef v<T,unit> dependent_type;
   typedef Derivative element_type;
-
   typedef vector_space<Ds...> independent_type;
   typedef der_t<dependent_type,independent_type> derivative_type;
+  auto& f()const {return f_;}
+  auto& f() {return f_;}
 
+  auto& Df()const {return Df_;}
+  auto& Df() {return Df_;}
+  Derivative(dependent_type&& f,derivative_type&& Df):f_{std::move(f)},Df_{std::move(Df)}{}
+  Derivative()=default;
 
-  using cols=pack_concatenation_t<
-               recursive_t<primitive_k,typename dependent_type::cols>,
-      recursive_t<derivative_k,typename derivative_type::cols>>;
-
-  using cols_w_unit=pack_concatenation_t<
-      recursive_t<primitive_k,typename dependent_type::cols_w_unit>,
-      recursive_t<derivative_k,typename derivative_type::cols_w_unit>>;
-
-  using row_type=decltype(std::tuple_cat(
-      row_type_t<dependent_type>{},row_type_t<derivative_type>{}));
-
-  using row_type_w_unit=decltype(std::tuple_cat(
-      row_type_w_unit_t<dependent_type>{},row_type_w_unit_t<derivative_type>{}));
-
-
-
-  template<class...Is>
-  void insert_at(const Position<Is...>& p, row_type&& r)
-  {
-    auto [f_r,Df_r]=distribute(transfer_t<row_type_t<dependent_type>,Cs<>>{},
-                                  transfer_t<row_type_t<derivative_type>,Cs<>>{},
-                                  std::move(r));
-    f().insert_at(p,std::move(f_r));
-    Df().insert_at(p,std::move(Df_r));
-
-  }
-
-  template<class...Is>
-  void insert_at(const Position<Is...>& p, row_type_w_unit&& r)
-  {
-    auto [f_r,Df_r]=distribute(transfer_t<row_type_w_unit_t< dependent_type>,Cs<>>{},
-                                  transfer_t<row_type_w_unit_t< derivative_type>,Cs<>>{},
-                                  std::move(r));
-    f().insert_at(p,std::move(f_r));
-    Df().insert_at(p,std::move(Df_r));
-
-  }
 
 
 private:
   dependent_type f_;
   derivative_type Df_;
+public :
+  using myIndexes= Cs<>;
+
+
 public:
 
   friend   constexpr auto begin(const Derivative& me) {
@@ -217,24 +188,7 @@ public:
 
 
 
-  auto& f()const {return f_;}
-  auto& f() {return f_;}
 
-  auto& Df()const {return Df_;}
-  auto& Df() {return Df_;}
-
-
-  template<class Position, class ind, typename=std::enable_if_t<is_in_pack(ind{},typename dependent_type::cols_w_unit{}),int>>
-  auto operator()(const Position& p,recursive<primitive_k,ind>)const->decltype (f()(p,ind{}))
-  {return f()(p,ind{});}
-
-  template<class Position, class ind, typename=std::enable_if_t<is_in_pack(ind{},typename derivative_type::cols_w_unit{}),bool>>
-  auto operator()(const Position& p,recursive<derivative_k,ind> )const ->decltype (Df()(p,ind{}))
-  {return Df()(p,ind{});}
-
-
-  Derivative(dependent_type&& f,derivative_type&& Df):f_{std::move(f)},Df_{std::move(Df)}{}
-  Derivative()=default;
 
 
   static auto begin() {return Position<>{};}
@@ -250,8 +204,14 @@ public:
 
   friend std::ostream& operator<<(std::ostream& os, const Derivative& me)
   {
-    return os<<"f="<<me.f()<<" df="<<me.Df();
+    return os<<" f="<<me.f()<<" df="<<me.Df();
   }
+
+  friend std::istream& operator>>(std::istream& is,  Derivative& me)
+  {
+    return is>>my_static_string(" f=")>>me.f()>>my_static_string("df=")>>me.Df();
+  }
+
 
   friend bool operator==(const Derivative& me, const Derivative& ti)
   {
@@ -265,6 +225,8 @@ public:
 
 
 };
+
+
 
 
 template<class dependent_type,class... Ds>

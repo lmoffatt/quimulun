@@ -13,6 +13,9 @@ struct Nothing{
   template<class Something>
   friend auto operator||( Something&& s, Nothing){return std::forward<Something>(s);}
 
+  constexpr auto size(){return 0;}
+  using myIds=Cs<>;
+
 };
 
 struct Something{  constexpr bool operator==(Something)const {return true;}
@@ -92,12 +95,13 @@ template <class Id> struct Position<Id>{
 private :
   std::size_t i;
 public:
+  Position(std::size_t i_v):i{i_v}{}
   using innerId=Id;
   auto& operator[](Id)const {return *this;}
   auto& operator[](Id) {return *this;}
   auto& operator()()const {return  i;}
   auto& operator()() {return  i;}
-
+  Position()=default;
   auto& operator++(){ ++i; return *this;}
   std::size_t inc(Id)
   {
@@ -190,11 +194,27 @@ template<bool Complete, class Data> Is_Complete(std::bool_constant<Complete>,Dat
 template<typename T>
 auto& center(const T& x){ return x;}
 
+template<class e_i, class Value_type>
+struct x_i;
+
+template<class e_i, class Value_type>
+struct f_i;
+
+template<class C>
+auto only_xi_or_fi(C&& x)
+{
+  if constexpr (is_this_template_class<x_i,std::decay_t<C>>::value||is_this_template_class<f_i,std::decay_t<C>>::value)
+    return std::forward<C>(x);
+  else
+    return Nothing{};
+
+}
+
 
 template <class anId, class...Datas>
-auto get_from(const Datas&...ds)
+auto get_from( Datas&&...ds)->decltype ((only_xi_or_fi(std::forward<Datas>(ds)[anId{}])||...))
 {
-  return (ds[anId{}]||...);
+  return (only_xi_or_fi(std::forward<Datas>(ds)[anId{}])||...);
 }
 
 

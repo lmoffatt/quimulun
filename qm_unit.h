@@ -165,25 +165,6 @@ auto operator/(p<>,p<>)
 
 
 
-/*
-template<class Id,class Id0, class Value_type,class...Datas, template<class...> class Datum>
-auto consolidate(Id,const Datum<Id0, Value_type>& one,const Datas...d)
-{
-  typedef decltype ((vec<>{}<<...<<typename Datas::myIndexes{})) myvec;
-  typedef Datum<Id,Value_type,myvec> myDatum;
-
-  typedef typename myDatum::value_type myValue_type;
-
-  myValue_type out;
-  auto p=myDatum::begin();
-
-  fill_vector(out,p,myvec{},one,d...);
-
-  return myDatum(std::move(out));
-}
-
-*/
-
 
 
 

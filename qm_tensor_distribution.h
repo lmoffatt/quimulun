@@ -8,8 +8,8 @@
 #include "qm_tensor_coordinate.h"
 #include "qm_probability_base.h"
 #include <random>
+#include <my_math.h>
 
-inline constexpr double PI = 3.14159265358979323846;
 
 
 template<class Id>
@@ -45,14 +45,14 @@ struct Normal_Distribution
   {
 
     return v<double,unit>(std::normal_distribution<double>
-                           {mean.value(),stddev.value()}(mt));
+                           {mean.value(),stddev.value()}(mt.value()));
   }
   template<class unit,class Rnd>
   auto sample(const logv<double,unit>& mean, const v<double,dimension_less>& stddev,Rnd& mt)const
   {
 
     return logv(std::normal_distribution<double>
-                {mean.value(),stddev.value()}(mt),unit{});
+                {mean.value(),stddev.value()}(mt.value()),unit{});
   }
 
 
@@ -119,6 +119,41 @@ struct Exponential_Distribution
 };
 
 
+
+class stretch_move_Distribution  {
+
+public:
+   constexpr static auto const className =
+      my_static_string("stretch_move_Distribution");
+  typedef stretch_move_Distribution self_type;
+
+  /// parameter alfa between 1 an infinity, 2 is good.
+
+  template<class Rnd>
+  auto sample(double alfa, Rnd& mt)const
+  {
+    std::uniform_real_distribution<double> U(std::sqrt(1.0 / alfa),
+                                             std::sqrt(alfa));
+    return  sqr(U(mt));
+   }
+
+  auto logP(double x,double /*alfa*/, double logZ)const
+  {
+    return -0.5*std::log(x)-logZ;
+  }
+  auto logP(double x,double alfa)const
+  {
+    double logZ=std::log(2.0)+std::log(alfa-1.0)-0.5*std::log(alfa);
+    return logP(x,alfa,logZ);
+  }
+
+};
+
+
+
+
+
+
 template<class Id,class Distribution, class... Xs>
 class  D
 {
@@ -130,18 +165,25 @@ public:
   auto &operator[](Id) & {return *this;}
   auto operator[](Id)&& {return *this;}
 
-  template<class Param,class Rnd>
-  auto sample(const Param& par,Rnd& mt)const
+  template<class... Param,class xi_Rnd>
+  auto sample(xi_Rnd& mt,const Param&... par)const
   {
-    typedef  decltype(g_.sample(std::declval<typename std::decay_t<decltype(par[Xs{}])>::element_type>()...,mt)) value_type;
+    auto  out=apply_sample(g_,mt,get_from<Xs>(par...)()...);
+
+  /*  return x_i(Id{},std::move(out));
+        using value_type=  decltype(g_.sample(get_from<Xs>(par...)(get_from<Xs>(par...).begin())...,mt(mt.begin())));
     auto out=consolidate<value_type>(vec<>{},par[Xs{}]...);
-
-
     auto p=out.begin();
+
+
+
     do {
       out(p)=g_.sample(par[Xs{}](p)...,mt);
 
-    } while (out.next(p));
+    } while (out.next(p));*/
+    //using test2=typename decltype(out)::out_type;
+   // using test3= typename decltype(x_i(Id{},std::move(out)))::XI_out_type;
+
     return x_i(Id{},std::move(out));
   }
   template<class... Param>
@@ -169,6 +211,16 @@ public:
   D(Id ,Distribution&& g, Xs&&...):g_{std::move(g)}{}
 };
 
+template <class> struct extract_distribution_Id{using type=Cs<>;};
+
+template< class Id,class Distribution, class... Xs>
+struct extract_distribution_Id<D<Id,Distribution,Xs...>>{using type=Cs<Id>;};
+
+template<class C> using extract_distribution_Id_t=typename extract_distribution_Id<C>::type;
+
+template< class... Ids>
+struct extract_distribution_Id<Cs<Ids...>>{using type=pack_concatenation_t<extract_distribution_Id_t<Ids>...>;};
+
 
 template<class... Ids,class Distribution, class... Xs>
 class  D<Cs<Ids...>,Distribution,Xs...>: public D<Ids,Distribution,Xs...>...
@@ -182,21 +234,27 @@ public:
 
 
 
-template<class Id,class Distribution, class... Xs,class Rnd, class Datas>
-auto sample(const D<Id,Distribution,Xs...>& dist,const Datas& d,Rnd& mt)
+template<class Id,class Distribution, class... Xs,class Rnd, class...Datas>
+auto sample(const D<Id,Distribution,Xs...>& dist,Rnd& mt, const Datas&...ds)
 {
-  if constexpr ((std::is_same_v<decltype (d[Xs{}]),Nothing>||...))
+ //using test2=typename Id::Id_test;
+ //using tests=typename Cs<Datas...>::Datas_test;
+// using testX=typename Cs<Xs...>::Xs_test;
+
+  if constexpr ((std::is_same_v<decltype (get_from<Xs>(ds...)),Nothing>||...))
     return Nothing{};
   else
-    return dist.sample(d,mt);
+    return dist.sample(mt,ds...);
 }
+
+/*
 template<class Id,class Distribution, class... Xs,class... Datas>
 auto calculate(const D<Id,Distribution,Xs...>& ,const Datas&... d )
 {
   return get_from<Id>(d...);
 }
 
-
+*/
 
 template<class Id,class Distribution, class... Xs, class... Datas>
 auto logP(const D<Id,Distribution,Xs...>& dist,const Datas&... d)

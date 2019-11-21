@@ -3,18 +3,34 @@
 #include "qm_vector_field.h"
 
 
+template<class Id> struct Size{
+  //typedef typename Id::T T;
+  //typedef typename Id::unit unit;
+
+  constexpr static auto  className=Id::className+my_static_string("_size");
+
+};
 
 
 template<class Id> struct Start{
-  typedef typename Id::T T;
-  typedef typename Id::unit unit;
+  //typedef typename Id::T T;
+ // typedef typename Id::unit unit;
 
   constexpr static auto  className=Id::className+my_static_string("_start");
 
 };
+
+template<class Id> struct End{
+ // typedef typename Id::T T;
+ // typedef typename Id::unit unit;
+
+  constexpr static auto  className=Id::className+my_static_string("_end");
+
+};
+
 template<class Id> struct Duration{
-  typedef typename Id::T T;
-  typedef typename Id::unit unit;
+ // typedef typename Id::T T;
+ // typedef typename Id::unit unit;
 
   constexpr static auto  className=Id::className+my_static_string("_end");
 
@@ -46,6 +62,38 @@ struct EvenCoordinate
 
 
 };
+
+
+struct IndexCoordinate
+{
+
+  template<class T, class unit>
+  auto operator()(v<T,unit> start, v<T,unit> end, v<T,unit> step=v<T,unit>(0))const
+  {
+    auto duration=end-start;
+    auto n=duration/step;
+    std::vector<v<T,unit>> out;
+    out.reserve(n.value());
+    for (auto x=start; x.value()<start.value()+duration.value(); x=x+step)
+      out.push_back(x);
+
+    return out;
+  }
+  template<class T, class unit>
+  auto operator()(v<T,unit> duration)const
+  {
+    auto n=duration.value();
+    std::vector<v<T,unit>> out;
+    out.reserve(n);
+    for (T i=0; i<n; ++i)
+      out.push_back(v<T,unit>(i));
+
+    return out;
+  }
+
+
+};
+
 
 
 
@@ -95,33 +143,22 @@ public:
   typedef   Id myId;
   auto &operator[](Id)const {return *this;}
 
-
-  template<class Param>
-  auto operator()(const Param& par)const
-  {
-    typedef typename decltype(g_(std::declval<typename std::decay_t<decltype(par[Xs{}])>::element_type>()...))::value_type value_type;
-
-    //typedef typename value_type::sgser dgewr;
-
-    auto out=consolidate<value_type>(vec<Id>{},par[Xs{}]...);
-   // typedef typename decltype (out)::gds ger;
-    auto p=out.begin(Id{});
-
-    do {
-      out(Id{},p)=g_(par[Xs{}](p)...);
-
-    } while (out.next(p));
-    return x_i(Id{},std::move(out));
-  }
-
   template<class... Data>
   auto operator()(const Data&... data)const
   {
-    typedef typename decltype(g_(std::declval<typename std::decay_t<decltype(get_from<Xs>(data...))>::element_type>()...))::value_type value_type;
+    using res_value_type=std::decay_t<
+        std::invoke_result_t<G,decltype(get_from<Xs>(data...)(get_from<Xs>(data...)().begin()))...>>;
+
+//    typedef typename decltype(g_(std::declval<typename std::decay_t<decltype(get_from<Xs>(data...))>::element_type>()...))::value_type value_type;
 
     //typedef typename value_type::sgser dgewr;
 
-    auto out=consolidate<value_type>(vec<Id>{},get_from<Xs>(data...)...);
+    //using test=typename res_value_type::value_test;
+
+    auto out=consolidate<element_type_t<res_value_type>>(vec<Id>{},get_from<Xs>(data...)()...);
+
+    //using test2=typename decltype(out)::out_test;
+
     auto p=out.begin(Id{});
 
     do {
@@ -136,6 +173,25 @@ public:
 };
 
 
+template <class...> struct extract_function_Id;
+template <class C> struct extract_function_Id<C>
+{using type=Cs<>;};
+
+template< class Id,class G, class... Xs>
+struct extract_function_Id<Coord<Id,G,Xs...>>{using type=Cs<Id>;};
+
+template<class C> using extract_function_Id_t=typename extract_function_Id<C>::type;
+
+template< class... Ids>
+struct extract_function_Id<Cs<Ids...>>{using type=pack_concatenation_t<extract_function_Id_t<Ids>...>;};
+
+template< class... Ids>
+struct extract_function_Id{using type=pack_concatenation_t<extract_function_Id_t<Ids>...>;};
+
+
+
+
+
 template<class Id,class G, class... Xs, class... Datas>
 auto calculate(const Coord<Id,G,Xs...>& f,const Datas&... d)
 {
@@ -145,6 +201,7 @@ auto calculate(const Coord<Id,G,Xs...>& f,const Datas&... d)
     return f(d...);
 }
 
+/*
 template<class Id,class G, class... Xs,class Rnd, class Datas>
 auto sample(const Coord<Id,G,Xs...>& f,const Datas& d,Rnd& )
 {
@@ -165,7 +222,7 @@ auto FIM(const Coord<Id,G,Xs...>& ,const Datas&... )
   return logP_zero{};
 }
 
-
+*/
 template<class Id, class G, class...Xs> Coord(Id&&,G&&,Xs&&...)->Coord<Id,G,Xs...>;
 
 

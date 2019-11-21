@@ -3,6 +3,27 @@
 
 #include "qm_unit.h"
 #include <cassert>
+#include <type_traits>
+
+template <class aClass, class =std::void_t<>>
+struct element_type_impl { using type=aClass;
+};
+
+template <class aClass>
+    struct element_type_impl<aClass, std::void_t<typename aClass::element_type>>
+{
+  using type=typename aClass::element_type;
+};
+
+
+template<class T>
+struct element_type_impl<std::vector<T>,std::void_t<T>> { using type=T;};
+
+
+
+template <class aClass>
+using element_type_t=typename element_type_impl<aClass>::type;
+
 template<class, class> struct v;
 template<class, class ...> class logv;
 
@@ -10,13 +31,8 @@ struct value_k{ constexpr static auto  className=my_static_string("value");};
 
 struct unit_k{ constexpr static auto  className=my_static_string("unit");};
 
-template <class> struct row_type;
-template <class> struct row_type_w_unit;
-template <class V> using row_type_t=typename row_type<V>::type;
-template <class V> using row_type_w_unit_t=typename row_type_w_unit<V>::type;
 
-template< class C > struct row_type {using type=typename C::row_type;};
-template< class C > struct row_type_w_unit {using type=typename C::row_type_w_unit;};
+
 
 template<class TYPE,class myunit> struct v
 {
@@ -27,17 +43,16 @@ public:
   typedef myunit unit;
   typedef v element_type;
 
+  using myIndexes= Cs<>;
 
-  using cols=Cs<value_k>;
-  using cols_w_unit=Cs<value_k,unit_k>;
-
-  using row_type=std::tuple<TYPE>;
-  using row_type_w_unit=std::tuple<TYPE,myunit>;
 
   explicit constexpr v(TYPE&& x,myunit): value_{std::move(x)}{}
-  explicit v(TYPE&& x): value_{std::move(x)}{}
-  explicit v(row_type&& x):value_{std::get<TYPE>(std::move(x))}{}
-  explicit v(row_type_w_unit&& x):value_{std::get<TYPE>(std::move(x))}{}
+  explicit constexpr v(const TYPE& x,myunit): value_{x}{}
+  explicit constexpr v(TYPE&& x): value_{std::move(x)}{}
+  explicit constexpr v(const TYPE& x): value_{x}{}
+  template<class... Ts>
+  v(std::tuple<Ts...>&& x):value_{std::get<TYPE>(std::move(x))}{}
+  //explicit v(row_type_w_unit_t<v>&& x):value_{std::get<TYPE>(std::move(x))}{}
   v()=default;
   constexpr const TYPE& value()const &{return value_;}
   constexpr TYPE& value() &{return value_;}
@@ -47,35 +62,21 @@ public:
   auto& operator[](value_k)const {return value();}
   auto operator[](unit_k)const {return unit{};}
 
-  template<class...Is>
-  void insert_at(const Position<Is...>& , row_type&& r)
-  {
-    value()=std::get<TYPE>(std::move(r));
-  }
-  template<class...Is>
-  void insert_at(const Position<Is...>& , row_type_w_unit&& r)
-  {
-    value()=std::get<TYPE>(std::move(r));
-  }
-  template<class...Is, class ...us, typename=std::enable_if_t<is_in_pack<myunit,us...>(),int>>
-  void insert_at(const Position<Is...>& , std::tuple<TYPE,std::variant<us...>>&& r)
-  {
-    assert(std::get<myunit>(std::get<1>(r))==myunit{});
-    value()=std::get<TYPE>(std::move(r));
-  }
 
 
-  static constexpr auto begin() {return Position<>{};}
 
   friend constexpr auto begin(const v& ){ return Position<>{};}
 
-  bool next(Position<>& )const {return false;}
+  static constexpr auto begin() {return Position<>{};}
+  constexpr bool next(Position<>& )const {return false;}
+
+  template<class Position>
+  auto& operator()(const Position& ){ return *this;}
+
+  template<class Position>
+  auto& operator()(const Position& )const { return *this;}
 
   friend inline bool operator==(const v& one, const v& two) { return one.value()==two.value();}
-
-
-
-
 
 
   template<class... Ts>
@@ -90,21 +91,8 @@ public:
 
 
 
-  template<class Position>
-  auto& operator()(const Position& ){ return *this;}
-
-  template<class Position>
-  auto& operator()(const Position& )const { return *this;}
 
 
-  template<class I>
-  auto& operator()(const I& , value_k){ return value();}
-
-  template<class I>
-  auto& operator()(const I& , value_k)const{ return value();}
-
-  template<class I>
-  unit operator()(const I& , unit_k)const { return unit{};}
 
 
 
@@ -122,6 +110,10 @@ public:
   }
 
 };
+
+
+
+
 
 template<class varName>
 using v_t=v<typename varName::T, typename varName::unit>;
@@ -211,10 +203,8 @@ private:
   logv_units<Units...> us_;
 
 public:
-  using cols=Cs<value_k>;
-  using row_type=std::tuple<T>;
-  using cols_w_unit=Cs<value_k,unit_k>;
-  using row_type_w_unit=std::tuple<T,logv_units<Units...>>;
+  using myIndexes= Cs<>;
+
 
 
   typedef logv element_type;
@@ -250,43 +240,16 @@ public:
 
 
 
-  template<class I>
-  auto& operator()(const I& , value_k){ return value();}
-
-  template<class I>
-  auto& operator()(const I& , value_k)const{ return value();}
-
-  template<class I>
-  auto& operator()(const I& , unit_k)const { return units();}
-
-  template<class I>
-  auto& operator()(const I& , unit_k) { return units();}
-
-
-  template<class...Is>
-  void insert_at(const Position<Is...>& , row_type&& r)
-  {
-    value()=std::get<T>(std::move(r));
-  }
-  template<class...Is>
-  void insert_at(const Position<Is...>& , row_type_w_unit&& r)
-  {
-    value()=std::get<T>(std::move(r));
-    units()=std::get<logv_units<Units...>>(std::move(r));
-  }
-
 
 
   friend std::ostream& operator<<(std::ostream& os, const logv& m)
   {
-    os<<m.value();
-    os<<m.units();
+    return os<<std::setprecision(std::numeric_limits<T>::digits10+2)<<m.value()<<" "<<m.units();
     return os;
   }
-  friend std::istream& operator>>(std::istream& is, const logv& m)
+  friend std::istream& operator>>(std::istream& is,  logv& m)
   {
     is>>m.value();
-    is>>my_static_string("+");
     is>>m.units();
     return is;
   }
@@ -334,6 +297,12 @@ public:
 
 
 };
+
+
+
+
+
+
 
 template<class T>
 auto operator*(v<T,dimension_less> me,logv<T,dimension_less> a){

@@ -38,22 +38,6 @@ template<> struct vec<>
 
   static inline constexpr auto index_size=0;
 
-  template <class ValueType, class Positionx>
-  static void insert_at(ValueType& x,const Positionx& ,ValueType&& e)
-  {
-    x=std::move(e);
-  }
-  template <class ValueType, class Positionx>
-  static void insert_at(ValueType& x,const Positionx& p,typename ValueType::row_type&& e)
-  {
-    x.insert_at(p,std::move(e));
-  }
-
-  template <class ValueType, class Positionx>
-  static void insert_at(ValueType& x,const Positionx& p,typename ValueType::row_type_w_unit&& e)
-  {
-    x.insert_at(p,std::move(e));
-  }
 
 
   template <class Vector, class Position>
@@ -87,82 +71,6 @@ template<class I0, class...I> struct vec<I0,I...>{
   {
     return vec<I...>::get(x.at(p[I0{}]()),p);
   }
-
-
-
-  template <class ValueType, class Positionx, class elementType>
-  static void insert_at(std::vector<ValueType>& x,const Positionx& p,elementType&& e)
-  {
-    if (x.size()==p[I0{}]())
-      push_back(x,std::forward<elementType>(e));
-    else
-      vec<I...>::insert_at(x.at(p[I0{}]()),p, std::forward<elementType>(e));
-  }
-
-
-  template <class ValueType>
-  static std::vector<ValueType>& push_back(std::vector<ValueType>& x,ValueType&& e)
-  {
-    x.push_back(std::forward<ValueType>(e));
-    return x;
-  }
-  template <class ValueType>
-  static std::vector<ValueType> push_back(std::vector<ValueType>&& x,ValueType&& e)
-  {
-    x.push_back(std::forward<ValueType>(e));
-    return x;
-  }
-
-  template <class ValueType,class... e_types>
-  static auto push_back(std::vector<ValueType>& x,std::tuple<e_types...>&& e)
-      ->std::enable_if_t<std::is_same_v<std::tuple<e_types...>,typename ValueType::row_type >,std::vector<ValueType>&>{
-
-    x.emplace_back(std::move(e));
-    return x;
-  }
-  template <class ValueType,class... e_types>
-  static auto push_back(std::vector<ValueType>&& x,std::tuple<e_types...>&& e)
-      ->std::enable_if_t<std::is_same_v<std::tuple<e_types...>,typename ValueType::row_type >,std::vector<ValueType>>{
-
-    x.emplace_back(std::move(e));
-    return x;
-  }
-
-  template <class ValueType,class... e_types>
-  static auto push_back(std::vector<ValueType>& x,std::tuple<e_types...>&& e)
-      ->std::enable_if_t<std::is_same_v<std::tuple<e_types...>,typename ValueType::row_type_w_unit >,std::vector<ValueType>&>{
-
-    x.emplace_back(std::move(e));
-    return x;
-  }
-  template <class ValueType,class... e_types>
-  static auto push_back(std::vector<ValueType>&& x,std::tuple<e_types...>&& e)
-      ->std::enable_if_t<std::is_same_v<std::tuple<e_types...>,typename ValueType::row_type_w_unit >,std::vector<ValueType>>{
-
-    x.emplace_back(std::move(e));
-    return x;
-  }
-
-
-
-  template <class ValueType, class elementType, typename=std::enable_if_t<!std::is_same_v<ValueType,elementType >,int>>
-  static std::vector<ValueType>&  push_back(std::vector<ValueType>& x,elementType&& e)
-  {
-    auto v=ValueType{};
-    return push_back(x,push_back(std::move(v),std::forward<elementType>(e)));
-  }
-  template <class ValueType, class elementType, typename=std::enable_if_t<!std::is_same_v<ValueType,elementType >,int>>
-  static std::vector<ValueType>  push_back(std::vector<ValueType>&& x,elementType&& e)
-  {
-    auto v=ValueType{};
-    return push_back(x,push_back(std::move(v),std::forward<elementType>(e)));
-  }
-
-
-
-
-
-
 
   template <class ValueType, class Positionx>
   static auto& get(ValueType& x,const Positionx& p)
@@ -267,31 +175,11 @@ auto operator<<(vec<I0...>, vec<I1...>)
 
 }
 
+template< class Value_type,class... myIndex,class...Datas>
+auto consolidate(vec<myIndex...>,const Datas&...d);
 
-
-
-
-/*
-template<class T, class U>
-void copy_size(const U& ,T& )
-{
-}
-
-template<class T, class U>
-void copy_size(const std::vector<U>& source,std::vector<T>& destination)
-{
-  destination.resize(source.size());
-}
-
-template<class T, class U>
-void copy_size(const std::vector<std::vector<U>>& source,std::vector<std::vector<T>>& destination)
-{
-  destination.resize(source.size());
-  for (std::size_t i=0; i<source.size(); ++i) copy_size(source[i],destination[i]);
-
-}
-*/
-
+template <class Vector, class X, class... X1, class Position, class Value, class... Datum1>
+void fill_vector_field(Vector&v,Position& p,vec<X,X1...> ,const Value& one,const Datum1&... two);
 
 template<class...> class vector_field;
 
@@ -305,11 +193,6 @@ public:
 
   typedef vec<Xs...> myIndexes;
 
-  using cols=typename element_type::cols;
-  using row_type=typename element_type::row_type;
-
-  using cols_w_unit=typename element_type::cols_w_unit;
-  using row_type_w_unit=typename element_type::row_type_w_unit;
 
 
 private:
@@ -324,6 +207,32 @@ public:
 
   vector_field()=default;
 
+  template<class value_type2>
+  vector_field<vec<Xs...>,value_type2> create()const {
+    typedef vector_field<vec<Xs...>,value_type2> myField;
+
+    typedef typename myField::value_type myValue_type;
+
+    myValue_type out;
+    auto p=myField::begin();
+
+    fill_vector_field(out,p,vec<Xs...>{},*this);
+
+    return myField(std::move(out));
+
+  }
+
+  vector_field create()const {
+    value_type out;
+    auto p=begin();
+
+    fill_vector_field(out,p,vec<Xs...>{},*this);
+
+    return vector_field(std::move(out));
+
+  }
+
+
   template<class Position>
   auto& operator()(const Position& p){ return vec<Xs...>::get(value_,p);}
 
@@ -337,29 +246,15 @@ public:
   template<class I,class Position>
   auto& operator()(I i,const Position& p)const { return vec<Xs...>::get_I(i,value_,p);}
 
-  template<class...Is>
-  void insert_at(const Position<Is...>& p, element_type&& r)
-  {
-    vec<Xs...>::insert_at(value_,p,std::move(r));
-  }
 
-  template<class...Is>
-  void insert_at(const Position<Is...>& p, row_type&& r)
-  {
-    vec<Xs...>::insert_at(value_,p,std::move(r));
-  }
-
-  template<class...Is>
-  void insert_at(const Position<Is...>& p, row_type_w_unit&& r)
-  {
-    vec<Xs...>::insert_at(value_,p,std::move(r));
-  }
 
   template<class I,class Position>
   auto size(I,const Position& p)const->std::enable_if_t<is_in_pack(I{},Cs<Xs...>{}),std::size_t>
   {
     return vec<Xs...>::size(I{},value_,p);
   }
+
+
 
   auto& value() {return value_;}
   auto& value()const {return value_;}
@@ -423,7 +318,135 @@ public:
     }  while(me.next(p));
     return os;
   }
+
+
+
 };
+
+
+
+
+template<class F, class... values_t>
+auto apply(F&& f,
+           const values_t&... ti)
+{
+  using res_value_type=std::decay_t<std::invoke_result_t<F,decltype(ti(ti.begin()))...>>;
+  auto out=consolidate<res_value_type>(vec<>{},ti...);
+  //using test=typename res_value_type::res_type;
+  auto p=out.begin();
+  do
+  {
+    out(p)=std::invoke(std::forward<F>(f), ti(p)...);
+  } while(out.next(p));
+  return out;
+
+}
+
+
+template<class F, class random,class... values_t>
+auto apply_sample(F&& f,random& mt,
+           const values_t&... ti)
+{
+  using res_value_type=std::decay_t<decltype(f.sample(ti(ti.begin())...,mt(mt.begin())))>;
+  auto out=consolidate<res_value_type>(vec<>{},mt,ti...);
+ //using test=typename res_value_type::res_type;
+// using test2=typename decltype(out)::out_type;
+  auto p=out.begin();
+  do
+  {
+    out(p)=f.sample(ti(p)..., mt(p));
+  } while(out.next(p));
+  return out;
+
+}
+
+
+
+template<class F, class... values_t>
+auto apply_parallel(F&& f,
+           values_t&&... ti)
+{
+  using res_value_type=std::decay_t<std::invoke_result_t<F,typename std::decay_t<values_t>::element_type...>>;
+  auto out=consolidate<res_value_type>(vec<>{},ti...);
+  auto p=out.begin();
+  do
+  {
+    out(p)=std::invoke(std::forward<F>(f), std::forward<values_t>(ti)(p)...);
+  } while(out.next(p));
+  return out;
+
+}
+
+
+
+
+template< class Value_type,class...Datas>
+auto consolidate(const Datas...d)
+{
+  typedef decltype ((vec<>{}<<...<<typename get_Field_Indexes<Datas>::type{})) myvec;
+
+  typedef vector_field<myvec,Value_type> myField;
+
+
+
+  typedef typename myField::value_type myValue_type;
+
+  myValue_type out;
+  auto p=myField::begin();
+
+  fill_vector(out,p,myvec{},d...);
+
+  return myField(std::move(out));
+}
+
+template <class Vector, class Position, class... Datum>
+void fill_vector_field(Vector&,Position& ,vec<>, const Datum&...  )
+{}
+
+template <class Vector, class Position, class... X1>
+void fill_vector_field(Vector&,Position& ,vec<X1...>)
+{}
+
+
+template <class Vector, class X, class... X1, class Position, class Value, class... Datum1>
+void fill_vector_field(Vector&v,Position& p,vec<X,X1...> ,const Value& one,const Datum1&... two)
+{
+  if constexpr (is_in_pack(X{},get_Field_Indexes_t<Value>{}))
+  {
+    auto n=one.size(X{},p);
+    v.resize(n);
+    auto& i=p[X{}]();
+    for (i=0; i<n; ++i)
+      fill_vector_field(v[i],p,vec<X1...>{},one,two...);
+  }
+  else fill_vector_field(v,p,vec<X,X1...>{},two...);
+}
+
+
+
+template< class Value_type,class... myIndex,class...Datas>
+auto consolidate(vec<myIndex...>,const Datas&...d)
+{
+  typedef decltype ((...<<get_Field_Indexes_t<Datas>{})<<vec<myIndex...>{}) myvec;
+
+  if constexpr (myvec::index_size==0)
+  {
+    return Value_type{};
+  }
+  else
+  {
+    typedef vector_field<myvec,Value_type> myField;
+
+    typedef typename myField::value_type myValue_type;
+
+    myValue_type out;
+    auto p=myField::begin();
+
+    fill_vector_field(out,p,myvec{},d...);
+
+    return myField(std::move(out));
+  }
+}
 
 
 
