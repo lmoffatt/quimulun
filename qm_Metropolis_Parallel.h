@@ -40,6 +40,7 @@ template<class Id> struct Chosen{constexpr static auto className=Id::className+m
 template<class Id> struct Pos{constexpr static auto className=Id::className+my_static_string("_position");};
 
 template<class Id> struct Transition{constexpr static auto className=Id::className+my_static_string("_transition");};
+struct stretch_alfa{constexpr static auto className=my_static_string("stretch_alfa");};
 
 
 struct mcmc_q{constexpr static auto className=my_static_string("mcmc");};
@@ -48,227 +49,384 @@ struct calculate_mcmc_f{constexpr static auto className=my_static_string("calcul
 
 
 
-template<class Model_q, class data_q/* ,class betas_v, class nwalkers_v*/>
+template<class Model_q, class data_q /* ,class betas_v, class nwalkers_v*/>
 auto parallel_emcee(const Model_q& model,  const data_q& data,const vector_field<vec<beta_ei>,v<double,dimension_less>>& betas,
                     const v<std::size_t,dimension_less>& nw, std::mt19937::result_type seed, long int nsamples, std::ostream& f)
 {
   std::mt19937_64 mt0(seed);
   auto ntot=betas.value().size()*nw;
 
+  auto rand0=vector_space{x_i(Start<rand_e>{},v(std::move(mt0),dimension_less{}))};
+
   auto calculate_mcmc=quimulun{
-      F(Variables_ei{},[](auto const& model_fa,auto const& data_a, auto const& parameters_a)
-          {return calculate(model_fa,data_a,parameters_a);},Model_f{},data_ei{},Parameters_ei{}),
-      F(logPrior_ei{},[](auto const& model_fa,auto const& data_a, auto const& parameters_a, auto const& variables_a)
-          {return logPrior(model_fa,data_a,parameters_a,variables_a);},Model_f{},data_ei{},Parameters_ei{}, Variables_ei{}),
-      F(logLik_ei{},[](auto const& model_fa,auto const& data_a, auto const& parameters_a, auto const& variables_a)
-          {return logLikelihood(model_fa,data_a,parameters_a,variables_a);},Model_f{},data_ei{},Parameters_ei{}, Variables_ei{}),
-      F(logP_k{},[](auto const& logPrior_a, auto const& logLik_a, auto beta_a){return logPrior_a+beta_a*logLik_a;}, logPrior_ei{},logLik_ei{},beta_ei{})
+      F(Candidate<Variables_ei>{},[](auto const& model_fa,auto const& data_a, auto const& parameters_a)
+          {return calculate(model_fa,data_a,parameters_a);},Model_f{},data_ei{},Candidate<Parameters_ei>{}),
+      F(Candidate<logPrior_ei>{},[](auto const& model_fa,auto const& data_a, auto const& parameters_a, auto const& variables_a)
+          {return logPrior(model_fa,data_a,parameters_a,variables_a);},Model_f{},data_ei{},Candidate<Parameters_ei>{}, Candidate<Variables_ei>{}),
+      F(Candidate<logLik_ei>{},[](auto const& model_fa,auto const& data_a, auto const& parameters_a, auto const& variables_a)
+          {return logLikelihood(model_fa,data_a,parameters_a,variables_a);},Model_f{},data_ei{},Candidate<Parameters_ei>{}, Candidate<Variables_ei>{}),
+      F(Candidate<logP_k>{},[](auto const& logPrior_a, auto const& logLik_a, auto beta_a){return logPrior_a+beta_a*logLik_a;}, Candidate<logPrior_ei>{},Candidate<logLik_ei>{},beta_ei{})
   };
 
 
-  auto start=quimulun{
-      x_i(Start<rand_e>{},v(std::move(mt0),dimension_less{})),
-      f_i(calculate_mcmc_f{},calculate_mcmc),
+  auto modeldata=quimulun{
       f_i(Model_f{},model),
-      x_i(Size<walker_ei>{},nw),
+      x_i(stretch_alfa{},v(2.0,dimension_less{})),
       x_i(data_ei{},data),
       x_i(beta_ei{},betas),
-      Coord(walker_ei{},IndexCoordinate{},Size<walker_ei>{}),
-      F(index_k{},[](auto beta_a, auto walker_a){return std::pair(beta_a,walker_a);},beta_ei{},walker_ei{}),
-      F(rand_e{},[](auto& mt_a,auto const &, auto const &){
-            std::uniform_int_distribution<typename std::mt19937_64::result_type> useed;
-            return std::mt19937_64(useed(mt_a.value()));},non_const<Start<rand_e>>{},beta_ei{},walker_ei{})
-          ,
-      F(simul_v{},[](auto const& model_fa,auto const& data_a, auto& mt_a){return sample(model_fa,data_a,mt_a);},Model_f{},data_ei{},non_const<rand_e>{}), //,
-      F(Current<Parameters_ei>{},[](auto const& model_fa,auto const& data_a, auto const& simul_a)
-          {return Parameters(model_fa,data_a,simul_a);},Model_f{},data_ei{},simul_v{}),
-
-
-
-
-      F(Current<mcmc_q>{},[](auto const &calculate_mcmc_fa, auto const& model_fa,auto const& data_a, auto const& parameters_a)
-          {return calculate(calculate_mcmc_fa,model_fa,data_a,parameters_a);},
-          Model_f{},data_ei{},Current<Parameters_ei>{})
+      x_i(Size<walker_ei>{},nw)
   };
 
+
+  auto next_current=quimulun{
+      F(Current<Parameters_ei>{},[](auto&& x){return x;},Next<Parameters_ei>{}),
+      F(Current<Variables_ei>{},[](auto&& x){return x;},Next<Variables_ei>{}),
+      F(Current<logPrior_ei>{},[](auto&& x){return x;},Next<logPrior_ei>{}),
+      F(Current<logLik_ei>{},[](auto&& x){return x;},Next<logLik_ei>{}),
+      F(Current<logP_k>{},[](auto&& x){return x;},Next<logP_k>{})
+  };
+
+  auto candidta_to_current=quimulun{
+      F(Current<Parameters_ei>{},[](auto&& x){return x;},Candidate<Parameters_ei>{}),
+      F(Current<Variables_ei>{},[](auto&& x){return x;},Candidate<Variables_ei>{}),
+      F(Current<logPrior_ei>{},[](auto&& x){return x;},Candidate<logPrior_ei>{}),
+      F(Current<logLik_ei>{},[](auto&& x){return x;},Candidate<logLik_ei>{}),
+      F(Current<logP_k>{},[](auto&& x){return x;},Candidate<logP_k>{})
+  };
+
+
+
+  auto accept_candidate_or_current=quimulun{
+      F(Next<Parameters_ei>{},
+          [](auto const& accept_a, auto&& current, auto&& candidate){ if (accept_a) return std::move(candidate); else return std::move(current);}
+          ,accept_k{}, Current<Parameters_ei>{}, Candidate<Parameters_ei>{}),
+      F(Next<Variables_ei>{},
+          [](auto const& accept_a, auto&& current, auto&& candidate){ if (accept_a) return std::move(candidate); else return std::move(current);}
+          ,accept_k{}, Current<Variables_ei>{}, Candidate<Variables_ei>{}),
+      F(Next<logPrior_ei>{},
+          [](auto const& accept_a, auto&& current, auto&& candidate){ if (accept_a) return std::move(candidate); else return std::move(current);}
+          ,accept_k{}, Current<logPrior_ei>{}, Candidate<logPrior_ei>{}),
+      F(Next<logLik_ei>{},
+          [](auto const& accept_a, auto&& current, auto&& candidate){ if (accept_a) return std::move(candidate); else return std::move(current);}
+          ,accept_k{}, Current<logLik_ei>{}, Candidate<logLik_ei>{}),
+      F(Next<logP_k>{},
+          [](auto const& accept_a, auto&& current, auto&& candidate){ if (accept_a) return std::move(candidate); else return std::move(current);}
+          ,accept_k{}, Current<logP_k>{}, Candidate<logP_k>{})
+  };
+
+
+
+
+  auto initwalkers_f=quimulun{
+      Coord(walker_ei{},IndexCoordinate{},Size<walker_ei>{}),
+      F(index_k{},[](auto beta_a, auto walker_a){return std::pair(beta_a,walker_a);},beta_ei{},walker_ei{})
+  };
+
+
+
+  auto initwalkers_v=calculate(initwalkers_f,modeldata);
+
+
+  auto random_f=quimulun{
+      Fr(rand_e{},[](auto& mt_a,auto const &, auto const &){
+            std::uniform_int_distribution<typename std::mt19937_64::result_type> useed;
+            return v(std::mt19937_64(useed(mt_a.value())),dimension_less{});},non_const<Start<rand_e>>{},beta_ei{},walker_ei{})
+  };
+
+  auto random_v=random_calculate(random_f,rand0,modeldata,initwalkers_v);
+
+
+  auto initParameters_q=quimulun{
+      Fr(Candidate<Parameters_ei>{},[](auto& mt_a,auto const& model_fa,auto const& data_a)
+          {return sampleParameters(model_fa,mt_a,data_a);},non_const<rand_e>{},Model_f{},data_ei{})
+  }+calculate_mcmc;
+
+
+
+  auto candidateParameters_v=random_calculate(initParameters_q,random_v,modeldata,initwalkers_v);
+
+
+  auto currentParameters_v=transfer(candidta_to_current, std::move(candidateParameters_v));
+
+
+
+
   auto next=quimulun{
-      F(all<Chosen<Parameters_ei>>{},
-          [](auto parameters_a, auto &mt_a, auto nwalkers_a)
+      Fr(all<Chosen<Parameters_ei>>{},
+          [](auto &mt_a, auto const& parameters_a, auto const& nwalkers_a)
           {  std::uniform_int_distribution<std::size_t> u(0, nwalkers_a.value()-1);
             auto out=parameters_a.create();
             auto p=parameters_a.begin();
             do
             {
               auto p2=p;
-              p2[walker_ei{}]()= u(mt_a(p));
+              p2[walker_ei{}]()= u(mt_a(p).value());
               out(p)=parameters_a(p2);
             } while (parameters_a.next(p));
             return out;
           },
-          Current<Parameters_ei>{},rand_e{},Size<walker_ei>{}),
-      F(z_v{},
-          []( auto const& distribution_a, auto& mt_a)
+         non_const<rand_e>{},Current<Parameters_ei>{},Size<walker_ei>{}),
+      Fr(z_v{},
+          []( auto& mt_a, auto const& alfa)
           {
-            return  distribution_a.sample(mt_a);
-          },
-          move_distribution_f{},rand_e{}),
+                        return  v(stretch_move_Distribution{}.sample(alfa.value(),mt_a.value()),dimension_less{});
+          }
+           ,non_const<rand_e>{},stretch_alfa{}),
       F(Candidate<Parameters_ei>{},
           [](auto const& parameter_a, auto const& parameter_b, auto const& z_a)
           {
             return (parameter_a - parameter_b) * z_a + parameter_b;
           },
-          Current<Parameters_ei>{}, Chosen<Parameters_ei>{},z_v{}),
-
-      F(Candidate<mcmc_q>{},[&calculate_mcmc](auto const &Lik_fa, auto const& prior_fa,auto const& parameters_a){
-
-return calculate(calculate_mcmc,
-                             Cs<Likelihood_f,Prior_f,Parameters_ei>{},
-                             Lik_fa,prior_fa,parameters_a);},
-          Likelihood_f{},Prior_f{},Candidate<Parameters_ei>{})
+          Current<Parameters_ei>{}, Chosen<Parameters_ei>{},z_v{})
+  }+calculate_mcmc;
 
 
-  };
+  auto next_candidate_v=random_calculate(next,random_v,currentParameters_v,modeldata);
 
   auto Metropolis_hastings_test=quimulun
       {
-          F(logAccept_k{},[](auto const& current_mcmc_a,auto const& next_mcmc_a, auto z_a, auto size_Parameters){
-                return  next_mcmc_a[logP_k{}].value() - current_mcmc_a[logP_k{}].value()  +
-                       log(z_a) * (size_Parameters - 1);
+          F(logAccept_k{},[](auto const& current_logP_a,auto const& candidate_loP_a, auto z_a, auto Parameters_a){
 
-              }, Current<mcmc_q>{}, Candidate<mcmc_q>{},z_v{},z_v{},Size<Parameters_ei>{}),
-          F(accept_k{},[](auto const& logA_a, auto& mt_a){
+                // TODO: implement logpr as a value so difference between logp are properly assesed
+                return  (current_logP_a - candidate_loP_a)  +
+                       log(z_a) * v(double(Parameters_a.size() - 1),dimension_less{});
+
+              }, Current<logP_k>{}, Candidate<logP_k>{},z_v{},Current<Parameters_ei>{}),
+          Fr(accept_k{},[](auto& mt_a,auto const& logA_a){
                 double A = std::exp(logA_a.value());
-                double r = std::uniform_real_distribution<double>(0, 1)(mt_a);
-                return  r < A;
+                double r = std::uniform_real_distribution<double>(0, 1)(mt_a.value());
+                return  int(r < A);
 
-              }, logAccept_k{}, rand_e{})
+              }, non_const<rand_e>{}, logAccept_k{})
 
 
       };
 
-  auto actualize=quimulun {
-      F(Cs<Next<Parameters_ei>, Next<mcmc_q>>{},[](auto& current_par_a, auto& current_mcmc_a,auto& candidate_par_a,  auto& candidate_mcmc_a , auto const& accept_k){
-            if(accept_k)
-              return std::make_tuple(std::move(candidate_par_a),std::move(candidate_mcmc_a));
-            else
-              return std::make_tuple(std::move(current_par_a),std::move(current_mcmc_a));
-          }, Current<Parameters_ei>{}, Current<mcmc_q>{}, Candidate<Parameters_ei>{}, Candidate<Parameters_ei>{},accept_k{})
 
 
-  };
+  auto Met_test_v=random_calculate(Metropolis_hastings_test,random_v,currentParameters_v,next_candidate_v,modeldata);
+
+  auto next_parameter_v=transfer(accept_candidate_or_current,Met_test_v,std::move(currentParameters_v), std::move(next_candidate_v));
+
+
+
 
 
   auto temperature_jump=quimulun{
-      F(all<Transition<beta_ei>>{},[](auto const & beta_a,auto& mt_a, auto num_walkers_a){
+      Fr(all<Transition<beta_ei>>{},[](auto& mt_a,auto const & beta_a, auto const &num_walkers_a){
+            using pos_type=std::decay_t<decltype (beta_a.begin())>;
+            using nwalkers_type=std::decay_t<decltype (num_walkers_a)>;
+            using elem_type=vector_space<x_i<Start<Pos<beta_ei>>,v<pos_type,dimension_less>>,
+                  x_i<End<Pos<beta_ei>>,v<pos_type,dimension_less>>,
+                                           x_i<Start<walker_ei>,nwalkers_type>,
+                                           x_i<End<walker_ei>,nwalkers_type>>;
 
-            using elem_type=decltype(vector_space(Cs<Start<Position<beta_ei>>,End<Position<beta_ei>>,Start<walker_ei>,End<walker_ei>>{},
-                                                    beta_a.begin(),beta_a.begin(),num_walkers_a,num_walkers_a));
+
             using out_type=vector_field<vec<Transition<beta_ei>>,
                                           elem_type>;
             out_type out;
             auto pos=out.begin();
             auto p=beta_a.begin();
 
-            if(std::uniform_int_distribution<std::size_t>(0,1)(mt_a(p))) beta_a.next(p);
+            if(std::uniform_int_distribution<std::size_t>(0,1)(mt_a.value()))
+              beta_a.next(p);
             auto p2=p;
 
-            std::uniform_int_distribution<std::size_t> u(0, num_walkers_a - 1);
+            std::uniform_int_distribution<std::size_t> u(0, num_walkers_a.value() - 1);
 
 
             while(beta_a.next(p2))
 
             {
-              auto start_w=u(mt_a(p));
-              auto end_w=u(mt_a(p2));
+              auto start_w=v(u(mt_a(p).value()),dimension_less{});
+              auto end_w=v(u(mt_a(p2).value()),dimension_less{});
+              auto p_v=v<pos_type,dimension_less>(p,dimension_less{});
+              auto p2_v=v<pos_type,dimension_less>(p2,dimension_less{});
 
-              out.insert_at(pos,elem_type(p,p2,start_w,end_w));
+              insert_at(out,pos,elem_type(Cs<>{},p_v,p2_v,start_w,end_w));
               ++pos[Transition<beta_ei>{}]();
               beta_a.next(p2);
               p=p2;
             }
             return out;
           },
-          beta_ei{},rand_e{},Size<walker_ei>{}),
-      F(Start<logLik_ei>{},[](auto const& trans_beta_a, auto const & Next_mcmc_a)
+          non_const<Start<rand_e>>{},beta_ei{},Size<walker_ei>{}),
+      F(Start<logLik_ei>{},[](auto const& trans_beta_a, auto const & Next_logLik_a)
           {
-            auto p=Next_mcmc_a.begin();
-            p[beta_ei{}]()=trans_beta_a[Start<Pos<beta_ei>>{}]()[beta_ei{}]();
-            p[walker_ei{}]()=trans_beta_a[Start<walker_ei>{}]();
-            return Next_mcmc_a(p)[logLik_ei{}];
+            auto p=Next_logLik_a.begin();
+            p[beta_ei{}]()=trans_beta_a[Start<Pos<beta_ei>>{}]().value()[beta_ei{}]();
+            p[walker_ei{}]()=trans_beta_a[Start<walker_ei>{}]().value();
+            return Next_logLik_a(p);
 
-          },Transition<beta_ei>{},Next<mcmc_q>{}),
-      F(End<logLik_ei>{},[](auto const& trans_beta_a, auto const & Next_mcmc_a)
+          },Transition<beta_ei>{},all<Next<logLik_ei>>{}),
+      F(End<logLik_ei>{},[](auto const& trans_beta_a, auto const & Next_logLik_a)
           {
-            auto p=Next_mcmc_a.begin();
-            p[beta_ei{}]()=trans_beta_a[End<Pos<beta_ei>>{}]()[beta_ei{}]();
-            p[walker_ei{}]()=trans_beta_a[End<walker_ei>{}]();
-            return Next_mcmc_a(p)[logLik_ei{}];
+            auto p=Next_logLik_a.begin();
+            p[beta_ei{}]()=trans_beta_a[End<Pos<beta_ei>>{}]().value()[beta_ei{}]();
+            p[walker_ei{}]()=trans_beta_a[End<walker_ei>{}]().value();
+            return Next_logLik_a(p);
 
-          },Transition<beta_ei>{},all<Next<mcmc_q>>{}),
+          },Transition<beta_ei>{},all<Next<logLik_ei>>{}),
       F(logAccept_k{},[](auto const &trans_beta_a,auto const& beta_a, auto const& start_logLik_a, auto const & end_logLik_a)
           {
             auto p=beta_a.begin();
-            p[beta_ei{}]()=trans_beta_a[Start<Pos<beta_ei>>{}]()[beta_ei{}]();
+            p[beta_ei{}]()=trans_beta_a[Start<Pos<beta_ei>>{}]().value()[beta_ei{}]();
             auto start_beta_a=beta_a(p);
-            p[beta_ei{}]()=trans_beta_a[End<Pos<beta_ei>>{}]()[beta_ei{}]();
+            p[beta_ei{}]()=trans_beta_a[End<Pos<beta_ei>>{}]().value()[beta_ei{}]();
             auto end_beta_a=beta_a(p);
 
             return  -(start_beta_a - end_beta_a) *
                    (start_logLik_a -end_logLik_a);
           },Transition<beta_ei>{},all<beta_ei>{},Start<logLik_ei>{},End<logLik_ei>{} ),
-      F(accept_k{},[](auto const& logA_a, auto& mt_a){
+      Fr(accept_k{},[](auto& mt_a,auto const& logA_a ){
             double A = std::exp(logA_a.value());
-            double r = std::uniform_real_distribution<double>(0, 1)(mt_a);
-            return  r < A;
+            double r = std::uniform_real_distribution<double>(0, 1)(mt_a.value());
+            return  int(r < A);
 
-          }, logAccept_k{}, Start<rand_e>{})
+          }, non_const<Start<rand_e>>{}, logAccept_k{})
 
 
 
 
   };
+  auto after_temperature_jump=random_calculate(temperature_jump,rand0,next_parameter_v,modeldata);
 
 
   auto actualize_jump=quimulun{
-      F(all<Cs<Next<Parameters_ei>, Next<mcmc_q>>>{},[](auto& next_par_a, auto& next_mcmc_a,auto const& trans_beta_a,  auto const& accept_k){
+      F{all<Current<Parameters_ei>>{},[](auto&& next_elem_a, auto const& trans_beta_a,  auto const& accept_k){
             auto p=trans_beta_a.begin();
-            auto pos=next_par_a.begin();
+            auto pos=next_elem_a.begin();
+            do
+            {
+              if ( accept_k(p))
+              {
+                auto start_pos=pos;
+                auto end_pos=pos;
+                start_pos[beta_ei{}]()=trans_beta_a(p)[Start<Pos<beta_ei>>{}]().value()[beta_ei{}]();
+                start_pos[walker_ei{}]()=trans_beta_a(p)[Start<walker_ei>{}]().value();
+                end_pos[beta_ei{}]()=trans_beta_a(p)[Start<Pos<beta_ei>>{}]().value()[beta_ei{}]();
+                end_pos[walker_ei{}]()=trans_beta_a(p)[Start<walker_ei>{}]().value();
+
+                auto par_t=std::move(next_elem_a(start_pos));
+                next_elem_a(start_pos)=std::move(next_elem_a(end_pos));
+                next_elem_a(end_pos)=std::move(par_t);
+              }
+
+            }while(trans_beta_a.next(p));
+
+            return std::move(next_elem_a);
+
+
+        }, Next<Parameters_ei>{}, Transition<beta_ei>{}, accept_k{}}
+    , F{all<Current<Variables_ei>>{},[](auto&& next_elem_a, auto const& trans_beta_a,  auto const& accept_k){
+          auto p=trans_beta_a.begin();
+          auto pos=next_elem_a.begin();
+          do
+          {
+            if (accept_k(p))
+            {
+              auto start_pos=pos;
+              auto end_pos=pos;
+              start_pos[beta_ei{}]()=trans_beta_a(p)[Start<Pos<beta_ei>>{}]().value()[beta_ei{}]();
+              start_pos[walker_ei{}]()=trans_beta_a(p)[Start<walker_ei>{}]().value();
+              end_pos[beta_ei{}]()=trans_beta_a(p)[Start<Pos<beta_ei>>{}]().value()[beta_ei{}]();
+              end_pos[walker_ei{}]()=trans_beta_a(p)[Start<walker_ei>{}]().value();
+
+              auto par_t=std::move(next_elem_a(start_pos));
+              next_elem_a(start_pos)=std::move(next_elem_a(end_pos));
+              next_elem_a(end_pos)=std::move(par_t);
+            }
+
+          }while(trans_beta_a.next(p));
+
+          return std::move(next_elem_a);
+
+
+        }, Next<Variables_ei>{}, Transition<beta_ei>{}, accept_k{}}
+      , F{all<Current<logLik_ei>>{},[](auto&& next_elem_a, auto const& trans_beta_a,  auto const& accept_k){
+          auto p=trans_beta_a.begin();
+          auto pos=next_elem_a.begin();
+          do
+          {
+            if (accept_k(p))
+            {
+              auto start_pos=pos;
+              auto end_pos=pos;
+              start_pos[beta_ei{}]()=trans_beta_a(p)[Start<Pos<beta_ei>>{}]().value()[beta_ei{}]();
+              start_pos[walker_ei{}]()=trans_beta_a(p)[Start<walker_ei>{}]().value();
+              end_pos[beta_ei{}]()=trans_beta_a(p)[Start<Pos<beta_ei>>{}]().value()[beta_ei{}]();
+              end_pos[walker_ei{}]()=trans_beta_a(p)[Start<walker_ei>{}]().value();
+
+              auto par_t=std::move(next_elem_a(start_pos));
+              next_elem_a(start_pos)=std::move(next_elem_a(end_pos));
+              next_elem_a(end_pos)=std::move(par_t);
+            }
+
+          }while(trans_beta_a.next(p));
+
+          return std::move(next_elem_a);
+
+
+        }, Next<logLik_ei>{}, Transition<beta_ei>{}, accept_k{}}
+      , F{all<Current<logPrior_ei>>{},[](auto&& next_elem_a, auto const& trans_beta_a,  auto const& accept_k){
+          auto p=trans_beta_a.begin();
+          auto pos=next_elem_a.begin();
+          do
+          {
+            if (accept_k(p))
+            {
+              auto start_pos=pos;
+              auto end_pos=pos;
+              start_pos[beta_ei{}]()=trans_beta_a(p)[Start<Pos<beta_ei>>{}]().value()[beta_ei{}]();
+              start_pos[walker_ei{}]()=trans_beta_a(p)[Start<walker_ei>{}]().value();
+              end_pos[beta_ei{}]()=trans_beta_a(p)[Start<Pos<beta_ei>>{}]().value()[beta_ei{}]();
+              end_pos[walker_ei{}]()=trans_beta_a(p)[Start<walker_ei>{}]().value();
+
+              auto par_t=std::move(next_elem_a(start_pos));
+              next_elem_a(start_pos)=std::move(next_elem_a(end_pos));
+              next_elem_a(end_pos)=std::move(par_t);
+            }
+
+          }while(trans_beta_a.next(p));
+
+          return std::move(next_elem_a);
+
+
+        }, Next<logPrior_ei>{}, Transition<beta_ei>{}, accept_k{}}
+ ,
+      F(all<Current<logP_k>>{},[](auto&& next_logP_a, auto const& logLik_a, auto const& logPrior_a,  auto const& beta_a,auto const& trans_beta_a,  auto const& accept_k){
+            auto p=trans_beta_a.begin();
+            auto pos=next_logP_a.begin();
             do
             {
               if (accept_k(p))
               {
                 auto start_pos=pos;
                 auto end_pos=pos;
-                start_pos[beta_ei{}]()=trans_beta_a[Start<Pos<beta_ei>>{}]()[beta_ei{}]();
-                start_pos[walker_ei{}]()=trans_beta_a[Start<walker_ei>{}]();
-                end_pos[beta_ei{}]()=trans_beta_a[Start<Pos<beta_ei>>{}]()[beta_ei{}]();
-                end_pos[walker_ei{}]()=trans_beta_a[Start<walker_ei>{}]();
+                start_pos[beta_ei{}]()=trans_beta_a(p)[Start<Pos<beta_ei>>{}]().value()[beta_ei{}]();
+                start_pos[walker_ei{}]()=trans_beta_a(p)[Start<walker_ei>{}]().value();
+                end_pos[beta_ei{}]()=trans_beta_a(p)[Start<Pos<beta_ei>>{}]().value()[beta_ei{}]();
+                end_pos[walker_ei{}]()=trans_beta_a(p)[Start<walker_ei>{}]().value();
 
-                auto par_t=std::move(next_par_a(start_pos));
-                next_par_a(start_pos)=std::move(next_par_a(end_pos));
-                next_par_a(end_pos)=std::move(par_t);
-
-                auto mcmc_t=std::move(next_mcmc_a(start_pos));
-                next_mcmc_a(start_pos)=std::move(next_mcmc_a(end_pos));
-                next_mcmc_a(end_pos)=std::move(mcmc_t);
-
+                next_logP_a(start_pos)=logPrior_a(start_pos)+logLik_a(start_pos)*beta_a(start_pos);
+                next_logP_a(end_pos)=logPrior_a(end_pos)+logLik_a(end_pos)*beta_a(end_pos);
 
               }
 
             }while(trans_beta_a.next(p));
 
-            return std::make_tuple(std::move(next_par_a), std::move(next_mcmc_a));
+            return std::move(next_logP_a);
 
 
-          }, Next<Parameters_ei>{}, Next<mcmc_q>{}, Transition<beta_ei>{}, accept_k{})
+          }, Next<logP_k>{}, Current<logLik_ei>{}, Current<logPrior_ei>{},beta_ei{},Transition<beta_ei>{}, accept_k{})
+      };
+
+  auto after_actualize_v=transfer(actualize_jump,std::move(next_parameter_v),after_temperature_jump,modeldata);
+
+//  auto next_current_v=transfer(next_current, std::move(after_actualize_v));
 
 
-  };
 
-
-
-
- auto mcmc=calculate(start,vector_space<>{});
 
   for (long int i=0; i<nsamples; ++i)
   {
@@ -276,7 +434,7 @@ return calculate(calculate_mcmc,
 
   }
 
-  return mcmc;
+  return 1;
 
 
 

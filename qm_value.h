@@ -46,9 +46,9 @@ public:
   using myIndexes= Cs<>;
 
 
-  explicit constexpr v(TYPE&& x,myunit): value_{std::move(x)}{}
+  //explicit constexpr v(TYPE&& x,myunit&&): value_{std::move(x)}{}
   explicit constexpr v(const TYPE& x,myunit): value_{x}{}
-  explicit constexpr v(TYPE&& x): value_{std::move(x)}{}
+ // explicit constexpr v(TYPE&& x): value_{std::move(x)}{}
   explicit constexpr v(const TYPE& x): value_{x}{}
   template<class... Ts>
   v(std::tuple<Ts...>&& x):value_{std::get<TYPE>(std::move(x))}{}
@@ -126,23 +126,23 @@ template<class u,class...us>
 struct logv_units<u,us...>
 {
 private:
-  std::tuple<std::pair<long,u>,std::pair<long,us>...> units;
+  std::tuple<std::pair<double,u>,std::pair<double,us>...> units;
 public:
   auto& operator()(){return units;}
   auto const& operator()()const {return units;}
 
   logv_units()=default;
-  logv_units(std::pair<long,u> myunit,std::pair<long,us>... myunits):units{std::move(myunit),std::move(myunits)...}{}
+  logv_units(std::pair<long,u> myunit,std::pair<double,us>... myunits):units{std::move(myunit),std::move(myunits)...}{}
   template<class u0>
   long get_number()const
   {
     if constexpr (std::is_same_v<u0,u >||is_in_pack<u0,us...>())
-      return std::get<std::pair<long,u0>>(units).first;
+      return std::get<std::pair<double,u0>>(units).first;
     else
       return 0;
   }
   template<class u0>
-  long& get(){return std::get<std::pair<long,u0>>(units).first;}
+  double& get(){return std::get<std::pair<double,u0>>(units).first;}
   friend std::ostream& operator<<(std::ostream& os, const logv_units& m)
   {
     std::apply([&os](auto&... p){
@@ -287,10 +287,35 @@ public:
     me.value_-=a.value();
     return me;
   }
+  friend logv operator+(logv me, v<double,dimension_less> a)
+  {
+    me.value_+=a.value();
+    return me;
+  }
+  friend logv operator+(v<double,dimension_less> a, logv me)
+  {
+    me.value_+=a.value();
+    return me;
+  }
+
+
+
   friend v<T,dimension_less> operator-(logv me, logv a)
   {
     return v<T,dimension_less>(me.value()-a.value());
   }
+
+  friend logv operator*(logv me, v<double,dimension_less> a)
+  {
+    me.value_*=a.value();
+    me.size()=std::apply([&a](auto&&...p)
+                           {return std::make_tuple(std::make_pair(p.first*a.value(),p.second)...);},
+                           std::move(me.size()));
+
+    return me;
+  }
+  friend logv operator*(v<double,dimension_less> a,logv me)
+  {return me*a;}
 
 
 

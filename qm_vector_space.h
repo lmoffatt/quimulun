@@ -17,10 +17,13 @@ template<> struct vector_space<>
   vector_space()=default;
   constexpr auto size(){return 0;}
 
-  template<class x_i>
-  auto operator + (x_i&& x)&&
+  template<class xi>
+  auto operator + (xi&& x)&&
   {
-    return vector_space<std::decay_t<x_i>>{std::forward<x_i>(x)};
+    if constexpr (is_this_template_class<x_i,std::decay_t<xi>>::value)
+       return vector_space<std::decay_t<xi>>{std::forward<xi>(x)};
+    else
+      return x;
   }
   auto operator + (Nothing)&&
   {
@@ -28,30 +31,12 @@ template<> struct vector_space<>
   }
 
 
-  template<class ...x_is2>
-  auto operator +(const vector_space<x_is2...>& other)const &
-  {
-    return other;
-  }
-  template<class ...x_is2>
-  auto operator +( vector_space<x_is2...>&& other)&&
-  {
-    return std::move(other);
-  }
 
 
 };
 
 
 
-template<class... Ids, class...values_t>
-vector_space(Cs<Ids...>,values_t...v)->vector_space<x_i<Ids,values_t>...>;
-
-template<class...xis>
-vector_space(xis&&...v)->vector_space<xis...>;
-
-template <class... x_is>
-vector_space(x_is const&...xs)->vector_space<x_is...>;
 
 
 
@@ -215,6 +200,10 @@ template<class...x_is> struct vector_space: private x_is...
     return Nothing{};
   }
 
+  auto operator + (Nothing)&&
+  {
+    return *this;
+  }
 
 
 
@@ -285,6 +274,7 @@ template<class...x_is> struct vector_space: private x_is...
     return *this;
   }
 
+
   template<class ax_i,
             typename=std::enable_if_t<is_this_template_class<x_i,ax_i>::value,int>>
   auto operator + (ax_i&& x)&&
@@ -305,48 +295,16 @@ template<class...x_is> struct vector_space: private x_is...
 
   auto operator-()&&
   {
-    (((*this)[non_const<typename x_is::ei>{}]=(*this)[typename x_is::ei{}]),...);
+    (((*this)[non_const<typename x_is::ei>{}]=-(*this)[typename x_is::ei{}]),...);
     return std::move(*this);
   }
   auto operator-()const&
   {
     auto out=*this;
-    ((out[typename x_is::ei{}]=out[typename x_is::ei{}]),...);
+    ((out[typename x_is::ei{}]=-out[typename x_is::ei{}]),...);
     return out;
   }
 
-
-  template<class ...x_is2>
-  auto operator +(const vector_space<x_is2...>& other)const &
-  {
-    typedef pack_difference_t<Cs<x_is2...>,Cs<x_is...>> x_not_common;
-    typedef pack_difference_t<Cs<x_is2...>,x_not_common> x_common;
-    return transfer_t<x_not_common,vector_space>(*this,other,x_common{},x_not_common{});
-  }
-  template<class ...x_is2>
-  auto operator +( vector_space<x_is2...>&& other)&&
-  {
-    typedef pack_difference_t<Cs<x_is2...>,Cs<x_is...>> x_not_common;
-    typedef pack_difference_t<Cs<x_is2...>,x_not_common> x_common;
-    return transfer_t<x_not_common,vector_space>(std::move(*this),std::move(other),x_common{},x_not_common{});
-  }
-
-  template<class ...x_is2>
-  auto operator -(const vector_space<x_is2...>& other)const &
-  {
-    auto x=other*(-1.0);
-    typedef pack_difference_t<Cs<x_is2...>,Cs<x_is...>> x_not_common;
-    typedef pack_difference_t<Cs<x_is2...>,x_not_common> x_common;
-    return transfer_t<x_not_common,vector_space>(*this,x,x_common{},x_not_common{});
-  }
-  template<class ...x_is2>
-  auto operator -( vector_space<x_is2...>&& other)&&
-  {
-    other=std::move(other)*v(-1.0,dimension_less{});
-    typedef pack_difference_t<Cs<x_is2...>,Cs<x_is...>> x_not_common;
-    typedef pack_difference_t<Cs<x_is2...>,x_not_common> x_common;
-    return transfer_t<x_not_common,vector_space>(std::move(*this),std::move(other),x_common{},x_not_common{});
-  }
 
 
 
@@ -371,6 +329,16 @@ template<class...x_is> struct vector_space: private x_is...
 
 
 
+template<class... Ids, class...values_t>
+vector_space(Cs<Ids...>,values_t&&...v)->vector_space<x_i<Ids,std::decay_t<values_t>>...>;
+
+template<class...xis>
+vector_space(xis&&...v)->vector_space<std::decay_t<xis>...>;
+
+template <class... x_is>
+vector_space(x_is const&...xs)->vector_space<x_is...>;
+
+
 
 
 template<class...x_is>
@@ -386,12 +354,12 @@ constexpr
 }
 
 
-
+/*
 template<class...x_is> struct get_Field_Indexes <vector_space<x_is...>>
 {
   typedef get_Field_Indexes_t<x_is...> type;
 };
-
+*/
 template<class I, class... Is>
 std::ostream& operator<<(std::ostream& os, const std::variant<I,Is...>& v) { std::visit([&os](auto& e){os<<e;},v); return os;}
 
@@ -512,6 +480,63 @@ auto operator * (const vector_space<x_is...>& one,const vector_space<x_js...>&  
 {
   return ((one*two[typename x_js::ei{}])+...);
 }
+
+template<class...x_is,class ...x_is2, class... x2_not_x1>
+auto difference_impl(const vector_space<x_is...>&me, const vector_space<x_is2...>& other, Cs<x2_not_x1...>)
+{
+  return vector_space((me[typename x_is::ei{}]-other[typename x_is::ei{}])...,-other[x2_not_x1{}]...);
+}
+template<class...x_is,class ...x_is2, class... x2_not_x1>
+auto difference_impl( vector_space<x_is...>&&me,  vector_space<x_is2...>&& other, Cs<x2_not_x1...>)
+{
+  return vector_space((std::move(me)[typename x_is::ei{}]-std::move(other)[typename x_is::ei{}])...,-std::move(other)[x2_not_x1{}]...);
+}
+
+
+
+template<class...x_is,class ...x_is2>
+auto operator -(const vector_space<x_is...>&me, const vector_space<x_is2...>& other)
+{
+  typedef pack_difference_t<Cs<typename x_is2::ei...>,Cs<typename x_is::ei...>> x2_not_1;
+  return difference_impl(me,other,x2_not_1{});
+}
+
+template<class...x_is,class ...x_is2>
+auto operator -( vector_space<x_is...>&&me,  vector_space<x_is2...>&& other)
+{
+  typedef pack_difference_t<Cs<typename x_is2::ei...>,Cs<typename x_is::ei...>> x2_not_1;
+  return difference_impl(std::move(me),std::move(other),x2_not_1{});
+}
+
+template<class...x_is,class ...x_is2, class... x2_not_x1>
+auto addition_impl(const vector_space<x_is...>&me, const vector_space<x_is2...>& other, Cs<x2_not_x1...>)
+{
+  return vector_space((me[typename x_is::ei{}]+other[typename x_is::ei{}])...,other[x2_not_x1{}]...);
+}
+template<class...x_is,class ...x_is2, class... x2_not_x1>
+auto addition_impl( vector_space<x_is...>&&me,  vector_space<x_is2...>&& other, Cs<x2_not_x1...>)
+{
+  return vector_space{(std::move(me)[typename x_is::ei{}]+std::move(other)[typename x_is::ei{}])...,std::move(other)[x2_not_x1{}]...};
+}
+
+
+
+template<class...x_is,class ...x_is2>
+auto operator +(const vector_space<x_is...>&me, const vector_space<x_is2...>& other)
+{
+  typedef pack_difference_t<Cs<typename x_is2::ei...>,Cs<typename x_is::ei...>> x2_not_1;
+  return addition_impl(me,other,x2_not_1{});
+}
+
+template<class...x_is,class ...x_is2>
+auto operator +( vector_space<x_is...>&&me,  vector_space<x_is2...>&& other)
+{
+  typedef pack_difference_t<Cs<typename x_is2::ei...>,Cs<typename x_is::ei...>> x2_not_1;
+  return addition_impl(std::move(me),std::move(other),x2_not_1{});
+}
+
+
+
 
 
 

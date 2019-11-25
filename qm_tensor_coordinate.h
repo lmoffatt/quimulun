@@ -147,22 +147,22 @@ public:
   auto operator()(const Data&... data)const
   {
     using res_value_type=std::decay_t<
-        std::invoke_result_t<G,decltype(get_from<Xs>(data...)(get_from<Xs>(data...)().begin()))...>>;
+        std::invoke_result_t<G,decltype(get_from(Xs{},data...)(get_from(Xs{},data...)().begin()))...>>;
 
-//    typedef typename decltype(g_(std::declval<typename std::decay_t<decltype(get_from<Xs>(data...))>::element_type>()...))::value_type value_type;
+//    typedef typename decltype(g_(std::declval<typename std::decay_t<decltype(get_from(Xs{},data...))>::element_type>()...))::value_type value_type;
 
     //typedef typename value_type::sgser dgewr;
 
     //using test=typename res_value_type::value_test;
 
-    auto out=consolidate<element_type_t<res_value_type>>(vec<Id>{},get_from<Xs>(data...)()...);
+    auto out=consolidate<element_type_t<res_value_type>>(vec<Id>{},get_from(Xs{},data...)()...);
 
     //using test2=typename decltype(out)::out_test;
 
     auto p=out.begin(Id{});
 
     do {
-      out(Id{},p)=g_(get_from<Xs>(data...)(p)...);
+      out(Id{},p)=g_(get_from(Xs{},data...)(p)...);
 
     } while (out.next(p));
     return x_i(Id{},std::move(out));
@@ -180,6 +180,8 @@ template <class C> struct extract_function_Id<C>
 template< class Id,class G, class... Xs>
 struct extract_function_Id<Coord<Id,G,Xs...>>{using type=Cs<Id>;};
 
+
+
 template<class C> using extract_function_Id_t=typename extract_function_Id<C>::type;
 
 template< class... Ids>
@@ -195,7 +197,7 @@ struct extract_function_Id{using type=pack_concatenation_t<extract_function_Id_t
 template<class Id,class G, class... Xs, class... Datas>
 auto calculate(const Coord<Id,G,Xs...>& f,const Datas&... d)
 {
-  if constexpr ((std::is_same_v<decltype (get_from<Xs>(d...)),Nothing>||...))
+  if constexpr ((std::is_same_v<decltype (get_from(Xs{},d...)),Nothing>||...))
     return Nothing{};
   else
     return f(d...);

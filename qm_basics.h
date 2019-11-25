@@ -7,16 +7,60 @@
 
 struct Nothing{
   friend Nothing operator+(Nothing, Nothing ){return Nothing{};}
+
+
   friend Nothing operator||(Nothing, Nothing ){return Nothing{};}
+
   template<class Something>
-  friend auto operator||(Nothing, Something&& s){return std::forward<Something>(s);}
+  friend auto operator-( Something&& s, Nothing)->decltype (s)
+  {return std::forward<Something>(s);}
+
   template<class Something>
-  friend auto operator||( Something&& s, Nothing){return std::forward<Something>(s);}
+  friend auto operator+( Something&& s, Nothing)->decltype (s)
+  {return std::forward<Something>(s);}
+
+  template<class Something>
+  friend auto operator||(Nothing, Something&& s)->decltype (s)
+  {return std::forward<Something>(s);}
+  template<class Something>
+  friend auto operator||( Something&& s, Nothing)->decltype (s)
+  {return std::forward<Something>(s);}
 
   constexpr auto size(){return 0;}
   using myIds=Cs<>;
 
 };
+
+
+template<class... Ids>
+struct Not_found{
+  template<class... Id2>
+  friend auto operator+(Not_found, Not_found<Id2...> ){return Not_found<Ids...,Id2...>{};}
+
+
+  template<class... Id2>
+  friend auto operator||(Not_found, Not_found<Id2...> ){return Not_found<Ids...,Id2...>{};}
+
+  template<class Something>
+  friend auto operator-( Something&& s, Not_found)->decltype (s)
+  {return std::forward<Something>(s);}
+
+  template<class Something>
+  friend auto operator+( Something&& s, Not_found)->decltype (s)
+  {return std::forward<Something>(s);}
+
+  template<class Something>
+  friend auto operator||(Not_found, Something&& s)->decltype (s)
+  {return std::forward<Something>(s);}
+  template<class Something>
+  friend auto operator||( Something&& s, Not_found)->decltype (s)
+  {return std::forward<Something>(s);}
+
+
+};
+
+
+
 
 struct Something{  constexpr bool operator==(Something)const {return true;}
 };
@@ -201,7 +245,9 @@ template<class e_i, class Value_type>
 struct f_i;
 
 template<class C>
-auto only_xi_or_fi(C&& x)
+    auto only_xi_or_fi(C&& x)->std::conditional_t<
+    (is_this_template_class<x_i,std::decay_t<C>>::value||is_this_template_class<f_i,std::decay_t<C>>::value),
+    decltype(x),Nothing>
 {
   if constexpr (is_this_template_class<x_i,std::decay_t<C>>::value||is_this_template_class<f_i,std::decay_t<C>>::value)
     return std::forward<C>(x);
@@ -209,10 +255,10 @@ auto only_xi_or_fi(C&& x)
     return Nothing{};
 
 }
+template<class Id> struct all;
 
-
-template <class anId, class...Datas>
-auto get_from( Datas&&...ds)->decltype ((only_xi_or_fi(std::forward<Datas>(ds)[anId{}])||...))
+template <class anId, class...Datas, typename =std::enable_if_t<!is_this_template_class<all,anId>::value>>
+auto get_from(anId, Datas&&...ds)->decltype ((only_xi_or_fi(std::forward<Datas>(ds)[anId{}])||...))
 {
   return (only_xi_or_fi(std::forward<Datas>(ds)[anId{}])||...);
 }

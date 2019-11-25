@@ -817,7 +817,7 @@ auto at(const vector_space<x_is...>&me,const Position<Is...>& i, J j)-> decltype
 }
 
 template<class... x_is, class...Is, class =std::enable_if_t<is_in_pack<Index<typename x_is::ei...>,Is...>(),float>>
-auto& at(const vector_space<x_is...>&me,const Position<Is...>& i, index_k ) {
+auto& at(const vector_space<x_is...>&,const Position<Is...>& i, index_k ) {
   return i[Index<typename x_is::ei...>{}]();
 }
 

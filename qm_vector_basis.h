@@ -34,8 +34,8 @@ private:
   Value_type value_;
 public:
 
-  explicit x_i(const value_type& x):value_{x}{}
-  explicit x_i(value_type&& x):value_{std::move(x)}{}
+   x_i(const value_type& x):value_{x}{}
+   x_i(value_type&& x):value_{std::move(x)}{}
   explicit x_i(e_i,value_type&& x):value_{std::move(x)}{}
   explicit x_i(e_i,const value_type& x):value_{x}{}
 
@@ -52,7 +52,7 @@ public:
 
   friend auto begin(const x_i& me){ return begin(me());}
 
-  x_i operator[](e_i)&& {return *this;}
+  auto&& operator[](e_i)&& {return *this;}
 
   auto& get(e_i)const  {return *this;}
   auto& get(e_i)  {return *this;}
@@ -68,7 +68,7 @@ public:
 
   auto& operator()()const &{ return value_;}
   auto& operator()()&{ return value_;}
-  //auto operator()()&& {return value_;}
+  auto operator()()&& {return value_;}
 
 
 
@@ -160,6 +160,7 @@ public:
 
 
 
+
   friend x_i operator+(const x_i& me, const x_i& other)
   {
     x_i out{me};
@@ -168,14 +169,41 @@ public:
   }
 
 
-  friend x_i operator-(const x_i& me, const x_i& other)
-  {
-    x_i out{me};
-    out()-=other();
-    return out;
-  }
 
 };
+template<class ei, class value>
+auto operator-(x_i<ei,value>&& me){ return x_i{ei{},-me()};};
+
+template<class ei, class value>
+auto operator-(const x_i<ei,value>& me){
+  auto out{me};
+
+  return -std::move(out);};
+
+
+
+
+template<class e_i, class Value_type1, class Value_type2>
+auto operator-(const x_i<e_i,Value_type1>& one, const x_i<e_i,Value_type2>& two)
+{
+  return x_i{e_i{},one()-two()};
+}
+template<class e_i, class Value_type1, class Value_type2>
+auto operator-( x_i<e_i,Value_type1>&& one,  x_i<e_i,Value_type2>&& two)
+{
+  return x_i{e_i{},std::move(one)()-std::move(two)()};
+}
+
+template<class e_i, class Value_type1, class Value_type2>
+auto operator+(const x_i<e_i,Value_type1>& one, const x_i<e_i,Value_type2>& two)
+{
+  return x_i{e_i{},one()+two()};
+}
+template<class e_i, class Value_type1, class Value_type2>
+auto operator+( x_i<e_i,Value_type1>&& one,  x_i<e_i,Value_type2>&& two)
+{
+  return x_i{e_i{},std::move(one)()+std::move(two)()};
+}
 
 
 

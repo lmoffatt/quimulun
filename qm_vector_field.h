@@ -342,6 +342,23 @@ auto apply(F&& f,
 
 }
 
+template<class F, class random,class... values_t>
+auto apply_random(F&& f,random& mt,
+                  const values_t&... ti)
+{
+  using res_value_type=std::decay_t<decltype (f(mt(mt.begin()),ti(ti.begin())...))>;
+  auto out=consolidate<res_value_type>(vec<>{},mt,ti...);
+  //using test=typename res_value_type::res_type;
+  // using test2=typename decltype(out)::out_type;
+  auto p=out.begin();
+  do
+  {
+    out(p)=std::invoke(std::forward<F>(f),mt(p),ti(p)...);
+  } while(out.next(p));
+  return out;
+
+}
+
 
 template<class F, class random,class... values_t>
 auto apply_sample(F&& f,random& mt,
@@ -354,7 +371,7 @@ auto apply_sample(F&& f,random& mt,
   auto p=out.begin();
   do
   {
-    out(p)=f.sample(ti(p)..., mt(p));
+    out(p)=f.sample(ti(p)...,mt(p));
   } while(out.next(p));
   return out;
 

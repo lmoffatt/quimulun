@@ -36,6 +36,17 @@ struct variance{
 
 
 
+template <class ...Ups, class ...Downs
+          , class value_type0, class value_type2>
+//, typename=std::enable_if_t<(sizeof... (Ups)==sizeof... (Downs))&&(sizeof... (Ups)>0),int>>
+auto operator - (const x_i<logpr<up<Ups...>,dn<Downs...>>, value_type0>& one,
+               const x_i<logpr<up<Ups...>,dn<Downs...>>, value_type2>& two)
+{
+  return one()-two();
+}
+
+
+
 
 
 struct Normal_Distribution
@@ -168,10 +179,10 @@ public:
   template<class... Param,class xi_Rnd>
   auto sample(xi_Rnd& mt,const Param&... par)const
   {
-    auto  out=apply_sample(g_,mt,get_from<Xs>(par...)()...);
+    auto  out=apply_sample(g_,mt,get_from(Xs{},par...)()...);
 
   /*  return x_i(Id{},std::move(out));
-        using value_type=  decltype(g_.sample(get_from<Xs>(par...)(get_from<Xs>(par...).begin())...,mt(mt.begin())));
+        using value_type=  decltype(g_.sample(get_from(Xs{},par...)(get_from(Xs{},par...).begin())...,mt(mt.begin())));
     auto out=consolidate<value_type>(vec<>{},par[Xs{}]...);
     auto p=out.begin();
 
@@ -189,21 +200,21 @@ public:
   template<class... Param>
   auto logP(const Param&... par)const
   {
-    auto const& x=get_from<Id>(par...);
+    auto const& x=get_from(Id{},par...);
     auto p=x().begin();
-    auto logProb=g_.logP(x()(p),get_from<Xs>(par...)(p)...);
+    auto logProb=g_.logP(x()(p),get_from(Xs{},par...)(p)...);
     while (x().next(p))
-      logProb=std::move(logProb)+g_.logP(x()(p),get_from<Xs>(par...)(p)...);
+      logProb=std::move(logProb)+g_.logP(x()(p),get_from(Xs{},par...)(p)...);
     return x_i(logpr<up<Id>,dn<Xs...>>{},std::move(logProb));
   }
   template<class... Param>
   auto FIM(const Param&... par)const
   {
-    auto const& x=get_from<Id>(par...);
+    auto const& x=get_from(Id{},par...);
     auto p=x().begin();
-    auto fim=g_.FIM(x(p),get_from<Xs>(par...)(p)...);
+    auto fim=g_.FIM(x(p),get_from(Xs{},par...)(p)...);
     while (x().next(p))
-      fim=std::move(fim)+g_.FIM(x(p),get_from<Xs>(par...)(p)...);
+      fim=std::move(fim)+g_.FIM(x(p),get_from(Xs{},par...)(p)...);
     return fim;
   }
 
@@ -241,25 +252,17 @@ auto sample(const D<Id,Distribution,Xs...>& dist,Rnd& mt, const Datas&...ds)
  //using tests=typename Cs<Datas...>::Datas_test;
 // using testX=typename Cs<Xs...>::Xs_test;
 
-  if constexpr ((std::is_same_v<decltype (get_from<Xs>(ds...)),Nothing>||...))
+  if constexpr ((std::is_same_v<decltype (get_from(Xs{},ds...)),Nothing>||...))
     return Nothing{};
   else
     return dist.sample(mt,ds...);
 }
 
-/*
-template<class Id,class Distribution, class... Xs,class... Datas>
-auto calculate(const D<Id,Distribution,Xs...>& ,const Datas&... d )
-{
-  return get_from<Id>(d...);
-}
-
-*/
 
 template<class Id,class Distribution, class... Xs, class... Datas>
 auto logP(const D<Id,Distribution,Xs...>& dist,const Datas&... d)
 {
-  if constexpr ((std::is_same_v<decltype (get_from<Xs>(d...)),Nothing>||...))
+  if constexpr ((std::is_same_v<decltype (get_from(Xs{},d...)),Nothing>||...))
     return Nothing{};
   else
     return dist.logP(d...);
@@ -268,7 +271,7 @@ auto logP(const D<Id,Distribution,Xs...>& dist,const Datas&... d)
 template<class Id,class Distribution, class... Xs, class... Datas>
 auto FIM(const D<Id,Distribution,Xs...>& dist,const Datas&... d)
 {
-  if constexpr ((std::is_same_v<decltype (get_from<Xs>(d...)),Nothing>||...))
+  if constexpr ((std::is_same_v<decltype (get_from(Xs{},d...)),Nothing>||...))
     return Nothing{};
   else
     return dist.FIM(d...);
