@@ -254,7 +254,11 @@ public:
     return vec<Xs...>::size(I{},value_,p);
   }
 
-
+  template<class I,class Position>
+  auto size(I,const Position& )const->std::enable_if_t<!is_in_pack(I{},Cs<Xs...>{}),std::size_t>
+  {
+    return 0ul;
+  }
 
   auto& value() {return value_;}
   auto& value()const {return value_;}
@@ -266,7 +270,8 @@ public:
     return me.value()==ti.value();
   }
 
-  static auto begin() {return Position<Xs...>{};}
+  static constexpr auto begin() {return Position<Xs...>{};}
+  static constexpr auto rec_begin() {return begin() && Value_type::rec_begin();}
 
   friend constexpr auto begin(const vector_field& ){ return vector_field::begin();}
 

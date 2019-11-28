@@ -46,9 +46,9 @@ public:
   using myIndexes= Cs<>;
 
 
-  //explicit constexpr v(TYPE&& x,myunit&&): value_{std::move(x)}{}
+  explicit constexpr v(TYPE&& x,myunit&&): value_{std::move(x)}{}
   explicit constexpr v(const TYPE& x,myunit): value_{x}{}
- // explicit constexpr v(TYPE&& x): value_{std::move(x)}{}
+  explicit constexpr v(TYPE&& x): value_{std::move(x)}{}
   explicit constexpr v(const TYPE& x): value_{x}{}
   template<class... Ts>
   v(std::tuple<Ts...>&& x):value_{std::get<TYPE>(std::move(x))}{}
@@ -68,6 +68,9 @@ public:
   friend constexpr auto begin(const v& ){ return Position<>{};}
 
   static constexpr auto begin() {return Position<>{};}
+  static constexpr auto rec_begin() {return Position<>{};}
+
+
   constexpr bool next(Position<>& )const {return false;}
 
   template<class Position>
@@ -110,6 +113,7 @@ public:
   }
 
 };
+
 
 
 
@@ -226,6 +230,7 @@ public:
   auto& units() {return us_;}
   auto& size() {return us_();}
   static constexpr auto begin() {return Position<>{};}
+  static constexpr auto rec_begin() {return Position<>{};}
 
   friend constexpr auto begin(const logv& ){ return Position<>{};}
 
@@ -363,10 +368,10 @@ auto pow(double base,const logv<T,unit>& me)
 template <class T>
 v(T&& x)->v<T,dimension_less>;
 template<class T,class unit>
-v(T&& x,unit)->v<T,unit>;
+v(T&& x,unit)->v<std::decay_t<T>,unit>;
 
 template<class T,class unit>
-logv(T&&, unit)->logv<T,unit>;
+logv(T&&, unit)->logv<std::decay_t<T>,unit>;
 template<class T>
 logv(v<T,dimension_less>&&)->logv<T,dimension_less>;
 

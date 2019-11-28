@@ -1,18 +1,28 @@
 #ifndef QM_DATA_FRAME_H
 #define QM_DATA_FRAME_H
 #include "qm_tensor_model.h"
-
+#include <fstream>
 template <class> struct row_type;
-template <class> struct row_type_w_unit;
 template <class V> using row_type_t=typename row_type<V>::type;
-template <class V> using row_type_w_unit_t=typename row_type_w_unit<V>::type;
 
 
 template<class> struct cols;
-template<class> struct cols_w_unit;
+
 
 template <class C> using cols_t=typename cols<C>::type;
-template <class C> using cols_w_unit_t=typename cols_w_unit<C>::type;
+
+template<class> struct index_set;
+
+
+template <class C> using index_set_t=typename index_set<C>::type;
+
+
+
+
+template <class, class> struct index_of_col;
+
+template <class C,class col> using index_of_col_t=typename index_of_col<C,col>::type;
+
 
 
 
@@ -20,32 +30,41 @@ template <class C> using cols_w_unit_t=typename cols_w_unit<C>::type;
 template<class TYPE,class myunit,class...Is>
 void insert_at(v<TYPE,myunit>& me,const Position<Is...>& , row_type_t<v<TYPE,myunit>>&& r)
 {
-  me.value()=std::get<TYPE>(std::move(r));
+  me.value()=std::move(r);
 }
-template<class TYPE,class myunit,class...Is>
-void insert_at(v<TYPE,myunit>& me,const Position<Is...>& , row_type_w_unit_t<v<TYPE,myunit>>&& r)
-{
-  me.value()=std::get<TYPE>(std::move(r));
-}
-template<class TYPE,class myunit,class...Is, class ...us, typename=std::enable_if_t<is_in_pack<myunit,us...>(),int>>
-void insert_at(v<TYPE,myunit>& me,const Position<Is...>& , std::tuple<TYPE,std::variant<us...>>&& r)
-{
-  assert(std::get<myunit>(std::get<1>(r))==myunit{});
-  me.value()=std::get<TYPE>(std::move(r));
-}
+
+template<> struct cols<int>{
+  using type=Cs<value_k>;
+};
+
+template<> struct index_set<int>{
+  using type=Cs<Cs<>>;
+};
+
+
+template<> struct row_type<int>{
+  using type=int;
+};
+
 
 
 template<class TYPE,class myunit> struct cols<v<TYPE,myunit>>{
   using type=Cs<value_k>;
 };
-template<class TYPE,class myunit> struct cols_w_unit<v<TYPE,myunit>>{
-  using type=Cs<value_k,unit_k>;
+
+template<class TYPE,class myunit> struct index_set<v<TYPE,myunit>>{
+  using type=Cs<Cs<>>;
 };
+
+
+template<class TYPE,class myunit> struct index_of_col<v<TYPE,myunit>,value_k>{
+  using type=Cs<>;
+};
+
+
+
 template<class TYPE,class myunit> struct row_type<v<TYPE,myunit>>{
-  using type=std::tuple<TYPE>;
-};
-template<class TYPE,class myunit> struct row_type_w_unit<v<TYPE,myunit>>{
-  using type=std::tuple<TYPE,myunit>;
+  using type=TYPE;
 };
 
 
@@ -55,25 +74,28 @@ template<class TYPE,class myunit> struct row_type_w_unit<v<TYPE,myunit>>{
 
 
 template<class T,class... Units> struct cols<logv<T,Units...>>{
-  using type=Cs<value_k>;
-};
-template<class T,class... Units> struct row_type<logv<T,Units...>>{
-  using type=std::tuple<T>;
-};
-template<class T,class... Units> struct cols_w_unit<logv<T,Units...>>{
   using type=Cs<value_k,unit_k>;
 };
-template<class T,class... Units> struct row_type_w_unit<logv<T,Units...>>{
+
+template<class T,class... Units> struct index_set<logv<T,Units...>>{
+  using type=Cs<Cs<>>;
+};
+
+
+
+template<class T,class... Units, class mycol>
+struct index_of_col<logv<T,Units...>,mycol>{
+  using type=Cs<>;
+};
+
+
+
+template<class T,class... Units> struct row_type<logv<T,Units...>>{
   using type=std::tuple<T,logv_units<Units...>>;
 };
 
 template<class T,class... Units,class...Is>
 void insert_at(logv<T,Units...>& me,const Position<Is...>& , row_type_t<logv<T,Units...>>&& r)
-{
-  me.value()=std::get<T>(std::move(r));
-}
-template<class T,class... Units,class...Is>
-void insert_at(logv<T,Units...>& me,const Position<Is...>& , row_type_w_unit_t<logv<T,Units...>>&& r)
 {
   me.value()=std::get<T>(std::move(r));
   me.units()=std::get<logv_units<Units...>>(std::move(r));
@@ -100,11 +122,6 @@ template<> struct vec_frame<>
     ::insert_at(x,p,std::move(e));
   }
 
-  template <class ValueType, class Positionx>
-  static void insert_at(ValueType& x,const Positionx& p,row_type_w_unit_t<ValueType>&& e)
-  {
-    ::insert_at(x,p,std::move(e));
-  }
 
 
   template <class Vector, class Position>
@@ -145,9 +162,24 @@ template<class I0, class...I> struct vec_frame<I0,I...>{
   static void insert_at(std::vector<ValueType>& x,const Positionx& p,elementType&& e)
   {
     if (x.size()==p[I0{}]())
-      push_back(x,std::forward<elementType>(e));
+      push_back(x,p,std::forward<elementType>(e));
     else
       vec_frame<I...>::insert_at(x.at(p[I0{}]()),p, std::forward<elementType>(e));
+  }
+
+  template <class ValueType, class Position>
+  static std::vector<ValueType>& push_back(std::vector<ValueType>& x,const Position& i,row_type_t<ValueType>&& e)
+  {
+    ValueType a;
+    ::insert_at(a,i,std::move(e));
+    x.push_back(std::move(a));
+    return x;
+  }
+  template <class ValueType, class Position>
+  static std::vector<ValueType>& push_back(std::vector<ValueType>& x,const Position& ,ValueType&& e)
+  {
+    x.push_back(std::move(e));
+    return x;
   }
 
 
@@ -179,20 +211,6 @@ template<class I0, class...I> struct vec_frame<I0,I...>{
     return x;
   }
 
-  template <class ValueType,class... e_types>
-  static auto push_back(std::vector<ValueType>& x,std::tuple<e_types...>&& e)
-      ->std::enable_if_t<std::is_same_v<std::tuple<e_types...>,row_type_w_unit_t< ValueType> >,std::vector<ValueType>&>{
-
-    x.emplace_back(std::move(e));
-    return x;
-  }
-  template <class ValueType,class... e_types>
-  static auto push_back(std::vector<ValueType>&& x,std::tuple<e_types...>&& e)
-      ->std::enable_if_t<std::is_same_v<std::tuple<e_types...>,row_type_w_unit_t< ValueType>  >,std::vector<ValueType>>{
-
-    x.emplace_back(std::move(e));
-    return x;
-  }
 
 
 
@@ -308,11 +326,6 @@ void insert_at(vector_field<vec<Xs...>,Value_type> &me,const Position<Is...>& p,
 
 
 
-template<class Value_type,class... Xs,class...Is>
-void insert_at(vector_field<vec<Xs...>,Value_type> &me,const Position<Is...>& p, row_type_w_unit_t<vector_field<vec<Xs...>,Value_type>>&& r)
-{
-  vec_frame<Xs...>::insert_at(me.value(),p,std::move(r));
-}
 
 
 template<class Value_type,class... Xs>
@@ -322,19 +335,26 @@ struct cols<vector_field<vec<Xs...>,Value_type>>
 };
 
 template<class Value_type,class... Xs>
+struct index_set<vector_field<vec<Xs...>,Value_type>>
+{
+ // using test=typename index_set_t<Value_type>::value;
+  using type=pack_append_t<Cs<Xs...>,index_set_t<Value_type>>;
+};
+
+
+
+
+
+template<class Value_type,class... Xs, class mycol>
+struct index_of_col<vector_field<vec<Xs...>,Value_type>,mycol>{
+  using type=pack_concatenation_t<Cs<Xs...>,index_of_col_t<Value_type,mycol>>;
+};
+
+
+template<class Value_type,class... Xs>
 struct row_type<vector_field<vec<Xs...>,Value_type>>
 {
   using type=row_type_t<Value_type>;
-};
-template<class Value_type,class... Xs>
-struct cols_w_unit<vector_field<vec<Xs...>,Value_type>>
-{
-  using type=cols_w_unit_t<Value_type>;
-};
-template<class Value_type,class... Xs>
-struct row_type_w_unit<vector_field<vec<Xs...>,Value_type>>
-{
-  using type=row_type_w_unit_t<Value_type>;
 };
 
 template<class e_i, class Value_type>
@@ -343,16 +363,24 @@ struct cols<x_i<e_i,Value_type>>{
 };
 
 template<class e_i, class Value_type>
-struct cols_w_unit<x_i<e_i,Value_type>>{
-  using type=recursive_t<e_i,cols_w_unit_t<Value_type>>;
+struct index_set<x_i<e_i,Value_type>>{
+  using type=index_set_t<Value_type>;
 };
+
+
+template<class e_i, class Value_type, class mycol>
+struct index_of_col<x_i<e_i,Value_type>,recursive<e_i,mycol>>{
+  using type=index_of_col_t<Value_type,mycol>;
+};
+template<class e_i, class Value_type, class mycol>
+struct index_of_col<x_i<e_i,Value_type>,mycol>{
+  using type=index_of_col_t<Value_type,mycol>;
+};
+
+
 template<class e_i, class Value_type>
 struct row_type<x_i<e_i,Value_type>>{
   using type=row_type_t<Value_type>;
-};
-template<class e_i, class Value_type>
-struct row_type_w_unit<x_i<e_i,Value_type>>{
-  using type=row_type_w_unit_t<Value_type>;
 };
 
 
@@ -382,17 +410,6 @@ void insert_at(x_i<e_i,Value_type>&me,const Position<Is...>& p, std::tuple<Ts...
   insert_at(me(),p,std::move(r));
 }
 
-template <class> struct myrow_type;
-template <class> struct myrow_type_w_unit;
-template <class V> using myrow_type_t=typename myrow_type<V>::type;
-template <class V> using myrow_type_w_unit_t=typename myrow_type_w_unit<V>::type;
-
-
-template<class> struct mycols;
-template<class> struct mycols_w_unit;
-
-template <class C> using mycols_t=typename mycols<C>::type;
-template <class C> using mycols_w_unit_t=typename mycols_w_unit<C>::type;
 
 
 
@@ -406,28 +423,20 @@ template<class...x_is>
 struct cell_type<vector_space<x_is...>>{using type=pack_to_column_t<row_type_t<x_is>...>;};
 
 
-template<class...x_is>
-struct cell_type_w_unit<vector_space<x_is...>>{using type=pack_to_column_t<row_type_w_unit_t<x_is>...>;};
 
 
 
 
 template<class...x_is>
 struct row_type<vector_space<x_is...>>
-{using type=pack_concatenation_t<
-      std::tuple<std::variant<typename x_is::ei...>>,cell_type_t<vector_space<x_is...>>>;
-};
-
-template<class...x_is>
-struct row_type_w_unit<vector_space<x_is...>>
-{using type=pack_concatenation_t<
-      std::tuple<std::variant<typename x_is::ei...>>,cell_type_w_unit_t<vector_space<x_is...>>>;
+{
+  using type=pack_concatenation_t<std::tuple<>,row_type_t<x_is>...>;
 };
 
 
 
 template <class...x_is,class... I, class... Is, std::size_t...In>
-bool is_same(vector_space<x_is...> const& me,const Position<Is...>& p,const myrow_type_t<vector_space<x_is...>>& r, Cs<I...>,std::index_sequence<In...>)
+bool is_same(vector_space<x_is...> const& me,const Position<Is...>& p,const row_type_t<vector_space<x_is...>>& r, Cs<I...>,std::index_sequence<In...>)
 {
   return ((std::get<In>(r)==at(me,p,I{}))&&...);
 
@@ -437,166 +446,80 @@ template<class dependent_type,class...Ds>
 struct cols< Derivative<dependent_type,vector_space<Ds...>>>{
   using derivative_type=typename  Derivative<dependent_type,vector_space<Ds...>>::derivative_type;
   using type=pack_concatenation_t<
-
       recursive_t<primitive_k,cols_t<dependent_type>>,
       recursive_t<derivative_k,cols_t<derivative_type>>>;
 };
 
-template<class dependent_type,class...Ds>
-struct cols_w_unit< Derivative<dependent_type,vector_space<Ds...>>>{
-  using derivative_type=typename  Derivative<dependent_type,vector_space<Ds...>>::derivative_type;
-  using type=pack_concatenation_t<
 
-      recursive_t<primitive_k,cols_w_unit_t<dependent_type>>,
-      recursive_t<derivative_k,cols_w_unit_t<derivative_type>>>;
+template<class dependent_type,class...Ds>
+struct index_set< Derivative<dependent_type,vector_space<Ds...>>>{
+  using derivative_type=typename  Derivative<dependent_type,vector_space<Ds...>>::derivative_type;
+  using type=pack_unique_t<pack_concatenation_t<
+      index_set_t<dependent_type>,
+      index_set_t<derivative_type>>>;
 };
+
+
+
+
 
 template<class dependent_type,class...Ds>
 struct row_type< Derivative<dependent_type,vector_space<Ds...>>>{
   using derivative_type=typename  Derivative<dependent_type,vector_space<Ds...>>::derivative_type;
-  using type=decltype(std::tuple_cat(
-      row_type_t<dependent_type>{},row_type_t<derivative_type>{}));
-};
-
-template<class dependent_type,class...Ds>
-struct row_type_w_unit< Derivative<dependent_type,vector_space<Ds...>>>{
-  using derivative_type=typename  Derivative<dependent_type,vector_space<Ds...>>::derivative_type;
-  using type=decltype(std::tuple_cat(
-      row_type_w_unit_t<dependent_type>{},row_type_w_unit_t<derivative_type>{}));
+  using type=pack_concatenation_t<std::tuple<>,row_type_t<dependent_type>,row_type_t<derivative_type>>;
 };
 
 
-template <class...x_is,class... I, class... Is, std::size_t...In>
-bool is_same(vector_space<x_is...> const& me,const Position<Is...>& p,const myrow_type_w_unit_t<vector_space<x_is...>>& r, Cs<I...>,std::index_sequence<In...>)
-{
-  return ((std::get<In>(r)==me(p,I{}))&&...);
 
-}
-
-template <class...x_is,class... Ind, class... Is, std::size_t...In>
-bool is_same_index(vector_space<x_is...> const& ,Index<Ind...>,const Position<Is...>& p,const myrow_type_t<vector_space<x_is...>>& r, std::index_sequence<In...>)
-{
-  return ((std::get<In>(r)==p[Index<Ind...>{}]())&&...);
-
-}
-template <class...x_is,class... Ind, class... Is, std::size_t...In>
-bool is_same_index(vector_space<x_is...> const& ,Index<Ind...>,const Position<Is...>& p,const myrow_type_w_unit_t<vector_space<x_is...>>& r, std::index_sequence<In...>)
-{
-  return ((std::get<In>(r)==p[Index<Ind...>{}]())&&...);
-
-}
 template <class...x_is,class I, class... Is>
-bool is_same(vector_space<x_is...> const& me,I,const Position<Is...>& p,const myrow_type_t<vector_space<x_is...>>& r)
+bool is_same(vector_space<x_is...> const& me,I,const Position<Is...>& p,const row_type_t<vector_space<x_is...>>& r)
 {
   using xi=std::decay_t<decltype(me[I{}])>;
   using colsi=cols_t<xi>;
-  auto index_cols=pack_index_cs(colsi{},mycols_t<vector_space<x_is...>>{});
+  auto index_cols=pack_index_cs(colsi{},cols_t<vector_space<x_is...>>{});
   return is_same(me,p,r,colsi{},index_cols);
 }
 
 
-template <class...x_is,class I, class... Is>
-bool is_same(vector_space<x_is...> const& me,I,const Position<Is...>& p,const myrow_type_w_unit_t<vector_space<x_is...>>& r)
-{
-  using xi=std::decay_t<decltype(me[I{}])>;
-  using colsi_w_unit=cols_w_unit_t<xi>;
-  auto index_cols_w_unit=pack_index_cs(me,colsi_w_unit{},mycols_w_unit_t<vector_space<x_is...>>{});
-  return is_same(me,p,r,colsi_w_unit{},index_cols_w_unit);
-}
-
-
-
-
 template <class...x_is,class... Ind, class... Is>
-bool is_same(vector_space<x_is...> const& me,Index<Ind...>,const Position<Is...>& p,const myrow_type_t<vector_space<x_is...>>& r)
+bool is_same(vector_space<x_is...> const& me,Index<Ind...>,const Position<Is...>& p,const row_type_t<vector_space<x_is...>>& r)
 {
-  auto index_rows=pack_multindex<std::variant<Ind...>>(transfer_t<myrow_type_t<vector_space<x_is...>>,Cs<>>{});
-  return is_same_index(me,Index<Ind...>{},p,r,index_rows);
-}
-
-template <class...x_is,class... Ind, class... Is>
-bool is_same(vector_space<x_is...> const& me,Index<Ind...>,const Position<Is...>& p,const myrow_type_w_unit_t<vector_space<x_is...>>& r)
-{
-  auto index_rows=pack_multindex<std::variant<Ind...>>(transfer_t<myrow_type_w_unit_t<vector_space<x_is...>>,Cs<>>{});
+  auto index_rows=pack_multindex<std::variant<Ind...>>(transfer_t<row_type_t<vector_space<x_is...>>,Cs<>>{});
   return is_same_index(me,Index<Ind...>{},p,r,index_rows);
 }
 
 
 template <class I, class...x_is,class... Is, std::size_t...In>
-void insert_at(Cs<I>,vector_space<x_is...> & me,const Position<Is...>& p, myrow_type_t<vector_space<x_is...>>&& r,std::index_sequence<In...>)
+void insert_at(Cs<I>,vector_space<x_is...> & me,const Position<Is...>& p, row_type_t<vector_space<x_is...>>&& r,std::index_sequence<In...>)
 {
   (insert_at(me[non_const<I>{}],p,std::make_tuple(std::get<In>(std::move(r))...)));
 
 }
 
-template <class I, class...x_is,class... Is, std::size_t...In>
-void insert_at(Cs<I>,vector_space<x_is...> & me,const Position<Is...>& p, myrow_type_w_unit_t<vector_space<x_is...>>&& r,std::index_sequence<In...>)
-{
-  (insert_at(me[non_const<I>{}],p,std::make_tuple(std::get<In>(std::move(r))...)));
 
-}
-template <class xi, class...x_is,class... Is>
-void insert_at(Cs<xi>,vector_space<x_is...> & me,const Position<Is...>& p, myrow_type_t<vector_space<x_is...>>&& r)
-{
-  using colsi=cols_t< xi>;
-  auto index_cols=pack_index_cs(colsi{},mycols_t<vector_space<x_is...>>{});
-  insert_at(Cs<typename xi::ei>{},me,p,std::move(r),index_cols);
-}
 
-template <class xi, class...x_is,class... Is>
-void insert_at(Cs<xi>,vector_space<x_is...> & me,const Position<Is...>& p, myrow_type_w_unit_t<vector_space<x_is...>>&& r)
-{
-  using colsi=cols_w_unit_t<xi>;
-  auto index_cols=pack_index_cs(colsi{},mycols_w_unit_t<vector_space<x_is...>>{});
-  //using test=typename colsi::test_colsi;
-  //using test2=typename mycols_w_unit_t<vector_space>::test_mycols;
-  insert_at(Cs<typename xi::ei>{},me,p,std::move(r),index_cols);
-}
-
-template <class...x_is,class... Is>
-void insert_at(vector_space<x_is...> & me,const Position<Is...>& p, myrow_type_t<vector_space<x_is...>>&& r)
+template <class...x_is,class Position, std::size_t ...Is>
+void insert_at(vector_space<x_is...>& me,const Position& p, row_type_t<vector_space<x_is...>>&& r, std::index_sequence<Is...>)
 {
 
-  (insert_at(Cs<x_is>{},me,p,std::move(r)),...);
+  (insert_at(me[non_const<typename x_is::myId>{}],p,std::get<Is>(std::move(r))),...);
 }
-template <class...x_is,class... Is>
-void insert_at(vector_space<x_is...> & me,const Position<Is...>& p, myrow_type_w_unit_t<vector_space<x_is...>>&& r)
+
+
+template <class...x_is,class Position>
+void insert_at(vector_space<x_is...> & me,const Position& p, row_type_t<vector_space<x_is...>>&& r)
 {
 
-  (insert_at(Cs<x_is>{},me,p,std::move(r)),...);
-}
-template <class...x_is,class... Is, class rowtype>
-void insert_at(vector_space<x_is...> & me,const Position<Is...>& p, row_type_t<vector_space<x_is...>>&& r)
-{
-  auto v=p[Index<typename x_is::ei...>{}]();
-  auto [r_ei, r_value]=distribute(Cs<std::variant<typename x_is::ei...>>{},
-                                    transfer_t<cell_type_t<vector_space<x_is...>>,Cs<>>{},std::move(r));
-
-  auto& rvalue=r_value;
-  std::visit([&me,&rvalue,&p](auto ei){insert_at(me[ei],p,std::move(rvalue));},v);
-
-
+  return insert_at(me, p, std::move(r),std::index_sequence_for<x_is...>{});
 }
 
-template <class...x_is,class... Is
-          >//,std::enable_if_t<!std::is_same_v<row_type_w_unit,row_type >,int>>
-void insert_at(vector_space<x_is...> & me,const Position<Is...>& p, row_type_w_unit_t<vector_space<x_is...>>&& r)
-{
-  auto v=p[Index<typename x_is::ei...>{}]();
-  auto [r_ei, r_value]=distribute(Cs<std::variant<typename x_is::ei...>>{},
-                                    transfer_t<cell_type_w_unit_t<vector_space<x_is...>>,Cs<>>{},std::move(r));
 
-  auto& rvalue=r_value;
-  std::visit([&me,&rvalue,&p](auto ei){insert_at(me[non_const<decltype(ei)>{}],p,std::move(rvalue));},v);
-
-
-}
 
 
 
 
 template<class...x_is,class...Is>
-auto next_pos(vector_space<x_is...>const & me,const Position<Is...>& p,const myrow_type_t<vector_space<x_is...>>& r)
+auto next_pos(vector_space<x_is...>const & me,const Position<Is...>& p,const row_type_t<vector_space<x_is...>>& r)
 {
   auto pres=(std::pair{p,false}|...|
                [&me,&r](auto p)
@@ -622,91 +545,58 @@ auto next_pos(vector_space<x_is...>const & me,const Position<Is...>& p,const myr
 }
 
 
-template<class...x_is,class...Is>
-auto next_pos(vector_space<x_is...>const & me,const Position<Is...>& p,const myrow_type_w_unit_t<vector_space<x_is...>>& r)
-{
-  auto pres=(std::pair{p,false}|...|
-               [&me,&r](auto p)
-               {
-                 if (p.second)
-                 {
-                   /// lower indexes set to zero after high index increases
-                   p.first[Is{}]={};
-                   return p;
-                 }
-                 else if (
-                     is_same(me,Is{},p.first,r)
-                     )
-                   return p;
-                 else
-                 {
-                   p.second=true;
-                   ++p.first[Is{}];
-                   return p;
-                 }
-               });
-
-  return pres.first;
-}
 
 
 template<class...x_is,class...Is>
-auto insert(vector_space<x_is...>& me,const Position<Is...>& p, myrow_type_t<vector_space<x_is...>>&& r)
+auto insert(vector_space<x_is...>& me,const Position<Is...>& p, row_type_t<vector_space<x_is...>>&& r)
 {
   auto p1=next_pos(me,p,r);
   insert_at(me,p1,std::move(r));
   return p1;
 }
 
-template<class...x_is,class...Is>
-auto insert(vector_space<x_is...>& me,const Position<Is...>& p, myrow_type_w_unit_t<vector_space<x_is...>>&& r)
-{
-  auto p1=next_pos(me,p,r);
-  insert_at(me,p1,std::move(r));
-  return p1;
-}
 
-template<class...x_is> struct mycols<vector_space<x_is...>>
-{
-  using type=pack_concatenation_t<cols_t<x_is>...>;
-};
-
-template<class...x_is> struct myrow_type<vector_space<x_is...>>
-{
-  using type=decltype (std::tuple_cat(row_type_t<x_is>{}...));
-};
-
-template<class...x_is> struct mycols_w_unit<vector_space<x_is...>>
-{
-  using type=pack_concatenation_t<cols_w_unit_t<x_is>...>;
-};
-template<class...x_is> struct myrow_type_w_unit<vector_space<x_is...>>
-{
-  using type=decltype (std::tuple_cat(row_type_w_unit_t<x_is>{}...));
-};
 
 
 template<class...x_is> struct cols<vector_space<x_is...>>
 {
-  using type=pack_unique_t<pack_concatenation_t<Cs<index_k>,pack_concatenation_t<cols_t< typename x_is::value_type>...>>>;
+  using type=pack_concatenation_t<cols_t<x_is>...>;
 };
 
-template<class...x_is> struct cols_w_unit<vector_space<x_is...>>
+template<class...x_is> struct index_set<vector_space<x_is...>>
 {
-  using type=pack_unique_t<pack_concatenation_t<Cs<index_k>,pack_concatenation_t<cols_w_unit_t<typename x_is::value_type>...>>>;
+  using type=pack_unique_t<pack_concatenation_t<index_set_t<x_is>...>>;
 };
+
+
+
+template<class...x_is, class ei, class mycol> struct index_of_col<vector_space<x_is...>,recursive<ei,mycol>>
+{
+ // using test=typename ei::ei;
+  using type=index_of_col_t<std::decay_t<decltype (std::declval<vector_space<x_is...>>()[ei{}])>,mycol>;
+};
+
+
+
+
 
 
 template<class...x_is>
 std::ostream& to_DataFrame(std::ostream& os, const vector_space<x_is...>& v)
 {
-  return to_DataFrame(os,v,mycols_w_unit_t<vector_space<x_is...>>{});
+  return to_DataFrame(os,v,cols_t<vector_space<x_is...>>{});
 }
 
 template<class...x_is>
-std::ostream& to_DataTable(std::ostream& os, const vector_space<x_is...>& v)
+std::ostream& to_DataFrame_title(std::ostream& os, const vector_space<x_is...>& v)
 {
-  return to_DataFrame(os,v,mycols_t<vector_space<x_is...>>{});
+  return to_DataFrame_title(os,v,cols_t<vector_space<x_is...>>{});
+}
+
+template<class...x_is>
+std::ostream& to_DataFrame_body(std::ostream& os, const vector_space<x_is...>& v)
+{
+  return to_DataFrame_body(os,v,cols_t<vector_space<x_is...>>{});
 }
 
 
@@ -718,9 +608,9 @@ std::istream& from_DataFrame(std::istream& is,  vector_space<x_is...>& v)
   std::string s;
   std::getline(is, s);
   std::stringstream ss(s);
-  ((ss>> cols_w_unit_t<x_is>{}),...);
-  auto p=d_begin(v);
-  auto r=myrow_type_w_unit_t<std::decay_t<decltype(v)>>{};
+  ((ss>> cols_t<x_is>{}),...);
+  auto p=begin(v);
+  auto r=row_type_t<vector_space<x_is...>>{};
   if (ss)
   {
     std::getline(is, s);
@@ -761,20 +651,6 @@ void insert_at( Derivative<dependent_type,vector_space<Ds...>>& me,
 }
 
 
-template<class dependent_type,class... Ds,class...Is>
-void insert_at( Derivative<dependent_type,vector_space<Ds...>>& me,
-               const Position<Is...>& p, row_type_w_unit_t<Derivative<dependent_type,vector_space<Ds...>>>&& r)
-{
-  using derivative_type=typename Derivative<dependent_type,vector_space<Ds...>>::derivative_type;
-  auto [f_r,Df_r]=distribute(transfer_t<row_type_w_unit_t<dependent_type>,Cs<>>{},
-                                transfer_t<row_type_w_unit_t<derivative_type>,Cs<>>{},
-                                std::move(r));
-  insert_at(me.f(),p,std::move(f_r));
-  insert_at(me.Df(),p,std::move(Df_r));
-
-}
-
-
 
 template<class TYPE,class myunit,class I>
 auto& at(v<TYPE,myunit>& me,const I& , value_k){ return me.value();}
@@ -782,8 +658,6 @@ auto& at(v<TYPE,myunit>& me,const I& , value_k){ return me.value();}
 template<class TYPE,class myunit,class I>
 auto& at(const v<TYPE,myunit>& me,const I& , value_k){ return me.value();}
 
-template<class TYPE,class myunit,class I>
-auto at(const v<TYPE,myunit>& me,const I& , unit_k) { return typename v<TYPE,myunit>::unit{};}
 
 
 
@@ -799,45 +673,36 @@ auto& at(const logv<T,Units...>& me,const I& , unit_k) { return me.units();}
 template<class T,class... Units,class I>
 auto& at(logv<T,Units...>& me,const I& , unit_k) { return me.units();}
 
+template<class Value_type,class... Xs, class Position, class ind>
+
+auto& at(const vector_field<vec<Xs...>,Value_type>& me, const Position& i, ind)
+{
+  return at(me(i),i,ind{});
+}
 
 
+template<class ei, class value_type, class Position, class ind>
+auto& at(const x_i<ei,value_type>& me, const Position& i, ind){return at(me(),i,ind{});}
 
+template<class ei, class value_type, class Position, class ind>
+auto& at(const x_i<ei,value_type>& me, const Position& i, recursive<ei,ind>){return at(me(),i,ind{});}
 
 
 
 template<class... x_is,class J, class Position, class =std::enable_if_t<is_in_pack<J,typename x_is::ei...>(),int>>
 auto at(const vector_space<x_is...>&me,const Position& i, J) {return me[J{}](i);}
 
-template<class... x_is, class...Is, class J,
-          class =std::enable_if_t<is_in_pack<Index<typename x_is::ei...>,Is...>()
-                                       &&!std::is_same_v<J,index_k>,float>>
-auto at(const vector_space<x_is...>&me,const Position<Is...>& i, J j)-> decltype(at(me,i[Index<typename x_is::ei...>{}](),j))
-{
-  return at(me,i[Index<typename x_is::ei...>{}](),j);
-}
 
-template<class... x_is, class...Is, class =std::enable_if_t<is_in_pack<Index<typename x_is::ei...>,Is...>(),float>>
-auto& at(const vector_space<x_is...>&,const Position<Is...>& i, index_k ) {
-  return i[Index<typename x_is::ei...>{}]();
-}
 
 template<class... x_is,class J, class j_in, class Position,class =std::enable_if_t<is_in_pack<J,typename x_is::ei...>(),int>>
-auto at(const vector_space<x_is...>&me,const Position& i,recursive<J,j_in> ) ->decltype (at(me[J{}](i),i,j_in{}))
-{return at(me[J{}](i),i,j_in{});}
+auto at(const vector_space<x_is...>&me,const Position& i,recursive<J,j_in> ) ->decltype (at(me[J{}],i,j_in{}))
+{return
+  at(me[J{}],i,j_in{});}
 
-template<class... x_is,class J>
-auto  at(const vector_space<x_is...>&me,const std::variant<typename x_is::ei...>& ind,J )
-{
-  return std::visit([&me](auto& id)
-          ->transfer_t<pack_unique_t<Cs<std::decay_t<decltype (me[typename x_is::ei{}]()[J{}])>...>>,std::variant<>>
-      {
-        return me[id]()[J{}];
-      },ind);
-}
 
 
 template<class dependent_type,class... Ds,class Position, class ind
-          , typename=std::enable_if_t<is_in_pack(ind{},cols_w_unit_t<dependent_type>{}),int>
+          , typename=std::enable_if_t<is_in_pack(ind{},cols_t<dependent_type>{}),int>
           >
 auto at(Derivative<dependent_type,vector_space<Ds...>>const&me,const Position& p,recursive<primitive_k,ind>)->decltype (at(me.f(),p,ind{}))
 {return at(me.f(),p,ind{});}
@@ -861,43 +726,29 @@ struct element_type_impl<std::mt19937_64>
 };
 
 
-template<class...x_is>
-std::istream& from_DataTable(std::istream& is,  vector_space<x_is...>& v)
-{
-  std::string s;
-  std::getline(is, s);
-  std::stringstream ss(s);
-  ((ss>>cols_t<x_is>{}),...);
-  auto p=d_begin(v);
-  auto r=myrow_type_t<std::decay_t<decltype(v)>>{};
-  if (ss)
-  {
-    std::getline(is, s);
-    auto scopy=s;
-    ss.clear();
-    ss.str(s);
-    ss>>r;
-    insert_at(v,p,std::move(r));
-  }
-  while (ss)
-  {
-    std::getline(is, s);
-    ss.clear();
-    ss.str(s);
-    ss>>r;
-    p=insert(v,p,std::move(r));
-  }
 
-  return is;
-}
+
+
+
+
+
+
 
 
 template<class...x_is, class... col_is>
-std::ostream& to_DataFrame(std::ostream& os, const vector_space<x_is...>& v, Cs<col_is...>)
+std::ostream& to_DataFrame_title(std::ostream& os, const vector_space<x_is...>& v, Cs<col_is...>)
 {
 
   ((os<<col_is{}<<"\t"),...)<<"\n";
-  auto p=d_begin(v);
+
+  return os;
+}
+
+template<class...x_is, class... col_is>
+std::ostream& to_DataFrame_body(std::ostream& os, const vector_space<x_is...>& v, Cs<col_is...>)
+{
+
+  auto p=v.rec_begin();
   os<<std::setprecision(std::numeric_limits<double>::digits10+2);
   do{
     ((os<<at(v,p,col_is{})<<"\t"),...)<<"\n";
@@ -905,6 +756,142 @@ std::ostream& to_DataFrame(std::ostream& os, const vector_space<x_is...>& v, Cs<
 
   return os;
 }
+template <class col, class index>
+constexpr bool is_this_col_an_index(col, index)
+{
+  return false;
+}
+
+
+template <class col, class ind, class index>
+constexpr bool is_this_col_an_index(recursive<ind,col>, index)
+{
+  if constexpr (std::is_same_v<ind,index >) return true;
+  else
+  return is_this_col_an_index(col{},index{});
+}
+
+
+template <class col, class ind, class... index>
+constexpr bool is_this_col_an_index(recursive<ind,col>, Cs<index...>)
+{
+  return (false||...||is_this_col_an_index(recursive<ind,col>{},index{}));
+}
+
+
+template <class, class,class> struct only_this_index;
+
+template<class vectorspace, class... col_is, class... Xs>
+struct only_this_index<vectorspace, Cs<col_is...>, Cs<Xs...>>
+{
+
+  using type= pack_concatenation_t<std::conditional_t<
+      is_this_col_an_index(col_is{},Cs<Xs...>{})||
+      std::is_same_v<index_of_col_t<vectorspace,col_is>,Cs<Xs...>>,
+      Cs<col_is>,
+      Cs<>>...>;
+};
+template <class, class,class> struct separate_by_index;
+
+template<class vectorspace, class... col_is, class... vecXs>
+struct separate_by_index<vectorspace, Cs<col_is...>, Cs<vecXs...>>
+{
+  using type= Cs<typename only_this_index<vectorspace,Cs<col_is...>,vecXs>::type...>;
+};
+
+
+
+
+
+
+template<class...x_is, class... col_is>
+std::ostream& to_DataFrame(std::ostream& os, const vector_space<x_is...>& v, Cs<col_is...>)
+{
+
+  ((os<<col_is{}<<"\t"),...)<<"\n";
+  auto p=v.rec_begin();
+  os<<std::setprecision(std::numeric_limits<double>::digits10+2);
+  do{
+    ((os<<at(v,p,col_is{})<<"\t"),...)<<"\n";
+  }while( next(v,p));
+
+  return os;
+}
+
+
+template<class...x_is, class... Xs, class... col_is, class... Header>
+void to_DataFrame_body_one_index(const std::string& name, std::size_t nsample,const std::vector<std::size_t>& decimate_factor, const vector_space<x_is...>& v, Cs<Xs...> indexes, Cs<col_is...> columnsets, const Header&...header)
+{
+  std::size_t nfactor=decimate_factor[sizeof... (Xs)];
+  if (nsample%nfactor==0)
+  {
+    std::string filename=(name+...+(Xs::className.c_str()+std::string("_")))+".txt";
+    std::ofstream f(filename.c_str(),std::ios_base::app);
+  auto p=Position<Xs...>{};
+  f<<std::setprecision(std::numeric_limits<double>::digits10+2);
+  do{
+    f<<nsample<<"\t";
+    ((f<<header<<"\t"),...);
+    ((f<<at(v,p,col_is{})<<"\t"),...);
+    f<<"\n";
+  }while( next(v,p));
+  }
+}
+
+template<class...x_is, class... vexXs, class... Cscols, class... Header>
+void to_DataFrame_body_all_index(const std::string& filename, std::size_t nsample,const std::vector<std::size_t>& decimate_factor, const vector_space<x_is...>& v, Cs<vexXs...> , Cs<Cscols...> , const Header&... header)
+{
+  (to_DataFrame_body_one_index(filename,nsample,decimate_factor,v,vexXs{},Cscols{},header...),...);
+
+}
+
+
+template<class...x_is, class... Header>
+void to_DataFrame_body_index(const std::string& filename,std::size_t nsample,const std::vector<std::size_t>& decimate_factor, const vector_space<x_is...>& v, const Header& ...header)
+{
+  using indexes=index_set_t<vector_space<x_is...>>;
+// using test=typename indexes::my_indexes;
+  using columns_sets=typename separate_by_index<vector_space<x_is...>,cols_t<vector_space<x_is...>>,indexes>::type;
+//  using test2=typename columns_sets::columns_sets;
+ // using test3=typename cols_t<vector_space<x_is...>>::cols;
+  to_DataFrame_body_all_index(filename,nsample,decimate_factor,v,indexes{},columns_sets{},header...);
+
+}
+
+
+
+
+template<class...x_is, class... Xs, class... col_is, class... Header>
+void to_DataFrame_title_one_index(const std::string& name,  Cs<Xs...> indexes, Cs<col_is...> columnsets, const Header&...header)
+{
+  std::string filename=(name+...+(Xs::className.c_str()+std::string("_")))+".txt";
+  std::ofstream f(filename.c_str());
+  f<<"nsample"<<"\t";
+  ((f<<header<<"\t"),...);
+  ((f<<col_is{}<<"\t"),...);
+      f<<"\n";
+
+}
+
+template<class...x_is, class... vexXs, class... Cscols, class... Header>
+void to_DataFrame_title_all_index(const std::string& filename,  Cs<vexXs...> , Cs<Cscols...> , const Header&... header)
+{
+  (to_DataFrame_title_one_index(filename,vexXs{},Cscols{},header...),...);
+
+}
+
+
+template<class...x_is, class... Header>
+void to_DataFrame_title_index(const std::string& filename, const vector_space<x_is...>& v, const Header& ...header)
+{
+  using indexes=index_set_t<vector_space<x_is...>>;
+  using columns_sets=typename separate_by_index<vector_space<x_is...>,cols_t<vector_space<x_is...>>,indexes>::type;
+  to_DataFrame_title_all_index(filename,indexes{},columns_sets{},header...);
+
+}
+
+
+
 
 
 #endif // QM_DATA_FRAME_H

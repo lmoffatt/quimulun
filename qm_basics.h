@@ -139,6 +139,7 @@ template <class Id> struct Position<Id>{
 private :
   std::size_t i;
 public:
+  static constexpr auto className=my_static_string("pos_")+Id::className;
   Position(std::size_t i_v):i{i_v}{}
   using innerId=Id;
   auto& operator[](Id)const {return *this;}
@@ -152,6 +153,11 @@ public:
     ++i;
     return i;
   }
+  friend std::ostream& operator<<(std::ostream& os, const Position& me) {
+    os<<className.c_str()<<"="<<me();
+    return os;}
+  friend std::istream& operator>>(std::istream& is, Position& me){ is>>className>>my_static_string("=")>>me(); return is;}
+
 };
 
 
@@ -188,8 +194,17 @@ using recursive_t=typename recursive<id0,id_in>::type;
 
 template <class Id, class... Ids> struct Position<Id,Ids...>:Position<Id>,Position<Ids>...
 {
+  static constexpr auto className=(Position<Id>::className+...+Position<Ids>::className);
+
   using Position<Id>::operator[];
   using Position<Ids>::operator[]...;
+  friend std::ostream& operator<<(std::ostream& os, const Position& me) {
+    os<<me[Id{}];
+    if constexpr (sizeof... (Ids)>0)
+      ((os<<"_"<<me[Ids{}]),...);
+    return os;
+  }
+
 };
 
 

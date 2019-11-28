@@ -182,7 +182,7 @@ public:
   friend   constexpr auto begin(const Derivative& me) {
     return
         //Position<Index<primitive_k,derivative_k>>{}&&
-        me.f().begin()&& ::begin(me.Df());
+        me.f().begin()&& me.Df().begin();
   }
 
 
@@ -191,7 +191,10 @@ public:
 
 
 
-  static auto begin() {return Position<>{};}
+  static auto begin() {return dependent_type::begin()&& derivative_type::begin();}
+  static auto rec_begin() {return dependent_type::rec_begin()&& derivative_type::rec_begin();}
+
+
   bool next(Position<>& )const   {     return false;}
 
   template<class Position>

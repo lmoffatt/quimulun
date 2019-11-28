@@ -52,6 +52,10 @@ public:
 
   friend auto begin(const x_i& me){ return begin(me());}
 
+  static constexpr auto begin(){return value_type::begin();}
+  static constexpr auto rec_begin() {return value_type::rec_begin();}
+
+
   auto&& operator[](e_i)&& {return *this;}
 
   auto& get(e_i)const  {return *this;}
@@ -62,7 +66,10 @@ public:
   inline friend
       bool operator==(const x_i& me, const x_i& ti)
   {
-    return me()==ti();
+    if  (me()==ti())
+    return true;
+    else
+        return false;
   }
 
 
@@ -164,7 +171,7 @@ public:
   friend x_i operator+(const x_i& me, const x_i& other)
   {
     x_i out{me};
-    out()+=other();
+    out()=out()+other();
     return out;
   }
 

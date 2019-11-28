@@ -1,7 +1,7 @@
 #ifndef QM_VECTOR_SPACE_H
 #define QM_VECTOR_SPACE_H
 #include "qm_vector_basis.h"
-
+#include <qm_pack_operations.h>
 template <class...> struct vector_space;
 
 template<> struct vector_space<>
@@ -75,7 +75,7 @@ template<class...x_is> struct vector_space: private x_is...
 
   typedef Cs<typename x_is::ei...> my_eis;
   typedef Cs<typename x_is::myId...> myIds;
-
+  typedef Cs<x_is...> myx_is;
   using myIndex=Index<typename x_is::ei...>;
 
 
@@ -194,6 +194,8 @@ template<class...x_is> struct vector_space: private x_is...
   }
 
 
+
+
   template<class andId>
   Nothing operator[](andId)const
   {
@@ -221,9 +223,11 @@ template<class...x_is> struct vector_space: private x_is...
     return (vector_space<>{}|...|((*this)[typename x_is::ei{}]*two));
   }
 
-  friend constexpr auto begin(const vector_space& ){ return Position<>{};}
+  friend constexpr auto begin(const vector_space& ){ return vector_space::begin();}
 
-  static constexpr auto begin() {return Position<>{};}
+  static constexpr auto begin() {return (x_is::begin()&&...);}
+  static constexpr auto rec_begin() {return (x_is::rec_begin()&&...);}
+
   constexpr bool next(Position<>& )const {return false;}
 
   template<class...Is>
@@ -314,6 +318,7 @@ template<class...x_is> struct vector_space: private x_is...
 
   friend std::ostream& operator<<(std::ostream& os, const vector_space& me)
   {
+    os<<std::setprecision(std::numeric_limits<double>::digits10+3);
     ((os<<typename x_is::myId{}<<" ="<<me[typename x_is::myId{}]<<"  ")&&...);
     return os;
   }
@@ -326,6 +331,52 @@ template<class...x_is> struct vector_space: private x_is...
 
 
 };
+
+template<class... I, class Is,class...vectorfield>
+auto get_size_from(Is,Position<I...>&p, const vectorfield&...me)
+{
+  return ([&me,&p](auto b){
+           if (b.first)
+             return b;
+           else if (me.size(Is{},p)>0)
+             return std::pair{true,me.size(Is{},p)};
+           else
+             return std::pair{false,0ul};
+         }
+          |...|std::pair(false,0ul)).second;
+}
+
+
+
+template<class... I, class Is,class...value_type, typename =std::enable_if_t<is_in_pack<Is,I...>(),int>>
+bool next(Is,Position<I...>& p,const value_type&...me)
+{
+  if (p[Is{}]()+1<get_size_from(Is{},p,me...)){
+    ++p[Is{}]();
+    return true;}
+  else{
+    p[Is{}]()={};
+    return false;}
+
+}
+
+
+
+
+template<class ...Is,class...value_types>
+ auto next(Position<Is...>& p,const value_types&...me)
+{
+  return ([&me...,&p](auto b){
+           if (b.first)
+             return b;
+           else if (next(Is{},p,me...))
+             return std::pair{true,true};
+           else
+             return std::pair{false,false};
+         }
+          |...|std::pair(false,false)).second;
+}
+
 
 
 
@@ -341,25 +392,10 @@ vector_space(x_is const&...xs)->vector_space<x_is...>;
 
 
 
-template<class...x_is>
-constexpr auto begin(const vector_space<x_is...>& ) {
-  return Position<Index<typename x_is::ei...>>{};
-}
 
 
-template<class...x_is>
-constexpr
-    auto d_begin(const vector_space<x_is...>& )  {
-  return (begin(x_is{})&&...);
-}
 
 
-/*
-template<class...x_is> struct get_Field_Indexes <vector_space<x_is...>>
-{
-  typedef get_Field_Indexes_t<x_is...> type;
-};
-*/
 template<class I, class... Is>
 std::ostream& operator<<(std::ostream& os, const std::variant<I,Is...>& v) { std::visit([&os](auto& e){os<<e;},v); return os;}
 
@@ -390,37 +426,6 @@ return v;});
 
 
 
-/*
-template<class...x_is>
-std::istream& from_DataFrame_new(std::istream& is,  vector_space<x_is...>& v)
-{
-  std::string s;
-  std::getline(is, s);
-  std::stringstream ss(s);
-  ((ss>>typename x_is::ei{}),...);
-  auto p=begin(v);
-  auto r=row_vector(v);
-  if (ss)
-  {
-    std::getline(is, s);
-    ss.clear();
-    ss.str(s);
-    ss>>r;
-    v.insert_at(p,std::move(r));
-  }
-  while (ss)
-  {
-    std::getline(is, s);
-    ss.clear();
-    ss.str(s);
-    ss>>r;
-    p=v.insert(p,std::move(r));
-  }
-
-  return is;
-}
-
-*/
 
 template<class x_i>
 auto operator | (x_i&& one, Nothing)
