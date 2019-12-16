@@ -257,14 +257,34 @@ template<class e_i, class Value_type>
 struct x_i;
 
 template<class e_i, class Value_type>
+struct x_i_view_const;
+
+template<class e_i, class Value_type>
+struct x_i_view_non_const;
+
+
+template<class e_i, class Value_type>
 struct f_i;
+
+template<class e_i, class Value_type>
+struct f_i_view_const;
+
+
 
 template<class C>
     auto only_xi_or_fi(C&& x)->std::conditional_t<
-    (is_this_template_class<x_i,std::decay_t<C>>::value||is_this_template_class<f_i,std::decay_t<C>>::value),
+    (is_this_template_class<x_i,std::decay_t<C>>::value||
+     is_this_template_class<x_i_view_const,std::decay_t<C>>::value||
+     is_this_template_class<x_i_view_non_const,std::decay_t<C>>::value||
+     is_this_template_class<f_i_view_const,std::decay_t<C>>::value||
+     is_this_template_class<f_i,std::decay_t<C>>::value),
     decltype(x),Nothing>
 {
-  if constexpr (is_this_template_class<x_i,std::decay_t<C>>::value||is_this_template_class<f_i,std::decay_t<C>>::value)
+  if constexpr (is_this_template_class<x_i,std::decay_t<C>>::value||
+                is_this_template_class<x_i_view_const,std::decay_t<C>>::value||
+                is_this_template_class<x_i_view_non_const,std::decay_t<C>>::value||
+                is_this_template_class<f_i_view_const,std::decay_t<C>>::value||
+                is_this_template_class<f_i,std::decay_t<C>>::value)
     return std::forward<C>(x);
   else
     return Nothing{};
@@ -272,7 +292,9 @@ template<class C>
 }
 template<class Id> struct all;
 
-template <class anId, class...Datas, typename =std::enable_if_t<!is_this_template_class<all,anId>::value>>
+template <class anId, class...Datas
+          , typename =std::enable_if_t< ( !is_this_template_class<all,anId>::value)&&
+                                          ( !is_this_template_class<std::tuple,anId>::value) ,int>>
 auto get_from(anId, Datas&&...ds)->decltype ((only_xi_or_fi(std::forward<Datas>(ds)[anId{}])||...))
 {
   return (only_xi_or_fi(std::forward<Datas>(ds)[anId{}])||...);

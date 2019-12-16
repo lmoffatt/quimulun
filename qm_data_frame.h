@@ -114,7 +114,7 @@ template<> struct vec_frame<>
   template <class ValueType, class Positionx>
   static void insert_at(ValueType& x,const Positionx& ,ValueType&& e)
   {
-    x=std::move(e);
+    x=std::forward<ValueType>(e);
   }
   template <class ValueType, class Positionx>
   static void insert_at(ValueType& x,const Positionx& p,row_type_t<ValueType>&& e)
@@ -178,7 +178,7 @@ template<class I0, class...I> struct vec_frame<I0,I...>{
   template <class ValueType, class Position>
   static std::vector<ValueType>& push_back(std::vector<ValueType>& x,const Position& ,ValueType&& e)
   {
-    x.push_back(std::move(e));
+    x.push_back(std::forward<ValueType>(e));
     return x;
   }
 
@@ -310,7 +310,7 @@ template<class I0, class...I> struct vec_frame<I0,I...>{
 template<class Value_type,class... Xs,class...Is>
 void insert_at(vector_field<vec<Xs...>,Value_type> &me,const Position<Is...>& p, Value_type&& r)
 {
-  vec_frame<Xs...>::insert_at(me.value(),p,std::move(r));
+  vec_frame<Xs...>::insert_at(me.value(),p,std::forward<Value_type>(r));
 }
 template<class Value_type,class... Xs,class...Is>
 void insert_at(vector_field<vec<Xs...>,Value_type> &me,const Position<Is...>& p, element_type_t<vector_field<vec<Xs...>,Value_type>>&& r)
@@ -820,7 +820,7 @@ std::ostream& to_DataFrame(std::ostream& os, const vector_space<x_is...>& v, Cs<
 
 
 template<class...x_is, class... Xs, class... col_is, class... Header>
-void to_DataFrame_body_one_index(const std::string& name, std::size_t nsample,const std::vector<std::size_t>& decimate_factor, const vector_space<x_is...>& v, Cs<Xs...> indexes, Cs<col_is...> columnsets, const Header&...header)
+void to_DataFrame_body_one_index(const std::string& name, std::size_t nsample,const std::vector<std::size_t>& decimate_factor, const vector_space<x_is...>& v, Cs<Xs...>  indexes  [[maybe_unused]], Cs<col_is...> columnsets  [[maybe_unused]], const Header&...header)
 {
   std::size_t nfactor=decimate_factor[sizeof... (Xs)];
   if (nsample%nfactor==0)
@@ -862,7 +862,7 @@ void to_DataFrame_body_index(const std::string& filename,std::size_t nsample,con
 
 
 template<class...x_is, class... Xs, class... col_is, class... Header>
-void to_DataFrame_title_one_index(const std::string& name,  Cs<Xs...> indexes, Cs<col_is...> columnsets, const Header&...header)
+void to_DataFrame_title_one_index(const std::string& name,  Cs<Xs...> indexes  [[maybe_unused]], Cs<col_is...> columnsets  [[maybe_unused]], const Header&...header)
 {
   std::string filename=(name+...+(Xs::className.c_str()+std::string("_")))+".txt";
   std::ofstream f(filename.c_str());
@@ -882,7 +882,7 @@ void to_DataFrame_title_all_index(const std::string& filename,  Cs<vexXs...> , C
 
 
 template<class...x_is, class... Header>
-void to_DataFrame_title_index(const std::string& filename, const vector_space<x_is...>& v, const Header& ...header)
+void to_DataFrame_title_index(const std::string& filename, const vector_space<x_is...>& , const Header& ...header)
 {
   using indexes=index_set_t<vector_space<x_is...>>;
   using columns_sets=typename separate_by_index<vector_space<x_is...>,cols_t<vector_space<x_is...>>,indexes>::type;

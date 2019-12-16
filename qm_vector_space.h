@@ -15,7 +15,7 @@ template<> struct vector_space<>
   }
 
   vector_space()=default;
-  constexpr auto size(){return 0;}
+  static constexpr auto size() {return 0;}
 
   template<class xi>
   auto operator + (xi&& x)&&
@@ -236,7 +236,7 @@ template<class...x_is> struct vector_space: private x_is...
   template<class...Is>
   auto& operator()(const Position<Is...>& )const { return *this;}
 
-  constexpr auto size(){return sizeof... (x_is);}
+  static constexpr auto size() {return sizeof... (x_is);}
 
   explicit vector_space(x_is&&...xs):x_is{std::move(xs)}...{}
   explicit vector_space(x_is const&...xs):x_is{xs}...{}

@@ -178,6 +178,7 @@ public:
 
 
 };
+
 template<class ei, class value>
 auto operator-(x_i<ei,value>&& me){ return x_i{ei{},-me()};};
 
@@ -244,6 +245,211 @@ template<class e_i,class Value_type> struct get_Field_Indexes <x_i<e_i,Value_typ
 {
   typedef vec<> type;
 };
+
+
+template<class e_i, class Value_type>
+struct x_i_view_non_const
+{
+public:
+  //typedef typename Id::T T;
+  //typedef typename Id::unit unit;
+
+  typedef e_i ei;
+
+
+
+  typedef e_i myId;
+
+  // using element_type= element_type_t<Value_type> ;
+
+
+  // using element_xi= x_i<e_i,element_type>;
+
+  typedef  Value_type value_type;
+
+
+
+private:
+  Value_type& value_;
+public:
+
+  x_i_view_non_const(value_type& x):value_{x}{}
+  explicit x_i_view_non_const(e_i,value_type& x):value_{x}{}
+
+  x_i_view_non_const const& operator[](e_i)const & {return *this;}
+  //x_i& operator[](e_i) & {return *this;}
+  x_i_view_non_const& operator[](non_const<e_i>)  {return *this;}
+
+  friend auto begin(const x_i_view_non_const& me){ return begin(me());}
+
+  static constexpr auto begin(){return value_type::begin();}
+  static constexpr auto rec_begin() {return value_type::rec_begin();}
+
+
+
+  auto& get(e_i)const  {return *this;}
+  auto& get(e_i)  {return *this;}
+
+
+
+  inline friend
+      bool operator==(const x_i_view_non_const& me, const x_i_view_non_const& ti)
+  {
+    if  (me()==ti())
+      return true;
+    else
+      return false;
+  }
+
+
+  auto& operator()()const &{ return value_;}
+  auto& operator()()&{ return value_;}
+  auto operator()()&& {return value_;}
+
+
+
+
+  template<class Position>
+  auto& operator()(const Position& p){ return value_(p);}
+
+  template<class Position>
+  auto& operator()(const Position& p)const { return value_(p);}
+
+  template<class... iUps, class... iDowns>
+  auto operator()(up<iUps...> u, dn<iDowns...> d){return x_i_view_non_const<decltype (ei{}(u,d)),value_type>{ei{}(u,d),(*this)()};}
+
+  inline friend std::ostream& operator<<(std::ostream& os, const x_i_view_non_const& me)
+  {
+    return os<<me();
+  }
+  inline friend std::istream& operator>>(std::istream& is,  x_i_view_non_const& me)
+  {
+    return is>>me();
+  }
+
+
+  template<class... Ts>
+  friend  auto operator +( Position<Ts...>& p,const x_i_view_non_const& me)//->decltype (p+me())
+  {
+    return p+me();
+  }
+  friend  bool operator +(bool p,const x_i_view_non_const& )
+  {
+    return p;
+  }
+
+
+
+
+
+
+
+
+
+
+
+
+};
+
+
+template<class e_i, class Value_type>
+struct x_i_view_const
+{
+public:
+  //typedef typename Id::T T;
+  //typedef typename Id::unit unit;
+
+  typedef e_i ei;
+
+
+
+  typedef e_i myId;
+
+  // using element_type= element_type_t<Value_type> ;
+
+
+  // using element_xi= x_i<e_i,element_type>;
+
+  typedef  Value_type value_type;
+
+
+
+private:
+  Value_type const& value_;
+public:
+
+  x_i_view_const(const value_type& x):value_{x}{}
+  explicit x_i_view_const(e_i,const value_type& x):value_{x}{}
+
+
+  x_i_view_const const& operator[](e_i)const & {return *this;}
+  //x_i& operator[](e_i) & {return *this;}
+
+  friend auto begin(const x_i_view_const& me){ return begin(me());}
+
+  static constexpr auto begin(){return value_type::begin();}
+  static constexpr auto rec_begin() {return value_type::rec_begin();}
+
+
+
+  auto& get(e_i)const  {return *this;}
+
+
+
+  inline friend
+      bool operator==(const x_i_view_const& me, const x_i_view_const& ti)
+  {
+    if  (me()==ti())
+      return true;
+    else
+      return false;
+  }
+
+
+  auto& operator()()const { return value_;}
+
+
+  template<class Position>
+  auto& operator()(const Position& p)const { return value_(p);}
+
+  template<class... iUps, class... iDowns>
+  auto operator()(up<iUps...> u, dn<iDowns...> d){return x_i_view_const<decltype (ei{}(u,d)),value_type>{ei{}(u,d),(*this)()};}
+
+  inline friend std::ostream& operator<<(std::ostream& os, const x_i_view_const& me)
+  {
+    return os<<me();
+  }
+  inline friend std::istream& operator>>(std::istream& is,  x_i_view_const& me)
+  {
+    return is>>me();
+  }
+
+
+  template<class... Ts>
+  friend  auto operator +( Position<Ts...>& p,const x_i_view_const& me)//->decltype (p+me())
+  {
+    return p+me();
+  }
+  friend  bool operator +(bool p,const x_i_view_const& )
+  {
+    return p;
+  }
+
+
+};
+
+
+template<class e_i,class Value_type,class... Xs> struct get_Field_Indexes <x_i_view_const<e_i,vector_field< vec<Xs...>,Value_type>>>
+{
+  typedef vec<Xs...> type;
+};
+template<class e_i,class Value_type> struct get_Field_Indexes <x_i_view_const<e_i,Value_type>>
+{
+  typedef vec<> type;
+};
+
+
+
 
 
 #endif // QM_VECTOR_BASIS_H

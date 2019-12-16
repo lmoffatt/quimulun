@@ -10,6 +10,11 @@ template<class Id> struct all{
   //  constexpr static auto className=Id::className+my_static_string("_all");
 };
 
+//namespace qm {
+template<class Id> struct pos{
+  //  constexpr static auto className=Id::className+my_static_string("_all");
+};
+
 
 
 
@@ -54,6 +59,27 @@ struct all<x_i<Id,vector_field<vec<Xs...>,valuetype>>&&>
 };
 
 
+template<class Id, class...Xs, class valuetype>
+struct all<x_i_view_const<Id,vector_field<vec<Xs...>,valuetype>>>
+{
+  x_i_view_const<Id,vector_field<vec<Xs...>,valuetype>>const & me;
+
+  all(x_i_view_const<Id,vector_field<vec<Xs...>,valuetype>>const & v):me{v}{}
+  static constexpr auto begin() {return Position<>{};}
+  constexpr bool next(Position<>& )const {return false;}
+
+  auto& operator()() const {return *this;}
+
+  template<class Position>
+  auto& operator()(const Position& ){ return me();}
+
+
+  template<class Position>
+  auto& operator()(const Position& )const { return me();}
+
+};
+
+
 
 template<class Id, class...Xs, class valuetype>
 all(x_i<Id,vector_field<vec<Xs...>,valuetype>>const & v)->all<x_i<Id,vector_field<vec<Xs...>,valuetype>>>;
@@ -61,12 +87,31 @@ all(x_i<Id,vector_field<vec<Xs...>,valuetype>>const & v)->all<x_i<Id,vector_fiel
 template<class Id, class...Xs, class valuetype>
 all(x_i<Id,vector_field<vec<Xs...>,valuetype>>&& v)->all<x_i<Id,vector_field<vec<Xs...>,valuetype>>&&>;
 
+
+template<class Id, class...Xs, class valuetype>
+all(x_i_view_const<Id,vector_field<vec<Xs...>,valuetype>>const & v)->all<x_i_view_const<Id,vector_field<vec<Xs...>,valuetype>>>;
+
+
 template <class anId, class...Datas>
 auto get_from(all<anId>, Datas&&...ds)//->decltype (all((only_xi_or_fi(std::forward<Datas>(ds)[anId{}])||...)))
 {
  // using test=typename anId::this_id;
   return all((only_xi_or_fi(std::forward<Datas>(ds)[anId{}])||...));
 }
+template <class... anId, class...Datas>
+auto get_from(std::tuple<anId...>, Datas&&...ds)//->decltype ((only_xi_or_fi(std::forward<Datas>(ds)[anId{}])||...))
+{
+
+  if constexpr ((std::is_same_v<std::decay_t<decltype (get_from(anId{},ds...))>,Nothing>||...))
+  {   //  using test=typename Cs<anId...>::FAILS;
+      // using test2=typename decltype(std::forward_as_tuple(get_from(anId{},ds...)...))::FAILS;
+    return Nothing{};
+  }else
+  {
+//    using test=typename Cs<anId...>::OK;
+//     using test2=typename decltype(std::forward_as_tuple(get_from(anId{},ds...)...))::OK;
+    return x_i(Cs<anId...>{},v(std::forward_as_tuple(get_from(anId{},ds...)...),dimension_less{}));
+  }}
 
 
 template<class Id,class G, class... Xs>
@@ -78,6 +123,10 @@ public:
   typedef   Id myId;
   auto &operator[](Id)const {return *this;}
 
+  auto& f()const{ return g_;}
+  auto& f(){ return g_;}
+
+/*
   template<class... Param>
   auto operator()(const Param&... par)const
   {
@@ -88,8 +137,13 @@ public:
 
     return x_i(Id{},std::move(out));
   }
+*/
   F(Id ,G&& g, Xs&&...):g_{std::move(g)}{}
 };
+
+
+
+
 
 template<class Id,class G, class Xrandom,class... Xs>
 class  Fr
@@ -98,6 +152,8 @@ private:
   G g_;
 public:
   typedef   Id myId;
+  auto& f()const{ return g_;}
+  auto& f(){ return g_;}
   auto &operator[](Id)const {return *this;}
 
   template<class x_rand,class... Param>
@@ -114,12 +170,16 @@ public:
 
 
 
+
+
 template<class Id,class G, class Xrandom,class... Xs>
 class  Fr<all<Id>,G,Xrandom,Xs...>
 {
 private:
   G g_;
 public:
+  auto& f()const{ return g_;}
+  auto& f(){ return g_;}
   typedef   Id myId;
   auto &operator[](Id)const {return *this;}
 
@@ -134,12 +194,33 @@ public:
 };
 
 
+template<class Id,class G, class Xrandom,class... Xs>
+class  Fr<pos<Id>,G,Xrandom,Xs...>
+{
+private:
+  G g_;
+public:
+  auto& f()const{ return g_;}
+  auto& f(){ return g_;}
+  typedef   Id myId;
+  auto &operator[](Id)const {return *this;}
+
+  Fr(pos<Id> ,G&& g,non_const<Xrandom>&&, Xs&&...):g_{std::move(g)}{}
+};
+
+
+
+
+
+
 template<class Id,class G, class... Xs>
 class  F<all<Id>,G,Xs...>
 {
 private:
   G g_;
 public:
+  auto& f()const{ return g_;}
+  auto& f(){ return g_;}
   typedef   Id myId;
   auto &operator[](Id)const {return *this;}
 
@@ -154,6 +235,99 @@ public:
 };
 
 
+
+template<class Id,class G, class Xrandom,class... Xs,class x_rand,class... Param>
+auto myInvoke(const Fr<all<Id>,G,Xrandom,Xs...>& f, x_rand& x, Param&& ... par)
+{
+
+    auto  out=std::invoke(f.f(),x[non_const<Xrandom>{}](),get_from(Xs{},std::forward<Param>(par)...)()...);
+  return x_i(Id{},std::move(out));
+
+}
+template<class Id,class G, class Xrandom,class... Xs,class x_rand,class... Param>
+auto myInvoke_parallel_for(const Fr<all<Id>,G,Xrandom,Xs...>& f, x_rand& x, Param&& ... par)
+{
+
+  auto  out=std::invoke(f.f(),x[non_const<Xrandom>{}](),get_from(Xs{},std::forward<Param>(par)...)()...);
+  return x_i(Id{},std::move(out));
+
+}
+
+
+template<class Id,class G, class Xrandom,class... Xs,class x_rand,class... Param,
+          typename=std::enable_if_t<!is_this_template_class<all,Id>::value&&!is_this_template_class<pos,Id>::value >>
+auto myInvoke(const Fr<Id,G,Xrandom,Xs...>& f, x_rand& x,const Param& ... par)
+{
+  auto  out=apply_random(f.f(),x[non_const<Xrandom>{}](),get_from(Xs{},par...)()...);
+  return x_i(Id{},std::move(out));
+
+}
+template<class Id,class G, class Xrandom,class... Xs,class x_rand,class... Param,
+          typename=std::enable_if_t<!is_this_template_class<all,Id>::value&&!is_this_template_class<pos,Id>::value >>
+auto myInvoke_parallel_for(const Fr<Id,G,Xrandom,Xs...>& f, x_rand& x,const Param& ... par)
+{
+  auto  out=apply_random_parallel_for(f.f(),x[non_const<Xrandom>{}](),get_from(Xs{},par...)()...);
+  return x_i(Id{},std::move(out));
+
+}
+
+template<class Id,class G, class Xrandom,class... Xs,class x_rand,class... Param, typename=std::enable_if_t<!is_this_template_class<all,Id>::value>>
+auto myInvoke(const Fr<pos<Id>,G,Xrandom,Xs...>& f, x_rand& x,const Param& ... par)
+{
+  auto  out=apply_random_pos(f.f(),x[non_const<Xrandom>{}](),get_from(Xs{},par...)()...);
+  return x_i(Id{},std::move(out));
+
+}
+
+template<class Id,class G, class Xrandom,class... Xs,class x_rand,class... Param, typename=std::enable_if_t<!is_this_template_class<all,Id>::value>>
+auto myInvoke_parallel_for(const Fr<pos<Id>,G,Xrandom,Xs...>& f, x_rand& x,const Param& ... par)
+{
+  auto  out=apply_random_pos_parallel_for(f.f(),x[non_const<Xrandom>{}](),get_from(Xs{},par...)()...);
+  return x_i(Id{},std::move(out));
+
+}
+
+
+
+
+template<class Id,class G, class... Xs,class... Param, typename=std::enable_if_t<!is_this_template_class<all,Id>::value>>
+auto myInvoke(const F<Id,G,Xs...>& f, const Param& ... par)
+{
+  auto  out=apply(f.f(),get_from(Xs{},par...)()...);
+
+  return x_i(Id{},std::move(out));
+
+}
+
+template<class Id,class G, class... Xs,class... Param, typename=std::enable_if_t<!is_this_template_class<all,Id>::value>>
+auto myInvoke_parallel_for(const F<Id,G,Xs...>& f, const Param& ... par)
+{
+  auto  out=apply_parallel_for(f.f(),get_from(Xs{},par...)()...);
+
+  return x_i(Id{},std::move(out));
+
+}
+
+template<class Id,class G, class... Xs,class... Param>
+auto myInvoke(const F<all<Id>,G,Xs...>& f,  Param&& ... par)
+{
+  auto  out=std::invoke(f.f(),get_from(Xs{},std::forward<Param>(par)...)()...);
+
+  return x_i(Id{},std::move(out));
+
+}
+
+template<class Id,class G, class... Xs,class... Param>
+auto myInvoke_parallel_for(const F<all<Id>,G,Xs...>& f,  Param&& ... par)
+{
+  auto  out=std::invoke(f.f(),get_from(Xs{},std::forward<Param>(par)...)()...);
+
+  return x_i(Id{},std::move(out));
+
+}
+
+
+/*
 
 template<class ...Ids,class G, class... Xs>
 class  F<Cs<Ids...>,G,Xs...>
@@ -191,6 +365,8 @@ public:
   F(all<Cs<Ids...>> ,G&& g, Xs&&...):g_{std::move(g)}{}
 };
 
+*/
+
 template< class Id,class G, class... Xs>
 struct extract_function_Id<F<Id,G,Xs...>>{using type=Cs<Id>;};
 template< class Id,class G, class... Xs>
@@ -202,6 +378,10 @@ template< class Id,class G, class... Xs>
 struct extract_function_Id<Fr<all<Id>,G,Xs...>>{using type=Cs<Id>;};
 
 template< class Id,class G, class... Xs>
+struct extract_function_Id<Fr<pos<Id>,G,Xs...>>{using type=Cs<Id>;};
+
+
+template< class Id,class G, class... Xs>
 struct extract_function_Id<Coord<all<Id>,G,Xs...>>{using type=Cs<Id>;};
 
 
@@ -211,19 +391,39 @@ auto calculate(const F<Id,G,Xs...>& f, Datas&&... d)
 {
   if constexpr ((std::is_same_v<decltype (get_from(Xs{},std::forward<Datas>(d)...)),Nothing>||...))
   {
-    //   using testId=typename Id::test_Id;
+      // using testId=typename Id::failstest_Id;
     // using data=typename Cs<Datas...>::data;
-    //using test=typename Cs<Id,Xs...>::fails_Xs;
+   // using test=typename Cs<Id,Xs...>::fails_Xs;
     return Nothing{};
 
   }else
   {
-    //  using testId=typename Id::test_Id;
-    //  using test=typename Cs<Id,Xs...>::pass_Xs;
+     // using testId=typename Id::test_Id;
+     // using test=typename Cs<Id,Xs...>::pass_Xs;
 
-    return f(std::forward<Datas>(d)...);
+    return myInvoke(f,std::forward<Datas>(d)...);
   }
 }
+
+template<class Id,class G, class... Xs,class... Datas>
+auto calculate_parallel_for(const F<Id,G,Xs...>& f, Datas&&... d)
+{
+  if constexpr ((std::is_same_v<decltype (get_from(Xs{},std::forward<Datas>(d)...)),Nothing>||...))
+  {
+    // using testId=typename Id::failstest_Id;
+    // using data=typename Cs<Datas...>::data;
+    // using test=typename Cs<Id,Xs...>::fails_Xs;
+    return Nothing{};
+
+  }else
+  {
+    // using testId=typename Id::test_Id;
+    // using test=typename Cs<Id,Xs...>::pass_Xs;
+
+    return myInvoke_parallel_for(f,std::forward<Datas>(d)...);
+  }
+}
+
 
 template<class Id,class G, class... Xs,class... Datas>
 auto calculate(const Fr<Id,G,Xs...>& f, Datas&&... d)
@@ -240,7 +440,25 @@ auto calculate(const Fr<Id,G,Xs...>& f, Datas&&... d)
     //  using testId=typename Id::test_Id;
     //  using test=typename Cs<Id,Xs...>::pass_Xs;
 
-    return f(std::forward<Datas>(d)...);
+    return myInvoke(f,std::forward<Datas>(d)...);
+  }
+}
+template<class Id,class G, class... Xs,class... Datas>
+auto calculate_parallel_for(const Fr<Id,G,Xs...>& f, Datas&&... d)
+{
+  if constexpr ((std::is_same_v<decltype (get_from(Xs{},std::forward<Datas>(d)...)),Nothing>||...))
+  {
+    //   using testId=typename Id::test_Id;
+    // using data=typename Cs<Datas...>::data;
+    //using test=typename Cs<Id,Xs...>::fails_Xs;
+    return Nothing{};
+
+  }else
+  {
+    //  using testId=typename Id::test_Id;
+    //  using test=typename Cs<Id,Xs...>::pass_Xs;
+
+    return myInvoke_parallel_for(f,std::forward<Datas>(d)...);
   }
 }
 
@@ -307,6 +525,62 @@ public:
   auto& operator()(const Position& p)const { return value_(p);}
 
 };
+
+
+template<class e_i, class Value_type>
+struct f_i_view_const
+{
+public:
+  //typedef typename Id::T T;
+  //typedef typename Id::unit unit;
+
+  typedef e_i ei;
+
+
+
+  typedef e_i myId;
+
+  using element_type= Value_type ;
+
+
+  using element_xi= x_i<e_i,element_type>;
+
+  typedef  Value_type value_type;
+
+
+private:
+  Value_type const& value_;
+public:
+
+  explicit f_i_view_const(const value_type& x):value_{x}{}
+  explicit f_i_view_const(e_i,const value_type& x):value_{x}{}
+
+
+  f_i_view_const const& operator[](e_i)const  {return *this;}
+  f_i_view_const& operator[](e_i) {return *this;}
+
+  friend auto begin(const f_i_view_const& me){ return begin(me());}
+
+
+  auto& get(e_i)const  {return *this;}
+  auto& get(e_i)  {return *this;}
+
+
+
+
+
+  auto& operator()()const { return value_;}
+
+
+
+  template<class Position>
+  auto& operator()(const Position& p){ return value_(p);}
+
+  template<class Position>
+  auto& operator()(const Position& p)const { return value_(p);}
+
+};
+
 
 
 
@@ -653,12 +927,24 @@ auto calculate_Id(const quimulun<Fs...>& qui, Id,const Datas&...other)
   return calculate(qui[Id{}],qui,other...);
 }
 
+template < class... Fs,class Id,class...Ds2,  class... Datas>
+auto calculate_Id_parallel_for(const quimulun<Fs...>& qui, Id,const Datas&...other)
+{
+  return calculate_parallel_for(qui[Id{}],qui,other...);
+}
+
 
 template <class...Fs,class...ds,class... Var_ids, class...Other >
 auto calculate(const quimulun<Fs...>& qui, myselect<Var_ids...>, const Other&... other)
 {
   return (vector_space<>{}+...+calculate_Id(qui,Var_ids{},other...));
 }
+template <class...Fs,class...ds,class... Var_ids, class...Other >
+auto calculate_parallel_for(const quimulun<Fs...>& qui, myselect<Var_ids...>, const Other&... other)
+{
+  return (vector_space<>{}+...+calculate_Id_parallel_for(qui,Var_ids{},other...));
+}
+
 
 template <class...Fs,class...ds,class... Var_ids, class...Other >
 auto calculate_set(const quimulun<Fs...>& qui, myselect<Var_ids...>, const Other&... other)
@@ -724,6 +1010,12 @@ auto random_calculate_Id(const quimulun<Fs...>& qui,x_random& mt, Id,const Datas
   return calculate(qui[Id{}],mt,qui,other...);
 }
 
+template < class... Fs,class x_random,class Id,class...Ds2,  class... Datas>
+auto random_calculate_Id_parallel_for(const quimulun<Fs...>& qui,x_random& mt, Id,const Datas&...other)
+{
+  return calculate_parallel_for(qui[Id{}],mt,qui,other...);
+}
+
 
 template <class...Fs,class x_random,class...ds,class... Var_ids, class...Other >
 auto random_calculate_this(const quimulun<Fs...>& qui, x_random& mt,myselect<Var_ids...>, const Other&... other)
@@ -732,15 +1024,21 @@ auto random_calculate_this(const quimulun<Fs...>& qui, x_random& mt,myselect<Var
 }
 
 
+template <class...Fs,class x_random,class...ds,class... Var_ids, class...Other >
+auto random_calculate_this_parallel_for(const quimulun<Fs...>& qui, x_random& mt,myselect<Var_ids...>, const Other&... other)
+{
+  return (vector_space<>{}+...+random_calculate_Id_parallel_for(qui,mt,Var_ids{},other...));
+}
+
 
 
 template <class...Fs,class x_random,class...ds,class... Ds, class...Var_ids, class...var_ids>
-auto random_calculate(const quimulun<Fs...>& qui,x_random& mt,
-               myselect<Var_ids...>,vector_space<var_ids...>&& variables, const Ds&... datas)
+auto random_calculate(const quimulun<Fs...>& qui,
+                      x_random& mt,
+               myselect<Var_ids...>,
+                      vector_space<var_ids...>&& variables, const Ds&... datas)
 {
   auto new_variables=random_calculate_this(qui,mt,myselect<Var_ids...>{},variables,datas...);
-
-
   if constexpr (new_variables.size()==0)
   {
     if constexpr(sizeof... (Var_ids)==0)
@@ -758,6 +1056,32 @@ auto random_calculate(const quimulun<Fs...>& qui,x_random& mt,
 }
 
 
+template <class...Fs,class x_random,class...ds,class... Ds, class...Var_ids, class...var_ids>
+auto random_calculate_parallel_for(const quimulun<Fs...>& qui,
+                      x_random& mt,
+                      myselect<Var_ids...>,
+                      vector_space<var_ids...>&& variables, const Ds&... datas)
+{
+  auto new_variables=random_calculate_this_parallel_for(qui,mt,myselect<Var_ids...>{},variables,datas...);
+  if constexpr (new_variables.size()==0)
+  {
+    if constexpr(sizeof... (Var_ids)==0)
+      return std::move(variables);
+    else
+      return check_if_reacheable(Cs<Var_ids...>{});
+
+  }
+  else
+  {
+    using  new_var_ids=transfer_t<pack_difference_t<Cs<Var_ids...>,typename decltype (new_variables)::myIds>,myselect<>>;
+    return random_calculate_parallel_for(qui,mt,new_var_ids{},std::move(variables)+std::move(new_variables),datas...);
+
+  }
+}
+
+
+
+
 
 template <class...Fs,class x_random,class...ds, class...Ds>
 auto random_calculate(const quimulun<Fs...>& qui,x_random& mt, const Ds&...datas)
@@ -766,6 +1090,18 @@ auto random_calculate(const quimulun<Fs...>& qui,x_random& mt, const Ds&...datas
   using Variables_ids=transfer_t<variables_ids,myselect<>>;
 
   return random_calculate(qui,mt,Variables_ids{}, vector_space<>{},datas...);
+
+
+}
+
+
+template <class...Fs,class x_random,class...ds, class...Ds>
+auto random_calculate_parallel_for(const quimulun<Fs...>& qui,x_random& mt, const Ds&...datas)
+{
+  using variables_ids=extract_function_Id_t<Cs<Fs...>>;
+  using Variables_ids=transfer_t<variables_ids,myselect<>>;
+
+  return random_calculate_parallel_for(qui,mt,Variables_ids{}, vector_space<>{},datas...);
 
 
 }
