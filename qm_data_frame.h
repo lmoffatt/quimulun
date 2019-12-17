@@ -362,6 +362,10 @@ struct cols<x_i<e_i,Value_type>>{
   using type=recursive_t<e_i,cols_t<Value_type>>;
 };
 
+
+
+
+
 template<class e_i, class Value_type>
 struct index_set<x_i<e_i,Value_type>>{
   using type=index_set_t<Value_type>;
@@ -563,6 +567,21 @@ template<class...x_is> struct cols<vector_space<x_is...>>
   using type=pack_concatenation_t<cols_t<x_is>...>;
 };
 
+
+template<class> struct cols_q{using type=Cs<>;};
+
+template<class ei, class value_type> struct cols_q<x_i<ei,value_type>>
+{using type=cols_t<x_i<ei,value_type>>;};
+
+
+template<class...x_is> struct cols<quimulun<x_is...>>
+{
+  using type=pack_concatenation_t<Cs<>,typename cols_q<x_is>::type...>;
+
+//  using test=typename type::ty;
+};
+
+
 template<class...x_is> struct index_set<vector_space<x_is...>>
 {
   using type=pack_unique_t<pack_concatenation_t<index_set_t<x_is>...>>;
@@ -687,17 +706,47 @@ auto& at(const x_i<ei,value_type>& me, const Position& i, ind){return at(me(),i,
 template<class ei, class value_type, class Position, class ind>
 auto& at(const x_i<ei,value_type>& me, const Position& i, recursive<ei,ind>){return at(me(),i,ind{});}
 
+template<class Position, class ind>
+Nothing at(Nothing, const Position& , ind){return Nothing{};}
 
 
+
+
+/*
 template<class... x_is,class J, class Position, class =std::enable_if_t<is_in_pack<J,typename x_is::ei...>(),int>>
-auto at(const vector_space<x_is...>&me,const Position& i, J) {return me[J{}](i);}
+auto at(const vector_space<x_is...>&me,const Position& i, J)->decltype (me[J{}](i))
+{return me[J{}](i);}
+*/
 
 
 
-template<class... x_is,class J, class j_in, class Position,class =std::enable_if_t<is_in_pack<J,typename x_is::ei...>(),int>>
+
+template<class... x_is,class J>
+auto at(const quimulun<x_is...>&me,J) ->decltype (only_xi((me[J{}])))
+{
+  return only_xi((me[J{}]));
+}
+
+template<class... x_is,class J, class j_in, class Position>
+auto at(const quimulun<x_is...>&me,const Position& i,recursive<J,j_in> ) ->decltype (at(at(me,J{}),i,j_in{}))
+{
+  return at(at(me,J{}),i,j_in{});
+}
+
+
+
+template<class... x_is,class J, class j_in, class Position>
 auto at(const vector_space<x_is...>&me,const Position& i,recursive<J,j_in> ) ->decltype (at(me[J{}],i,j_in{}))
-{return
-  at(me[J{}],i,j_in{});}
+{
+  return at(me[J{}],i,j_in{});
+}
+
+
+template<class... x_is,class... Data,class J, class j_in, class Position>
+auto at(const Position& i,recursive<J,j_in> r,const vector_space<x_is...>&me, const Data&... d )->decltype ((at(me,i,r)||...||at(d,i,r)))
+{return  (at(me,i,r)||...||at(d,i,r));}
+
+
 
 
 
@@ -779,6 +828,14 @@ constexpr bool is_this_col_an_index(recursive<ind,col>, Cs<index...>)
 }
 
 
+template <class index, class... col_is>
+constexpr bool is_this_index_present(index,Cs<col_is...>)
+{
+  return (false||...||is_this_col_an_index(col_is{},index{}));
+}
+
+
+
 template <class, class,class> struct only_this_index;
 
 template<class vectorspace, class... col_is, class... Xs>
@@ -791,6 +848,51 @@ struct only_this_index<vectorspace, Cs<col_is...>, Cs<Xs...>>
       Cs<col_is>,
       Cs<>>...>;
 };
+
+
+template< class... col_is, class... Xs>
+constexpr bool has_all_the_indexes(Cs<col_is...>, Cs<Xs...>)
+{
+  if constexpr ((true&&...&&is_this_index_present(Xs{},Cs<col_is...>{})))
+    return true;
+  else
+  {
+    static_assert ((true&&...&&is_this_index_present(Xs{},Cs<col_is...>{})), "missing indexes");
+    return false;
+  }
+}
+
+
+
+
+template <class, class,class, class> struct only_this_index_new;
+
+
+
+
+template<class vectorspace, class... col_is, class... col_data_is, class... Xs>
+struct only_this_index_new<vectorspace, Cs<col_is...>,Cs<col_data_is...>, Cs<Xs...>>
+{
+
+  using type= pack_concatenation_t<
+      std::conditional_t<
+          is_this_col_an_index(col_data_is{},Cs<Xs...>{}),
+          Cs<col_data_is>,
+          Cs<>>...,
+      std::conditional_t<
+        is_this_col_an_index(col_is{},Cs<Xs...>{})||
+          std::is_same_v<index_of_col_t<vectorspace,col_is>,Cs<Xs...>>,
+      Cs<col_is>,
+      Cs<>>...
+      >;
+  static_assert (has_all_the_indexes(type{},Cs<Xs...>{}),"missing indexes");
+
+};
+
+
+
+
+
 template <class, class,class> struct separate_by_index;
 
 template<class vectorspace, class... col_is, class... vecXs>
@@ -799,6 +901,13 @@ struct separate_by_index<vectorspace, Cs<col_is...>, Cs<vecXs...>>
   using type= Cs<typename only_this_index<vectorspace,Cs<col_is...>,vecXs>::type...>;
 };
 
+template <class, class,class,class> struct separate_by_index_new;
+
+template<class vectorspace, class... col_is, class... col_data_is, class... vecXs>
+struct separate_by_index_new<vectorspace, Cs<col_is...>, Cs<col_data_is...>, Cs<vecXs...>>
+{
+  using type= Cs<typename only_this_index_new<vectorspace,Cs<col_is...>,Cs<col_data_is...>,vecXs>::type...>;
+};
 
 
 
@@ -826,6 +935,7 @@ void to_DataFrame_body_one_index(const std::string& name, std::size_t nsample,co
   if (nsample%nfactor==0)
   {
     std::string filename=(name+...+(Xs::className.c_str()+std::string("_")))+".txt";
+    auto myfilename=filename;
     std::ofstream f(filename.c_str(),std::ios_base::app);
   auto p=Position<Xs...>{};
   f<<std::setprecision(std::numeric_limits<double>::digits10+2);
@@ -889,7 +999,86 @@ void to_DataFrame_title_index(const std::string& filename, const vector_space<x_
   to_DataFrame_title_all_index(filename,indexes{},columns_sets{},header...);
 
 }
+///--------------------------------------------------------
+///
+///
+///
 
+
+template<class...x_is, class... Xs, class... col_is, class... Data>
+void to_DataFrame_body_one_index_new(const std::string& name, std::size_t nsample,const std::vector<std::size_t>& decimate_factor, const vector_space<x_is...>& v, Cs<Xs...>  indexes  [[maybe_unused]], Cs<col_is...> columnsets  [[maybe_unused]], const Data&...data)
+{
+  std::size_t nfactor=decimate_factor[sizeof... (Xs)];
+  if (nsample%nfactor==0)
+  {
+    std::string filename=(name+...+(Xs::className.c_str()+std::string("_")))+".txt";
+    auto myfilename=filename;
+    std::ofstream f(filename.c_str(),std::ios_base::app);
+    auto p=Position<Xs...>{};
+    f<<std::setprecision(std::numeric_limits<double>::digits10+2);
+    do{
+      f<<nsample<<"\t";
+      ((f<<at(p,col_is{},v,data...)<<"\t"),...);
+      f<<"\n";
+    }while( next(p,v,data...));
+  }
+}
+
+template<class...x_is, class... vexXs, class... Cscols, class... Data>
+void to_DataFrame_body_all_index_new(const std::string& filename, std::size_t nsample,const std::vector<std::size_t>& decimate_factor, const vector_space<x_is...>& v, Cs<vexXs...> , Cs<Cscols...> , const Data&... data)
+{
+  (to_DataFrame_body_one_index_new(filename,nsample,decimate_factor,v,vexXs{},Cscols{},data...),...);
+
+}
+
+
+template<class...x_is, class... Data>
+void to_DataFrame_body_index_new(const std::string& filename,std::size_t nsample,const std::vector<std::size_t>& decimate_factor, const vector_space<x_is...>& v, const Data& ...data)
+{
+  using indexes=index_set_t<vector_space<x_is...>>;
+   //using test=typename indexes::my_indexes;
+  using cols_data_is=std::conditional_t<(sizeof... (Data)>0),pack_concatenation_t<cols_t<Data>...>,Cs<>>;
+  using columns_sets=typename separate_by_index_new<vector_space<x_is...>,cols_t<vector_space<x_is...>>,cols_data_is,indexes>::type;
+   // using test2=typename columns_sets::columns_sets;
+  // using test3=typename cols_t<vector_space<x_is...>>::cols;
+  to_DataFrame_body_all_index_new(filename,nsample,decimate_factor,v,indexes{},columns_sets{},data...);
+
+}
+
+
+template<class...x_is, class... Xs, class... col_is>
+void to_DataFrame_title_one_index_new(const std::string& name,  Cs<Xs...> indexes  [[maybe_unused]], Cs<col_is...> columnsets  [[maybe_unused]])
+{
+  std::string filename=(name+...+(Xs::className.c_str()+std::string("_")))+".txt";
+  std::ofstream f(filename.c_str());
+  f<<"nsample"<<"\t";
+  ((f<<col_is{}<<"\t"),...);
+  f<<"\n";
+
+}
+
+
+template<class...x_is, class... vexXs, class... Cscols>
+void to_DataFrame_title_all_index_new(const std::string& filename,  Cs<vexXs...> , Cs<Cscols...> )
+{
+  (to_DataFrame_title_one_index_new(filename,vexXs{},Cscols{}),...);
+
+}
+
+
+
+
+template<class...x_is, class... Data>
+void to_DataFrame_title_index_new(const std::string& filename, const vector_space<x_is...>& , const Data&...)
+{
+  using indexes=index_set_t<vector_space<x_is...>>;
+  using cols_data_is=std::conditional_t<(sizeof... (Data)>0),pack_concatenation_t<Cs<>,cols_t<Data>...>,Cs<>>;
+
+
+  using columns_sets=typename separate_by_index_new<vector_space<x_is...>,cols_t<vector_space<x_is...>>,cols_data_is,indexes>::type;
+  to_DataFrame_title_all_index_new(filename,indexes{},columns_sets{});
+
+}
 
 
 

@@ -148,21 +148,10 @@ template<class...x_is> struct vector_space: private x_is...
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-    template<class... I, class Is, typename =std::enable_if_t<is_in_pack<Is,I...>(),int>>
-  bool next(Is,Position<I...>& p)const
+  template<class... I, class Is,class T>
+  static bool next_impl(Is,Position<I...>& p,const T& x)
   {
-    if (p[Is{}]()+1<(*this)[Is{}]().size(Is{},p)){
+    if (p[Is{}]()+1<x().size(Is{},p)){
       ++p[Is{}]();
       return true;}
     else{
@@ -171,11 +160,52 @@ template<class...x_is> struct vector_space: private x_is...
 
   }
 
+  /*
+  template<class... I, class Is>
+  static Nothing next_impl(Is,Position<I...>& ,Nothing)
+  {
+    return Nothing{};
+
+  }
+
+*/
+
+  template<class... I, class Is, typename =std::enable_if_t< is_in_pack<Is,I...>()>>
+  auto next(Is,Position<I...>& p)const
+  {
+    return next_impl(Is{},p,(*this)[Is{}]);
+  }
+
+  template<class... I, class Is, class... Data, typename =std::enable_if_t< is_in_pack<Is,I...>()>>
+  friend auto nexts(Is,Position<I...>& p, const vector_space& me , const Data&...d)
+  {
+    auto& x=(me[Is{}]||...||d[Is{}]);
+    return next_impl(Is{},p,x);
+  }
+
+
+  /*
   template<class... I, class... eis, typename =std::enable_if_t<is_in_pack<Index<eis...>,I...>(),int>>
   bool next(Index<eis...>,Position<I...>& p)const
   {
     return next_variant(p[Index<eis...>{}]());
   }
+*/
+  template<class ...Is, class... Data>
+  friend auto next(Position<Is...>& p,const vector_space& me, const Data&...d)
+  {
+    return ([&me,&p,&d...](auto b){
+             if (b.first)
+               return b;
+             else if (nexts(Is{},p,me,d...))
+               return std::pair{true,true};
+             else
+               return std::pair{false,false};
+           }
+            |...|std::pair(false,false)).second;
+  }
+
+
 
 
 
@@ -362,7 +392,7 @@ bool next(Is,Position<I...>& p,const value_type&...me)
 
 
 
-
+/*
 template<class ...Is,class...value_types>
  auto next(Position<Is...>& p,const value_types&...me)
 {
@@ -376,7 +406,7 @@ template<class ...Is,class...value_types>
          }
           |...|std::pair(false,false)).second;
 }
-
+*/
 
 
 
@@ -594,7 +624,12 @@ void fill_vector_field(Vector&v,Position& p,vec<X,X1...> ,const x_i<Id,Value>& o
 
 
 
+template<class Xs,class... xs, class ...Data>
+auto get_from_vector(Xs,const vector_space<xs...>& v, const Data&...d)->decltype ((v[Xs{}]||...||d[Xs{}]))
+{
 
+  return (v[Xs{}]||...||d[Xs{}]);
+}
 
 
 template<class ...xi>

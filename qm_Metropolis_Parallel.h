@@ -541,10 +541,15 @@ auto parallel_emcee_series(const Model_q& model,  const data_q& data,const vecto
     
     if (i==0)
     {
-      to_DataFrame_title_index(fname,output);
+   //   to_DataFrame_title_index(fname,output);
+      to_DataFrame_title_index_new(fname,currentParameters_v,data,modeldata,initwalkers_v);
+      to_DataFrame_title_index_new(fname,Evidence_v,data,modeldata,initwalkers_v);
+
     }
-    to_DataFrame_body_index(fname,i,decimate_factor,output);
-    
+   // to_DataFrame_body_index(fname,i,decimate_factor,output);
+    to_DataFrame_body_index_new(fname,i,decimate_factor,currentParameters_v,data,modeldata,initwalkers_v);
+    to_DataFrame_body_index_new(fname,i,decimate_factor,Evidence_v,data,modeldata,initwalkers_v);
+
     
   }
   

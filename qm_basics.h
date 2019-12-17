@@ -290,6 +290,26 @@ template<class C>
     return Nothing{};
 
 }
+
+
+template<class C>
+auto only_xi(C&& x)->std::conditional_t<
+    (is_this_template_class<x_i,std::decay_t<C>>::value||
+     is_this_template_class<x_i_view_const,std::decay_t<C>>::value||
+     is_this_template_class<x_i_view_non_const,std::decay_t<C>>::value),
+    decltype(x),Nothing>
+{
+  if constexpr (is_this_template_class<x_i,std::decay_t<C>>::value||
+                is_this_template_class<x_i_view_const,std::decay_t<C>>::value||
+                is_this_template_class<x_i_view_non_const,std::decay_t<C>>::value)
+    return std::forward<C>(x);
+  else
+    return Nothing{};
+
+}
+
+
+
 template<class Id> struct all;
 
 template <class anId, class...Datas
