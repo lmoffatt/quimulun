@@ -509,6 +509,7 @@ auto parallel_emcee_series(const Model_q& model,  const data_q& data,const vecto
   std::ofstream f_jump(f_jump_name.c_str());
 
 
+  std::chrono::steady_clock::time_point startTime=std::chrono::steady_clock::now();
 
 
 
@@ -524,31 +525,41 @@ auto parallel_emcee_series(const Model_q& model,  const data_q& data,const vecto
     auto after_temperature_jump=random_calculate(temperature_jump,rand0,next_parameter_v,modeldata);
 
 
-    auto output_jump=vector_space(x_i{isample{},v(i,dimension_less{})})+(after_temperature_jump|myremove<accept_k>{});
 
     if (i==0)
+    {
+      auto output_jump=vector_space(x_i{isample{},v(i,dimension_less{})})+(after_temperature_jump|myremove<accept_k>{});
       to_DataFrame_title(f_jump,output_jump);
-    if (i%10==0)
+    }
+    if (i%1000==0)
+    {
+      auto output_jump=vector_space(x_i{isample{},v(i,dimension_less{})})+(after_temperature_jump|myremove<accept_k>{});
       to_DataFrame_body(f_jump,output_jump);
-
+    }
     currentParameters_v=transfer(actualize_jump,std::move(next_parameter_v),after_temperature_jump,modeldata);
 
     auto Evidence_v=calculate(compute_Evidence,currentParameters_v,modeldata);
 
 
-    auto output=vector_space(x_i{isample{},v(i,dimension_less{})},x_i(beta_ei{},betas),initwalkers_v[walker_ei{}])+currentParameters_v+data+Evidence_v;
-     std::cerr<<"i_sample="<<i<<"\t"<<(Evidence_v|myselect<Current<Evidence_ei>>{})<<"\n";
+  //  auto output=vector_space(x_i{isample{},v(i,dimension_less{})},x_i(beta_ei{},betas),initwalkers_v[walker_ei{}])+currentParameters_v+data+Evidence_v;
+    auto tnow=std::chrono::steady_clock::now();
+    auto d=tnow-startTime;
+    double time=1.0e-6*std::chrono::duration_cast<std::chrono::microseconds>(d).count()/60.0;
+    if (i%20==0)
+    std::cerr<<"\n i_sample="<<i<<"\t "<<"time="<<time<<"\t "<<(Evidence_v|myselect<Current<Evidence_ei>>{})<<"\n";
     
     if (i==0)
     {
    //   to_DataFrame_title_index(fname,output);
       to_DataFrame_title_index_new(fname,currentParameters_v,data,modeldata,initwalkers_v);
       to_DataFrame_title_index_new(fname,Evidence_v,data,modeldata,initwalkers_v);
+      to_DataFrame_title_index_new(fname,data,modeldata,initwalkers_v);
+      to_DataFrame_body_index_new(fname,i,time,decimate_factor,data,modeldata,initwalkers_v);
 
     }
    // to_DataFrame_body_index(fname,i,decimate_factor,output);
-    to_DataFrame_body_index_new(fname,i,decimate_factor,currentParameters_v,data,modeldata,initwalkers_v);
-    to_DataFrame_body_index_new(fname,i,decimate_factor,Evidence_v,data,modeldata,initwalkers_v);
+    to_DataFrame_body_index_new(fname,i,time,decimate_factor,currentParameters_v,data,modeldata,initwalkers_v);
+    to_DataFrame_body_index_new(fname,i,time,decimate_factor,Evidence_v,modeldata);
 
     
   }
@@ -1009,6 +1020,7 @@ auto parallel_emcee_series_parallel_for(const Model_q& model,  const data_q& dat
   std::ofstream f_jump(f_jump_name.c_str());
 
 
+  std::chrono::steady_clock::time_point startTime=std::chrono::steady_clock::now();
 
 
 
@@ -1026,26 +1038,46 @@ auto parallel_emcee_series_parallel_for(const Model_q& model,  const data_q& dat
     auto after_temperature_jump=random_calculate_parallel_for(temperature_jump,rand0,next_parameter_v,modeldata);
 
 
-    auto output_jump=vector_space(x_i{isample{},v(i,dimension_less{})})+(after_temperature_jump|myremove<accept_k>{});
 
     if (i==0)
+    {
+      auto output_jump=vector_space(x_i{isample{},v(i,dimension_less{})})+(after_temperature_jump|myremove<accept_k>{});
       to_DataFrame_title(f_jump,output_jump);
-    if (i%10==0)
-      to_DataFrame_body(f_jump,output_jump);
 
+    }
+    if (i%100==0)
+    {
+      auto output_jump=vector_space(x_i{isample{},v(i,dimension_less{})})+(after_temperature_jump|myremove<accept_k>{});
+
+      to_DataFrame_body(f_jump,output_jump);
+    }
     currentParameters_v=transfer(actualize_jump,std::move(next_parameter_v),after_temperature_jump,modeldata);
 
     auto Evidence_v=calculate(compute_Evidence,currentParameters_v,modeldata);
 
 
-    auto output=vector_space(x_i{isample{},v(i,dimension_less{})},x_i(beta_ei{},betas),initwalkers_v[walker_ei{}])+currentParameters_v+data+Evidence_v;
-    std::cerr<<"i_sample="<<i<<"\t"<<(Evidence_v|myselect<Current<Evidence_ei>>{})<<"\n";
+   // auto output=vector_space(x_i{isample{},v(i,dimension_less{})},x_i(beta_ei{},betas),initwalkers_v[walker_ei{}])+currentParameters_v+data+Evidence_v;
+    auto tnow=std::chrono::steady_clock::now();
+    auto d=tnow-startTime;
+    double time=1.0e-6*std::chrono::duration_cast<std::chrono::microseconds>(d).count()/60.0;
+    if (i%20==0)
+    std::cerr<<"\n i_sample="<<i<<"\t "<<"time="<<time<<"\t "<<(Evidence_v|myselect<Current<Evidence_ei>>{})<<"\n";
+
 
     if (i==0)
     {
-      to_DataFrame_title_index(fname,output);
+      //   to_DataFrame_title_index(fname,output);
+      to_DataFrame_title_index_new(fname,currentParameters_v,data,modeldata,initwalkers_v);
+      to_DataFrame_title_index_new(fname,Evidence_v,data,modeldata,initwalkers_v);
+      to_DataFrame_title_index_new(fname,data,modeldata,initwalkers_v);
+      to_DataFrame_body_index_new(fname,i,time,decimate_factor,data,modeldata,initwalkers_v);
+
     }
-    to_DataFrame_body_index(fname,i,decimate_factor,output);
+    // to_DataFrame_body_index(fname,i,decimate_factor,output);
+    to_DataFrame_body_index_new(fname,i,time,decimate_factor,currentParameters_v,data,modeldata,initwalkers_v);
+    to_DataFrame_body_index_new(fname,i,time,decimate_factor,Evidence_v,modeldata);
+
+
 
 
   }
@@ -1447,6 +1479,7 @@ auto parallel_emcee_parallel(const Model_q& model,  const data_q& data,const vec
 
   std::ofstream f_jump_parallel(f_jump_name_parallel.c_str());
 
+  std::chrono::steady_clock::time_point startTime=std::chrono::steady_clock::now();
 
 
   for (long int i=0; i<nsamples; ++i)
@@ -1455,43 +1488,53 @@ auto parallel_emcee_parallel(const Model_q& model,  const data_q& data,const vec
 
     auto next_candidate_parallel_v=random_calculate(next_parallel_f,random_parallel_v,next_inside,currentParameters_parallel_v,modeldata);
 
-    auto output_candidate_parallel=vector_space(x_i{isample{},v(i,dimension_less{})},x_i(beta_ei{},betas),initwalkers_v[walker_ei{}])+next_candidate_parallel_v+currentParameters_parallel_v+data;
+   // auto output_candidate_parallel=vector_space(x_i{isample{},v(i,dimension_less{})},x_i(beta_ei{},betas),initwalkers_v[walker_ei{}])+next_candidate_parallel_v+currentParameters_parallel_v+data;
 
     auto next_parameter_parallel_v=transfer(accept_candidate_or_current_parallel,std::move(currentParameters_parallel_v), std::move(next_candidate_parallel_v));
 
-    auto output_next_parallel=output_candidate_parallel+next_parameter_parallel_v;
+   // auto output_next_parallel=output_candidate_parallel+next_parameter_parallel_v;
 
-    if (i==0)
-    {
-      to_DataFrame_title_index("test",output_next_parallel);
-    }
-    to_DataFrame_body_index("test",i,decimate_factor,output_next_parallel);
 
 
 
     auto after_temperature_jump_parallel=random_calculate(temperature_jump_parallel,rand0_parallel,next_parameter_parallel_v,modeldata);
 
-    auto output_jump_parallel=vector_space(x_i{isample{},v(i,dimension_less{})})+(after_temperature_jump_parallel|myremove<accept_k>{});
 
     if (i==0)
+    {
+      auto output_jump_parallel=vector_space(x_i{isample{},v(i,dimension_less{})})+(after_temperature_jump_parallel|myremove<accept_k>{});
       to_DataFrame_title(f_jump_parallel,output_jump_parallel);
-    if (i%10==0)
-      to_DataFrame_body(f_jump_parallel,output_jump_parallel);
 
+    }
+    if (i%100==0)
+    {
+      auto output_jump_parallel=vector_space(x_i{isample{},v(i,dimension_less{})})+(after_temperature_jump_parallel|myremove<accept_k>{});
+
+      to_DataFrame_body(f_jump_parallel,output_jump_parallel);
+    }
     currentParameters_parallel_v=transfer(actualize_jump_parallel,std::move(next_parameter_parallel_v),after_temperature_jump_parallel,modeldata);
 
     auto Evidence_parallel_v=calculate(compute_Evidence_parallel,currentParameters_parallel_v,modeldata);
 
 
-    auto output_parallel=vector_space(x_i{isample{},v(i,dimension_less{})},x_i(beta_ei{},betas),initwalkers_v[walker_ei{}])+currentParameters_parallel_v+data+Evidence_parallel_v;
-    std::cerr<<"\n i_sample="<<i<<"\t "<<(Evidence_parallel_v|myselect<Current<Evidence_ei>>{})<<"\n";
+   // auto output_parallel=vector_space(x_i{isample{},v(i,dimension_less{})},x_i(beta_ei{},betas),initwalkers_v[walker_ei{}])+currentParameters_parallel_v+data+Evidence_parallel_v;
+    auto tnow=std::chrono::steady_clock::now();
+    auto d=tnow-startTime;
+    double time=1.0e-6*std::chrono::duration_cast<std::chrono::microseconds>(d).count()/60.0;
+    if (i%20==0)
+    std::cerr<<"\n i_sample="<<i<<"\t "<<"time="<<time<<"\t "<<(Evidence_parallel_v|myselect<Current<Evidence_ei>>{})<<"\n";
 
-     if (i==0)
+
+    if (i==0)
     {
-      to_DataFrame_title_index(fname_parallel,output_parallel);
-    }
-    to_DataFrame_body_index(fname_parallel,i,decimate_factor,output_parallel);
+      //   to_DataFrame_title_index(fname,output);
+      to_DataFrame_title_index_new(fname_parallel,currentParameters_parallel_v,data,modeldata,initwalkers_v);
+      to_DataFrame_title_index_new(fname_parallel,Evidence_parallel_v,data,modeldata,initwalkers_v);
 
+    }
+    // to_DataFrame_body_index(fname,i,decimate_factor,output);
+    to_DataFrame_body_index_new(fname_parallel,i,time,decimate_factor,currentParameters_parallel_v,data,modeldata,initwalkers_v);
+    to_DataFrame_body_index_new(fname_parallel,i,time,decimate_factor,Evidence_parallel_v,modeldata);
 
 
 
@@ -1540,7 +1583,7 @@ auto parallel_emcee_parallel_parallel_for(const Model_q& model,  const data_q& d
       Coord(walker_ei{},IndexCoordinate{},Size<walker_ei>{})
   };
 
-  auto initwalkers_v=calculate_parallel_for(initwalkers_f,modeldata);
+  auto initwalkers_v=calculate(initwalkers_f,modeldata);
 
   auto random_f=quimulun{
       Fr(rand_e{},[](auto& mt_a,auto const &, auto const &){
@@ -1892,51 +1935,64 @@ auto parallel_emcee_parallel_parallel_for(const Model_q& model,  const data_q& d
 
   std::ofstream f_jump_parallel(f_jump_name_parallel.c_str());
 
+  std::chrono::steady_clock::time_point startTime=std::chrono::steady_clock::now();
 
 
   for (long int i=0; i<nsamples; ++i)
   {
-    auto nsample=vector_space{x_i{isample{},v(i,dimension_less{})}};
 
     auto next_candidate_parallel_v=random_calculate_parallel_for(next_parallel_f,random_parallel_v,next_inside,currentParameters_parallel_v,modeldata);
 
-    auto output_candidate_parallel=vector_space(x_i{isample{},v(i,dimension_less{})},x_i(beta_ei{},betas),initwalkers_v[walker_ei{}])+next_candidate_parallel_v+currentParameters_parallel_v+data;
+    //auto output_candidate_parallel=vector_space(x_i{isample{},v(i,dimension_less{})},x_i(beta_ei{},betas),initwalkers_v[walker_ei{}])+next_candidate_parallel_v+currentParameters_parallel_v+data;
 
     auto next_parameter_parallel_v=transfer(accept_candidate_or_current_parallel,std::move(currentParameters_parallel_v), std::move(next_candidate_parallel_v));
 
-    auto output_next_parallel=output_candidate_parallel+next_parameter_parallel_v;
+    //auto output_next_parallel=output_candidate_parallel+next_parameter_parallel_v;
 
-    if (i==0)
-    {
-      to_DataFrame_title_index("test",output_next_parallel);
-    }
-    to_DataFrame_body_index("test",i,decimate_factor,output_next_parallel);
 
 
 
     auto after_temperature_jump_parallel=random_calculate_parallel_for(temperature_jump_parallel,rand0_parallel,next_parameter_parallel_v,modeldata);
 
-    auto output_jump_parallel=vector_space(x_i{isample{},v(i,dimension_less{})})+(after_temperature_jump_parallel|myremove<accept_k>{});
 
     if (i==0)
+    {
+      auto output_jump_parallel=vector_space(x_i{isample{},v(i,dimension_less{})})+(after_temperature_jump_parallel|myremove<accept_k>{});
       to_DataFrame_title(f_jump_parallel,output_jump_parallel);
-    if (i%10==0)
-      to_DataFrame_body(f_jump_parallel,output_jump_parallel);
 
+    }
+    if (i%100==0)
+    {
+      auto output_jump_parallel=vector_space(x_i{isample{},v(i,dimension_less{})})+(after_temperature_jump_parallel|myremove<accept_k>{});
+
+      to_DataFrame_body(f_jump_parallel,output_jump_parallel);
+    }
     currentParameters_parallel_v=transfer(actualize_jump_parallel,std::move(next_parameter_parallel_v),after_temperature_jump_parallel,modeldata);
 
     auto Evidence_parallel_v=calculate_parallel_for(compute_Evidence_parallel,currentParameters_parallel_v,modeldata);
 
 
-    auto output_parallel=vector_space(x_i{isample{},v(i,dimension_less{})},x_i(beta_ei{},betas),initwalkers_v[walker_ei{}])+currentParameters_parallel_v+data+Evidence_parallel_v;
-    std::cerr<<"\n i_sample="<<i<<"\t "<<(Evidence_parallel_v|myselect<Current<Evidence_ei>>{})<<"\n";
+  //  auto output_parallel=vector_space(x_i{isample{},v(i,dimension_less{})},x_i(beta_ei{},betas),initwalkers_v[walker_ei{}])+currentParameters_parallel_v+data+Evidence_parallel_v;
+
+
+    auto tnow=std::chrono::steady_clock::now();
+    auto d=tnow-startTime;
+    double time=1.0e-6*std::chrono::duration_cast<std::chrono::microseconds>(d).count()/60.0;
+    if (i%20==0)
+      std::cerr<<"\n i_sample="<<i<<"\t "<<"time="<<time<<"\t "<<(Evidence_parallel_v|myselect<Current<Evidence_ei>>{})<<"\n";
 
     if (i==0)
     {
-      to_DataFrame_title_index(fname_parallel,output_parallel);
-    }
-    to_DataFrame_body_index(fname_parallel,i,decimate_factor,output_parallel);
+      //   to_DataFrame_title_index(fname,output);
+      to_DataFrame_title_index_new(fname_parallel,currentParameters_parallel_v,data,modeldata,initwalkers_v);
+      to_DataFrame_title_index_new(fname_parallel,Evidence_parallel_v,data,modeldata,initwalkers_v);
+      to_DataFrame_title_index_new(fname_parallel,data,modeldata,initwalkers_v);
+      to_DataFrame_body_index_new(fname_parallel,i,time,decimate_factor,data,modeldata);
 
+    }
+    // to_DataFrame_body_index(fname,i,decimate_factor,output);
+    to_DataFrame_body_index_new(fname_parallel,i,time,decimate_factor,currentParameters_parallel_v,data,modeldata,initwalkers_v);
+    to_DataFrame_body_index_new(fname_parallel,i,time,decimate_factor,Evidence_parallel_v,modeldata);
 
 
 

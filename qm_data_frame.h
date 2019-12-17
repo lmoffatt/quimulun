@@ -1006,7 +1006,7 @@ void to_DataFrame_title_index(const std::string& filename, const vector_space<x_
 
 
 template<class...x_is, class... Xs, class... col_is, class... Data>
-void to_DataFrame_body_one_index_new(const std::string& name, std::size_t nsample,const std::vector<std::size_t>& decimate_factor, const vector_space<x_is...>& v, Cs<Xs...>  indexes  [[maybe_unused]], Cs<col_is...> columnsets  [[maybe_unused]], const Data&...data)
+void to_DataFrame_body_one_index_new(const std::string& name, std::size_t nsample,double time,const std::vector<std::size_t>& decimate_factor, const vector_space<x_is...>& v, Cs<Xs...>  indexes  [[maybe_unused]], Cs<col_is...> columnsets  [[maybe_unused]], const Data&...data)
 {
   std::size_t nfactor=decimate_factor[sizeof... (Xs)];
   if (nsample%nfactor==0)
@@ -1017,7 +1017,7 @@ void to_DataFrame_body_one_index_new(const std::string& name, std::size_t nsampl
     auto p=Position<Xs...>{};
     f<<std::setprecision(std::numeric_limits<double>::digits10+2);
     do{
-      f<<nsample<<"\t";
+      f<<nsample<<"\t"<<time<<"\t";
       ((f<<at(p,col_is{},v,data...)<<"\t"),...);
       f<<"\n";
     }while( next(p,v,data...));
@@ -1025,15 +1025,15 @@ void to_DataFrame_body_one_index_new(const std::string& name, std::size_t nsampl
 }
 
 template<class...x_is, class... vexXs, class... Cscols, class... Data>
-void to_DataFrame_body_all_index_new(const std::string& filename, std::size_t nsample,const std::vector<std::size_t>& decimate_factor, const vector_space<x_is...>& v, Cs<vexXs...> , Cs<Cscols...> , const Data&... data)
+void to_DataFrame_body_all_index_new(const std::string& filename, std::size_t nsample,double time,const std::vector<std::size_t>& decimate_factor, const vector_space<x_is...>& v, Cs<vexXs...> , Cs<Cscols...> , const Data&... data)
 {
-  (to_DataFrame_body_one_index_new(filename,nsample,decimate_factor,v,vexXs{},Cscols{},data...),...);
+  (to_DataFrame_body_one_index_new(filename,nsample,time,decimate_factor,v,vexXs{},Cscols{},data...),...);
 
 }
 
 
 template<class...x_is, class... Data>
-void to_DataFrame_body_index_new(const std::string& filename,std::size_t nsample,const std::vector<std::size_t>& decimate_factor, const vector_space<x_is...>& v, const Data& ...data)
+void to_DataFrame_body_index_new(const std::string& filename,std::size_t nsample,double time,const std::vector<std::size_t>& decimate_factor, const vector_space<x_is...>& v, const Data& ...data)
 {
   using indexes=index_set_t<vector_space<x_is...>>;
    //using test=typename indexes::my_indexes;
@@ -1041,7 +1041,7 @@ void to_DataFrame_body_index_new(const std::string& filename,std::size_t nsample
   using columns_sets=typename separate_by_index_new<vector_space<x_is...>,cols_t<vector_space<x_is...>>,cols_data_is,indexes>::type;
    // using test2=typename columns_sets::columns_sets;
   // using test3=typename cols_t<vector_space<x_is...>>::cols;
-  to_DataFrame_body_all_index_new(filename,nsample,decimate_factor,v,indexes{},columns_sets{},data...);
+  to_DataFrame_body_all_index_new(filename,nsample,time,decimate_factor,v,indexes{},columns_sets{},data...);
 
 }
 
@@ -1051,7 +1051,7 @@ void to_DataFrame_title_one_index_new(const std::string& name,  Cs<Xs...> indexe
 {
   std::string filename=(name+...+(Xs::className.c_str()+std::string("_")))+".txt";
   std::ofstream f(filename.c_str());
-  f<<"nsample"<<"\t";
+  f<<"nsample"<<"\t"<<"time"<<"\t";
   ((f<<col_is{}<<"\t"),...);
   f<<"\n";
 

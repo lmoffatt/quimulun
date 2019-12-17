@@ -1004,6 +1004,48 @@ auto calculate(const quimulun<Fs...>& qui, const Ds&...datas)
 }
 
 
+
+template <class...Fs,class...ds,class... Var_ids, class...Other >
+auto calculate_set_parallel_for(const quimulun<Fs...>& qui, myselect<Var_ids...>, const Other&... other)
+{
+  return (vector_space<>{}+...+calculate_Id_parallel_for(qui,Var_ids{},other...));
+}
+
+
+template <class...Fs,class...ds,class... Ds, class...Var_ids, class...var_ids>
+auto calculate_parallel_for(const quimulun<Fs...>& qui,
+               myselect<Var_ids...>,vector_space<var_ids...>&& variables, const Ds&... datas)
+{
+  auto new_variables=calculate_set_parallel_for(qui,myselect<Var_ids...>{},variables,datas...);
+
+
+  if constexpr (new_variables.size()==0)
+  {
+    if constexpr(sizeof... (Var_ids)==0)
+      return std::move(variables);
+    else
+      return check_if_reacheable(Cs<Var_ids...>{});
+  }
+  else
+  {
+    using  new_var_ids=transfer_t<pack_difference_t<Cs<Var_ids...>,typename decltype (new_variables)::myIds>,myselect<>>;
+    return calculate_parallel_for(qui,new_var_ids{},std::move(variables)+std::move(new_variables),datas...);
+
+  }
+}
+
+
+
+template <class...Fs,class...ds, class...Ds>
+auto calculate_parallel_for(const quimulun<Fs...>& qui, const Ds&...datas)
+{
+  using variables_ids=extract_function_Id_t<Cs<Fs...>>;
+  using Variables_ids=transfer_t<variables_ids,myselect<>>;
+  return calculate_parallel_for(qui,Variables_ids{}, vector_space<>{},datas...);
+}
+
+
+
 template < class... Fs,class x_random,class Id,class...Ds2,  class... Datas>
 auto random_calculate_Id(const quimulun<Fs...>& qui,x_random& mt, Id,const Datas&...other)
 {
