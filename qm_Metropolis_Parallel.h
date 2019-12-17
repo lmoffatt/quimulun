@@ -6,6 +6,7 @@
 #include <qm_tensor_model.h>
 #include <qm_data_frame.h>
 #include <fstream>
+#include <chrono>
 struct data_ei{  constexpr static auto  className=my_static_string("data");};
 struct beta_ei{  constexpr static auto  className=my_static_string("beta");};
 struct walker_ei{  constexpr static auto  className=my_static_string("walker");};
