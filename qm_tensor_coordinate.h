@@ -36,8 +36,8 @@ template<class Id> struct Duration{
 
 };
 template<class Id> struct Step{
-  typedef typename Id::T T;
-  typedef typename Id::unit unit;
+ // typedef typename Id::T T;
+ // typedef typename Id::unit unit;
 
   constexpr static auto  className=Id::className+my_static_string("_step");
 
@@ -95,7 +95,7 @@ struct IndexCoordinate
 };
 
 
-
+/*
 
 template<class Id> class UnEvenCoordinate
 {
@@ -130,7 +130,7 @@ public:
 
 };
 
-
+*/
 
 
 
@@ -147,7 +147,7 @@ public:
   auto operator()(const Data&... data)const
   {
     using res_value_type=std::decay_t<
-        std::invoke_result_t<G,decltype(get_from(Xs{},data...)(get_from(Xs{},data...)().begin()))...>>;
+        std::invoke_result_t<G,decltype(get_from(Xs{},data...)(get_from(Xs{},data...).begin()))...>>;
 
 //    typedef typename decltype(g_(std::declval<typename std::decay_t<decltype(get_from(Xs{},data...))>::element_type>()...))::value_type value_type;
 
@@ -155,7 +155,7 @@ public:
 
     //using test=typename res_value_type::value_test;
 
-    auto out=consolidate<element_type_t<res_value_type>>(vec<Id>{},get_from(Xs{},data...)()...);
+    auto out=consolidate<element_type_t<res_value_type>>(vec<Id>{},get_from(Xs{},data...)...);
 
     //using test2=typename decltype(out)::out_test;
 
@@ -197,9 +197,13 @@ struct extract_function_Id{using type=pack_concatenation_t<extract_function_Id_t
 template<class Id,class G, class... Xs, class... Datas>
 auto calculate(const Coord<Id,G,Xs...>& f,const Datas&... d)
 {
-  if constexpr ((std::is_same_v<decltype (get_from(Xs{},d...)),Nothing>||...))
-    return Nothing{};
-  else
+  auto res=(...&&find_in(Xs{},d...));
+  if constexpr (!std::is_same_v<decltype (res),Has_been_found >)
+  {
+    return Error(Arguments_not_found(Id{},res));
+
+  }else
+
     return f(d...);
 }
 

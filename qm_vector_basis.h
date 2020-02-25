@@ -5,6 +5,7 @@
 
 template<class Id> struct non_const{};
 
+template<class Id> struct pass_id{};
 
 
 
@@ -81,10 +82,10 @@ public:
 
 
   template<class Position>
-  auto& operator()(const Position& p){ return value_(p);}
+  x_i_view_non_const<ei,std::decay_t<decltype (value_(Position{}))>> operator()(const Position& p){ return value_(p);}
 
   template<class Position>
-  auto& operator()(const Position& p)const { return value_(p);}
+  x_i_view_const<ei,std::decay_t<decltype (value_(Position{}))>> operator()(const Position& p)const { return value_(p);}
 
   template<class... iUps, class... iDowns>
   auto operator()(up<iUps...> u, dn<iDowns...> d){return x_i<decltype (ei{}(u,d)),value_type>{ei{}(u,d),(*this)()};}
@@ -121,20 +122,20 @@ public:
   }
 
   template<class unit,class T>
-  friend auto operator*(const x_i& me,const v<T,unit>& a)->x_i<e_i,decltype (Value_type{}*v<T,unit>{})>
+  friend auto operator*(const x_i& me,const v<T,unit>& a)->x_i<e_i,decltype (std::declval<Value_type>()*v<T,unit>{})>
   {
     return x_i<e_i,std::decay_t<decltype (me()*a)>>{e_i{},me()*a};
   }
 
   template<class unit,class T>
-  friend auto operator*(const x_i& me,const logv<T,unit>& a)->x_i<e_i,decltype (Value_type{}*logv<T,unit>{})>
+  friend auto operator*(const x_i& me,const logv<T,unit>& a)->x_i<e_i,decltype (std::declval<Value_type>()*logv<T,unit>{})>
   {
     return x_i<e_i,std::decay_t<decltype (me()*a)>>{e_i{},me()*a};
   }
 
 
   template<class unit,class T>
-  friend auto operator*(const v<T,unit>& a,const x_i& me)->x_i<e_i,decltype (v<T,unit>{}*Value_type{})>
+  friend auto operator*(const v<T,unit>& a,const x_i& me)->x_i<e_i,decltype (v<T,unit>{}*std::declval<Value_type>())>
   {
     return x_i<e_i,std::decay_t<decltype (me()*a)>>{e_i{},a*me()};
   }
@@ -160,7 +161,7 @@ public:
   }
 
   template<class Value_type_2>
-  friend auto operator/(const x_i& me,const Value_type_2& a)->x_i<e_i,decltype (Value_type{}/Value_type_2{})>
+  friend auto operator/(const x_i& me,const Value_type_2& a)->x_i<e_i,decltype (std::declval<Value_type>()/std::declval<Value_type_2>())>
   {
     return x_i<e_i,std::decay_t<decltype (me()/a)>>{e_i{},me()/a};
   }
@@ -270,11 +271,11 @@ public:
 
 
 private:
-  Value_type& value_;
+  Value_type* value_;
 public:
 
-  x_i_view_non_const(value_type& x):value_{x}{}
-  explicit x_i_view_non_const(e_i,value_type& x):value_{x}{}
+  x_i_view_non_const(value_type& x):value_{&x}{}
+  explicit x_i_view_non_const(e_i,value_type& x):value_{&x}{}
 
   x_i_view_non_const const& operator[](e_i)const & {return *this;}
   //x_i& operator[](e_i) & {return *this;}
@@ -302,18 +303,28 @@ public:
   }
 
 
-  auto& operator()()const &{ return value_;}
-  auto& operator()()&{ return value_;}
-  auto operator()()&& {return value_;}
+  auto& operator()()const &{ return *value_;}
+  auto& operator()()&{ return *value_;}
+  auto operator()()&& {return *value_;}
 
 
+
+
+//  template<class Position>
+//  auto& operator()(const Position& p){ return value_(p);}
+
+//  template<class Position>
+//  auto& operator()(const Position& p)const { return value_(p);}
 
 
   template<class Position>
-  auto& operator()(const Position& p){ return value_(p);}
+  x_i_view_non_const<ei,std::decay_t<decltype ((*value_)(Position{}))>> operator()(const Position& p){ return (*value_)(p);}
 
   template<class Position>
-  auto& operator()(const Position& p)const { return value_(p);}
+  x_i_view_const<ei,std::decay_t<decltype ((*value_)(Position{}))>> operator()(const Position& p)const { return (*value_)(p);}
+
+
+
 
   template<class... iUps, class... iDowns>
   auto operator()(up<iUps...> u, dn<iDowns...> d){return x_i_view_non_const<decltype (ei{}(u,d)),value_type>{ei{}(u,d),(*this)()};}
@@ -375,11 +386,11 @@ public:
 
 
 private:
-  Value_type const& value_;
+  Value_type const* value_;
 public:
 
-  x_i_view_const(const value_type& x):value_{x}{}
-  explicit x_i_view_const(e_i,const value_type& x):value_{x}{}
+  x_i_view_const(const value_type& x):value_{&x}{}
+  explicit x_i_view_const(e_i,const value_type& x):value_{&x}{}
 
 
   x_i_view_const const& operator[](e_i)const & {return *this;}
@@ -406,11 +417,17 @@ public:
   }
 
 
-  auto& operator()()const { return value_;}
+  auto& operator()()const { return *value_;}
+
+
+//  template<class Position>
+//  auto& operator()(const Position& p)const { return value_(p);}
 
 
   template<class Position>
-  auto& operator()(const Position& p)const { return value_(p);}
+  x_i_view_const<ei,std::decay_t<decltype ((*value_)(Position{}))>> operator()(const Position& p)const { return (*value_)(p);}
+
+
 
   template<class... iUps, class... iDowns>
   auto operator()(up<iUps...> u, dn<iDowns...> d){return x_i_view_const<decltype (ei{}(u,d)),value_type>{ei{}(u,d),(*this)()};}

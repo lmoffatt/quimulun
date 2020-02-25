@@ -77,7 +77,7 @@ struct te<up<Ups...>,dn<Downs...>>{
   //  Scalar operator()(ve<Ups...>,co<Downs...>){return Scalar{};};
 
   using T=decltype (sizeof... (Ups)>1 ? (typename Ups::T{}*...*1)/(typename Downs::T{}*...*1):(typename Downs::T{}*...*1));
-  using unit=decltype ((typename Ups::unit{}*...*p<>{})/(typename Downs::unit{}*...*Ide{}));
+ // using unit=decltype ((typename Ups::unit{}*...*p<>{})/(typename Downs::unit{}*...*Ide{}));
 
 
   constexpr static auto myClassNameDown()

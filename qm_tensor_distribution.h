@@ -29,7 +29,7 @@ struct stddev{
 
 template<class Id>
 struct variance{
-  typedef typename Id::T T;
+  //typedef typename Id::T T;
   // typedef typename Id::unit unit;
   constexpr static auto  className=Id::className+my_static_string("_variance");
 };
@@ -179,7 +179,7 @@ public:
   template<class... Param,class xi_Rnd>
   auto sample(xi_Rnd& mt,const Param&... par)const
   {
-    auto  out=apply_sample(g_,mt,get_from(Xs{},par...)()...);
+    auto  out=apply_sample(g_,mt,get_from(Xs{},par...)...);
 
   /*  return x_i(Id{},std::move(out));
         using value_type=  decltype(g_.sample(get_from(Xs{},par...)(get_from(Xs{},par...).begin())...,mt(mt.begin())));
@@ -201,10 +201,10 @@ public:
   auto logP(const Param&... par)const
   {
     auto const& x=get_from(Id{},par...);
-    auto p=x().begin();
-    auto logProb=g_.logP(x()(p),get_from(Xs{},par...)(p)...);
-    while (x().next(p))
-      logProb=std::move(logProb)+g_.logP(x()(p),get_from(Xs{},par...)(p)...);
+    auto p=x.begin();
+    auto logProb=g_.logP(x(p),get_from(Xs{},par...)(p)...);
+    while (x.next(p))
+      logProb=std::move(logProb)+g_.logP(x(p),get_from(Xs{},par...)(p)...);
     return x_i(logpr<up<Id>,dn<Xs...>>{},std::move(logProb));
   }
   template<class... Param>

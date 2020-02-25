@@ -20,10 +20,10 @@ template<> struct vector_space<>
   template<class xi>
   auto operator + (xi&& x)&&
   {
-    if constexpr (is_this_template_class<x_i,std::decay_t<xi>>::value)
+    if constexpr (is_this_template_class_v<x_i,xi>||is_this_template_class_v<x_i_view_const,xi>||is_this_template_class_v<x_i_view_non_const,xi>)
        return vector_space<std::decay_t<xi>>{std::forward<xi>(x)};
     else
-      return x;
+      return std::forward<xi>(x);
   }
   auto operator + (Nothing)&&
   {
@@ -234,9 +234,14 @@ template<class...x_is> struct vector_space: private x_is...
 
   auto operator + (Nothing)&&
   {
-    return *this;
+    return std::move(*this);
   }
 
+  template<class... T>
+  auto operator + (Error<T...>)&&
+  {
+    return std::move(*this);
+  }
 
 
 
@@ -265,6 +270,9 @@ template<class...x_is> struct vector_space: private x_is...
 
   template<class...Is>
   auto& operator()(const Position<Is...>& )const { return *this;}
+
+
+
 
   static constexpr auto size() {return sizeof... (x_is);}
 
@@ -563,10 +571,10 @@ auto operator +(const vector_space<x_is...>&me, const vector_space<x_is2...>& ot
   return addition_impl(me,other,x2_not_1{});
 }
 
-template<class...x_is,class ...x_is2>
-auto operator +( vector_space<x_is...>&&me,  vector_space<x_is2...>&& other)
+template<class x_i0,class...x_is,class ...x_is2>
+auto operator +( vector_space<x_i0,x_is...>&&me,  vector_space<x_is2...>&& other)
 {
-  typedef pack_difference_t<Cs<typename x_is2::ei...>,Cs<typename x_is::ei...>> x2_not_1;
+  typedef pack_difference_t<Cs<typename x_is2::ei...>,Cs<typename x_i0::ei,typename x_is::ei...>> x2_not_1;
   return addition_impl(std::move(me),std::move(other),x2_not_1{});
 }
 
@@ -624,12 +632,6 @@ void fill_vector_field(Vector&v,Position& p,vec<X,X1...> ,const x_i<Id,Value>& o
 
 
 
-template<class Xs,class... xs, class ...Data>
-auto get_from_vector(Xs,const vector_space<xs...>& v, const Data&...d)->decltype ((v[Xs{}]||...||d[Xs{}]))
-{
-
-  return (v[Xs{}]||...||d[Xs{}]);
-}
 
 
 template<class ...xi>

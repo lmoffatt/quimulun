@@ -60,19 +60,21 @@ template <class ...Ups, class ...Downs
           >
 //, typename=std::enable_if_t<(sizeof... (Ups)==sizeof... (Downs))&&(sizeof... (Ups)>0),int>>
 struct logpr<up<Ups...>,dn<Downs...>>{
-  constexpr static auto  className=my_static_string("logp(")+((Ups::className+my_static_string("&"))+...)+my_static_string("|")
-                                    +((Downs::className+my_static_string("&"))+...) + my_static_string(")");
+  constexpr static auto  classNameUp=((Ups::className+my_static_string("&"))+...);
+  constexpr static auto  classNameDown=((Downs::className+my_static_string("&"))+...);
+
+  constexpr static auto  className=my_static_string("logp(")+classNameUp+my_static_string("|")+classNameDown+ my_static_string(")");
 
   template<class... iUps, class... iDowns>
   auto operator()(up<iUps...>, dn<iDowns...>){return ein<logpr,up<iUps...>,dn<iDowns...>>{};}
 
   using T=decltype ((typename Ups::T{}*...)/(typename Downs::T{}*...*Ide{}));
-  using unit=decltype ((typename Ups::unit{}*...*p<>{})/(typename Downs::unit{}*...*Ide{}));
+ // using unit=decltype ((typename Ups::unit{}*...*p<>{})/(typename Downs::unit{}*...*Ide{}));
 
   /// multiplication of independent probabilities...
   template <class ...Ups2, class ...Downs2>
   friend
-      auto operator+(logpr,logpr<up<Ups2...>,dn<Downs2...>>){
+      constexpr auto operator+(logpr,logpr<up<Ups2...>,dn<Downs2...>>){
     return logpr<up<Ups...,Ups2...>,dn<Downs...,Downs2...>>{};
   }
 

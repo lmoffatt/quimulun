@@ -785,7 +785,7 @@ struct element_type_impl<std::mt19937_64>
 
 
 template<class...x_is, class... col_is>
-std::ostream& to_DataFrame_title(std::ostream& os, const vector_space<x_is...>& v, Cs<col_is...>)
+std::ostream& to_DataFrame_title(std::ostream& os, const vector_space<x_is...>& , Cs<col_is...>)
 {
 
   ((os<<col_is{}<<"\t"),...)<<"\n";

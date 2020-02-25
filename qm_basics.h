@@ -29,35 +29,25 @@ struct Nothing{
   constexpr auto size(){return 0;}
   using myIds=Cs<>;
 
+  Nothing operator()()const {return {};}
+
 };
 
+
+
+struct Has_been_found{
+  friend constexpr auto operator && (Has_been_found, Has_been_found){return Has_been_found{};}
+};
 
 template<class... Ids>
 struct Not_found{
   template<class... Id2>
-  friend auto operator+(Not_found, Not_found<Id2...> ){return Not_found<Ids...,Id2...>{};}
-
-
-  template<class... Id2>
-  friend auto operator||(Not_found, Not_found<Id2...> ){return Not_found<Ids...,Id2...>{};}
-
-  template<class Something>
-  friend auto operator-( Something&& s, Not_found)->decltype (s)
-  {return std::forward<Something>(s);}
-
-  template<class Something>
-  friend auto operator+( Something&& s, Not_found)->decltype (s)
-  {return std::forward<Something>(s);}
-
-  template<class Something>
-  friend auto operator||(Not_found, Something&& s)->decltype (s)
-  {return std::forward<Something>(s);}
-  template<class Something>
-  friend auto operator||( Something&& s, Not_found)->decltype (s)
-  {return std::forward<Something>(s);}
-
+  friend constexpr auto operator&&(Not_found, Not_found<Id2...> ){return Not_found<Ids...,Id2...>{};}
+  friend constexpr auto operator&&(Not_found, Has_been_found ){return Not_found{};}
+  friend constexpr auto operator&&(Has_been_found, Not_found ){return Not_found{};}
 
 };
+
 
 
 
@@ -270,21 +260,33 @@ template<class e_i, class Value_type>
 struct f_i_view_const;
 
 
+template<class C>
+inline constexpr bool only_xi_of_fi_v=is_this_template_class_v<x_i,C>||
+is_this_template_class_v<x_i_view_const,C>||
+is_this_template_class_v<x_i_view_non_const,C>||
+is_this_template_class_v<f_i_view_const,C>||
+is_this_template_class_v<f_i,C>;
 
 template<class C>
-    auto only_xi_or_fi(C&& x)->std::conditional_t<
-    (is_this_template_class<x_i,std::decay_t<C>>::value||
-     is_this_template_class<x_i_view_const,std::decay_t<C>>::value||
-     is_this_template_class<x_i_view_non_const,std::decay_t<C>>::value||
-     is_this_template_class<f_i_view_const,std::decay_t<C>>::value||
-     is_this_template_class<f_i,std::decay_t<C>>::value),
+inline constexpr bool only_xi_of_fi_const_v=is_this_template_class_v<x_i,C>||
+                                        is_this_template_class_v<x_i_view_const,C>||
+                                        is_this_template_class_v<f_i_view_const,C>||
+                                        is_this_template_class_v<f_i,C>;
+
+
+template<class C>
+inline constexpr bool only_xi_of_fi_non_const_v=is_this_template_class_v<x_i,C>||
+                                        is_this_template_class_v<x_i_view_non_const,C>;
+
+
+
+
+
+template<class C>
+auto only_xi_or_fi(C&& x)->std::conditional_t<(only_xi_of_fi_v<C>),
     decltype(x),Nothing>
 {
-  if constexpr (is_this_template_class<x_i,std::decay_t<C>>::value||
-                is_this_template_class<x_i_view_const,std::decay_t<C>>::value||
-                is_this_template_class<x_i_view_non_const,std::decay_t<C>>::value||
-                is_this_template_class<f_i_view_const,std::decay_t<C>>::value||
-                is_this_template_class<f_i,std::decay_t<C>>::value)
+  if constexpr (only_xi_of_fi_v<C>)
     return std::forward<C>(x);
   else
     return Nothing{};
@@ -311,17 +313,93 @@ auto only_xi(C&& x)->std::conditional_t<
 
 
 template<class Id> struct all;
+template<class Id> struct pass_id;
+template<class Id> struct non_const;
+template <class...> struct vector_space;
+template <class...> struct quimulun;
 
-template <class anId, class...Datas
-          , typename =std::enable_if_t< ( !is_this_template_class<all,anId>::value)&&
-                                          ( !is_this_template_class<std::tuple,anId>::value) ,int>>
-auto get_from(anId, Datas&&...ds)->decltype ((only_xi_or_fi(std::forward<Datas>(ds)[anId{}])||...))
+
+template <class anId, class X
+          , typename =std::enable_if_t< (only_xi_of_fi_v<X>)&&(!is_this_template_class_v<non_const , anId>)  ,int> >
+auto get_xi_from_this(anId, X&& xi)->std::conditional_t<std::is_same_v<anId,typename std::decay_t<X>::myId >, decltype (std::forward<X>(xi)),Nothing>
 {
-  return (only_xi_or_fi(std::forward<Datas>(ds)[anId{}])||...);
+  if constexpr (std::is_same_v<anId,typename std::decay_t<X>::myId >)
+    return std::forward<X>(xi);
+  else
+    return Nothing{};
+}
+
+template <class anId, class X
+          , typename =std::enable_if_t< (only_xi_of_fi_v<X>) > >
+auto get_xi_from_this(non_const<anId>, X&& xi)->
+    std::conditional_t<std::is_same_v<anId,typename std::decay_t<X>::myId >, decltype (std::forward<X>(xi)),Nothing>
+{
+  if constexpr (std::is_same_v<anId,typename std::decay_t<X>::myId >)
+    return std::forward<X>(xi);
+  else
+    return Nothing{};
 }
 
 
 
+template <class anId, class V
+          , typename =std::enable_if_t< !(only_xi_of_fi_v<V>) > >
+auto get_xi_from_this(anId, V&& xi)->decltype (only_xi_or_fi(std::forward<V>(xi)[anId{}]))
+{
+  return only_xi_or_fi(std::forward<V>(xi)[anId{}]);
+}
+
+
+
+
+
+template <class anId, class...Datas
+          , typename =std::enable_if_t< ( !is_this_template_class<all,anId>::value)&&
+                                          (!is_this_template_class<pass_id,anId>::value)&&
+                                          (!is_this_template_class<non_const,anId>::value)&&
+
+                                          ( !is_this_template_class<std::tuple,anId>::value) ,int>>
+auto get_from(anId, Datas&&...ds)->decltype ((get_xi_from_this(anId{},std::forward<Datas>(ds))||...)())
+{
+  //using test=typename Cs<decltype(std::forward<Datas>(ds)[anId{}])...>::tew;
+  return (get_xi_from_this(anId{},std::forward<Datas>(ds))||...)();
+}
+
+
+template <class anId, class...Datas, typename=std::enable_if_t<!is_this_template_class_v<pass_id,anId>>>
+    auto find_in(anId, Datas&&...ds)
+{
+  if constexpr (std::is_same_v<decltype (get_from(anId{},std::forward<Datas>(ds)...)),Nothing >)
+    return Not_found<anId>{};
+  else
+    return Has_been_found{};
+}
+
+template<class...T>
+struct Error
+{
+  Error(T&&...){}
+  Error()=default;
+  Error(Error&&)=default;
+  template<class ...S>
+  friend constexpr auto operator+(Error&&, Error<S...>&& ){return Error<T...,S...>{};}
+
+
+  template<class Something, std::enable_if_t<!is_this_template_class<Error,Something>::value>>
+  friend auto operator+( Error, Something&& s)->decltype (s)
+  {return std::forward<Something>(s);}
+
+  template<class Something, std::enable_if_t<!is_this_template_class<Error,Something>::value>>
+  friend auto operator+( Something&& s, Error)->decltype (s)
+  {return std::forward<Something>(s);}
+
+
+   constexpr auto size(){return 0;}
+  using myIds=Cs<>;
+
+  Error operator()()const {return {};}
+
+};
 
 
 

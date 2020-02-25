@@ -206,6 +206,8 @@ public:
 
 
   vector_field()=default;
+  //vector_field(vector_field&&)=default;
+
 
   template<class value_type2>
   vector_field<vec<Xs...>,value_type2> create()const {
@@ -338,8 +340,9 @@ auto apply(F&& f,
   typedef decltype ((...<<get_Field_Indexes_t<values_t>{})) myvec;
   if constexpr (myvec::index_size==0)
   {
-    auto p=Position<>{};
-    return std::invoke(std::forward<F>(f), ti(p)...);
+//    auto p=Position<>{};
+//    return std::invoke(std::forward<F>(f), ti(p)...);
+     return std::invoke(std::forward<F>(f), ti...);
   }
   else
   {
@@ -424,6 +427,112 @@ auto apply_random(F&& f,random& mt,
   }
 
 
+  template<class Calc, class Fi, class x_random,class... values_t>
+  auto apply_random_calculate(Calc&& f,const Fi& fi,x_random&& mt,
+                    const values_t&... ti)
+  {
+    typedef decltype ((get_Field_Indexes_t<std::decay_t<x_random>>{}<<...<<get_Field_Indexes_t<values_t>{})) myvec;
+    if constexpr (myvec::index_size==0)
+    {
+      auto p=Position<>{};
+      return std::invoke(std::forward<Calc>(f),fi,std::forward<x_random>(mt)(p),ti(p)...);
+    }
+    else
+    {
+      using res_value_type=std::decay_t<decltype (std::invoke(std::forward<Calc>(f),fi,
+                                                               std::forward<x_random>(mt)(std::forward<x_random>(mt).begin()),ti(ti.begin())...))>;
+      typedef vector_field<myvec,res_value_type> myField;
+
+      typedef typename myField::value_type myValue_type;
+
+      myValue_type outf;
+      auto p=myField::begin();
+
+      fill_vector_field(outf,p,myvec{},std::forward<x_random>(mt),ti...);
+
+      myField out(std::move(outf));
+      p=out.begin();
+      do
+      {
+        out(p)=std::invoke(std::forward<Calc>(f),fi,std::forward<x_random>(mt)(p),ti(p)...);
+      } while(out.next(p));
+      return out;
+    }
+  }
+
+
+  template<class Calc, class Fi, class random,class... values_t>
+  auto apply_random_calculate_parallel_for(Calc&& f,const Fi& fi,random& mt,
+                              const values_t&... ti)
+  {
+    typedef decltype ((get_Field_Indexes_t<random>{}<<...<<get_Field_Indexes_t<values_t>{})) myvec;
+    if constexpr (myvec::index_size==0)
+    {
+      auto p=Position<>{};
+      return std::invoke(std::forward<Calc>(f),mt(p),ti(p)...);
+    }
+    else
+    {
+      using res_value_type=std::decay_t<decltype (f(mt(mt.begin()),ti(ti.begin())...))>;
+      typedef vector_field<myvec,res_value_type> myField;
+
+      typedef typename myField::value_type myValue_type;
+
+      myValue_type outf;
+      auto p=myField::begin();
+
+      fill_vector_field(outf,p,myvec{},mt,ti...);
+
+      myField out(std::move(outf));
+      p=out.begin();
+      do
+      {
+        out(p)=std::invoke(std::forward<Calc>(f),fi,mt(p),ti(p)...);
+      } while(out.next(p));
+      return out;
+    }
+  }
+
+
+
+  template<class Calc, class Fi, class Posi,class random,class... values_t>
+  auto apply_random_calculate_pos(Calc&& f,const Fi& fi,random&& mt,Posi&&,
+                              const values_t&... ti)
+  {
+    typedef decltype ((get_Field_Indexes_t<random>{}<<...<<get_Field_Indexes_t<values_t>{})) myvec;
+    if constexpr (myvec::index_size==0)
+    {
+      auto p=x_i(Posi{},v(Position<>{},dimension_less{}));
+
+      return std::invoke(std::forward<Calc>(f),fi,std::forward<random>(mt)(p().value()),p,ti(p().value())...);
+    }
+    else
+    {
+      using pos_type=transfer_t<myvec,Position<>>;
+      using res_value_type=std::decay_t<decltype (std::invoke(std::forward<Calc>(f),fi,
+                                                               std::forward<random>(mt)(mt.begin()),
+                                                               x_i(Posi{},v(pos_type{},dimension_less{})),
+                                                               ti(ti.begin())...))>;
+      typedef vector_field<myvec,res_value_type> myField;
+
+      typedef typename myField::value_type myValue_type;
+
+      myValue_type outf;
+      auto p=myField::begin();
+
+      fill_vector_field(outf,p,myvec{},std::forward<random>(mt),ti...);
+
+      myField out(std::move(outf));
+      p=out.begin();
+      do
+      {
+        auto xp=x_i(Posi{},v(p,dimension_less{}));
+        out(p)=std::invoke(std::forward<Calc>(f),fi,std::forward<random>(mt)(p),xp,ti(p)...);
+      } while(out.next(p));
+      return out;
+    }
+  }
+
 
 
 template<class F, class random,class... values_t>
@@ -489,7 +598,7 @@ auto apply_random_pos(F&& f,random& mt,
      } while(out.next(p));
 
 
-#pragma omp parallel for
+ #pragma omp parallel for
      for (std::size_t i=0; i<allpos.size(); ++i)
      {
        out(allpos[i])=std::invoke(std::forward<F>(f),mt(allpos[i]),allpos[i],ti(allpos[i])...);

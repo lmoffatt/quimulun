@@ -7,6 +7,8 @@
 #include <istream>
 #include <chrono>
 
+
+
 template <std::size_t N> struct my_static_string {
 private:
   std::array<char, N> c_;

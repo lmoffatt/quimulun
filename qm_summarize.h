@@ -23,7 +23,7 @@ public:
     //    using test=typename Id::myID;
     //    using test2=typename Cs<Xs...>::myXs;
 
-    auto p=Position<Index...>{}
+    auto p=Position<Index...>{};
     do
           {
     auto  out=apply(g_,get_from(Input{},par...)(p)...);
