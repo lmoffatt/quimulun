@@ -1941,7 +1941,7 @@ auto parallel_emcee_parallel_parallel_for(const Model_q& model,
   };
 
 
-  std::string f_jump_name_parallel=filename+"_jump_parallel.txt";
+  std::string f_jump_name_parallel=fname_parallel+"_jump_parallel.txt";
 
   std::ofstream f_jump_parallel(f_jump_name_parallel.c_str());
 
@@ -1964,7 +1964,7 @@ auto parallel_emcee_parallel_parallel_for(const Model_q& model,
       to_DataFrame_title(f_jump_parallel,output_jump_parallel);
 
     }
-    if (i%100000==0)
+    if (i%1000==0)
     {
       auto output_jump_parallel=vector_space(x_i{isample{},v(i,dimension_less{})})+(after_temperature_jump_parallel|myremove<accept_k>{});
 
@@ -2017,31 +2017,12 @@ auto parallel_emcee_parallel_parallel_for_q(const Model_q& model,
 
   auto rand0_parallel_v=vector_space{x_i(Start<rand_e>{},v(std::move(mt0_parallel),dimension_less{}))};
 
-
-  auto calculate_mcmc_parallel_f=quimulun{
-      F(Variables_ei{},[](auto const& model_fa,auto const& data_a, auto const& parameters_a)
-          {
-            return calculate(model_fa,data_a,parameters_a);
-          },
-          Model_f{},data_ei{},Parameters_ei{}),
-      F(logPrior_ei{},[](auto const& model_fa,auto const& data_a, auto const& parameters_a, auto const& variables_a)
-          {return logPrior(model_fa,data_a,parameters_a,variables_a);},
-          Model_f{},data_ei{},Parameters_ei{}, Variables_ei{}),
-      F(logLik_ei{},[](auto const& model_fa,auto const& data_a, auto const& parameters_a, auto const& variables_a)
-          {return logLikelihood(model_fa,data_a,parameters_a,variables_a);},
-          Model_f{},data_ei{},Parameters_ei{}, Variables_ei{}),
-      F(logP_k{},[](auto const& logPrior_a, auto const& logLik_a, auto beta_a){return logPrior_a+beta_a*logLik_a;}, logPrior_ei{},logLik_ei{},beta_ei{})
-  };
-
   auto calculate_mcmc_parallel_q=quimulun{
       Fq(Variables_ei{},Calculator{},Model_f{},data_ei{},Parameters_ei{}),
       Fq(logPrior_ei{},Calculator_logPrior{},Model_f{},data_ei{},Parameters_ei{}, Variables_ei{}),
       Fq(logLik_ei{},Calculator_logLikelihood{},Model_f{},data_ei{},Parameters_ei{}, Variables_ei{}),
       F(logP_k{},[](auto const& logPrior_a, auto const& logLik_a, auto beta_a){return logPrior_a+beta_a*logLik_a;}, logPrior_ei{},logLik_ei{},beta_ei{})
   };
-
-
-
   auto modeldata=quimulun{
       f_i(Model_f{},model),
       x_i(stretch_alfa{},v(2.0,dimension_less{})),
@@ -2049,8 +2030,6 @@ auto parallel_emcee_parallel_parallel_for_q(const Model_q& model,
       x_i(beta_ei{},betas),
       x_i(Size<walker_ei>{},nw)
   };
-
-
   auto initwalkers_f=quimulun{
       Coord(walker_ei{},IndexCoordinate{},Size<walker_ei>{})
   };
@@ -2068,110 +2047,15 @@ auto parallel_emcee_parallel_parallel_for_q(const Model_q& model,
 
 
 
-  auto initParameters_q_parallel=vector_space(f_i(calculate_initial_mcmc_fi{},
-                                                    quimulun{
-                                                        Fr(Parameters_ei{},[](auto& mt_a,auto const& model_fa,auto const& data_a)
-                                                            {return sampleParameters(model_fa,mt_a,data_a);},non_const<rand_e>{},Model_f{},data_ei{})
-                                                    }+calculate_mcmc_parallel_f));
-
-
   auto initParameters_q_parallel_q=vector_space(f_i(calculate_initial_mcmc_fi{},
                                                     quimulun{
                                                           Frq(Parameters_ei{},Calculator_sampleParameters{},Model_f{},non_const<rand_e>{},data_ei{})
                                                     }+calculate_mcmc_parallel_q));
 
 
-  auto inside_init_Parameters_parallel=quimulun{
-      Fr(Current_mcmc{},[](auto& mt_a, auto const& initial_mcmc_fa,auto const& model_fa,auto const& data_a, auto const& beta_a)
-          {auto mt=vector_space(x_i_view_non_const(rand_e{},mt_a));
-            auto var=vector_space(f_i_view_const(Model_f{},model_fa)
-                           //     ,x_i(data_ei{},data_a));
-                            ,x_i_view_const(data_ei{},data_a),x_i_view_const(beta_ei{},beta_a));
-            return random_calculate(initial_mcmc_fa, mt,var);},
-          non_const<rand_e>{},calculate_initial_mcmc_fi{},Model_f{},data_ei{},beta_ei{})
-  };
 
   auto inside_init_Parameters_parallel_q=quimulun{
       Frq(Current_mcmc{},Calculator_random{},calculate_initial_mcmc_fi{},non_const<pass_id<rand_e>>{},pass_id<Model_f>{},pass_id<data_ei>{},pass_id<beta_ei>{})};
-
-
-
-  auto next_inside=
-      vector_space(f_i{calculate_next_mcmc_fi{},
-                       quimulun{
-                           Fr(Parameters_ei{},
-                               [](auto &mt_a, auto const& pos_a,auto const& global_curent_mcmc_a, auto const& mcmc_a,auto const& nwalkers_a, auto const& z_a)
-                               {
-                                 auto const& parameter_a=mcmc_a[Parameters_ei{}]();
-                                 std::uniform_int_distribution<std::size_t> u(0, nwalkers_a.value()-1);
-                                 auto p2=pos_a.value();
-                                 p2[walker_ei{}]()= u(mt_a.value());
-                                 auto chosen_parameter=global_curent_mcmc_a(p2)[Parameters_ei{}]();
-                                 return (parameter_a - chosen_parameter) * z_a + chosen_parameter;
-                               },
-                               non_const<rand_e>{},Pos<beta_ei,walker_ei>{},all<global_Current_mcmc>{},Current_mcmc{},Size<walker_ei>{}, z_v{})
-                       }+calculate_mcmc_parallel_f},
-                   f_i(calculate_step_fi{},
-                       quimulun{
-                           Fr(z_v{},
-                               []( auto& mt_a, auto const& alfa)
-                               {
-                                 return  v(stretch_move_Distribution{}.sample(alfa.value(),mt_a.value()),dimension_less{});
-                               }
-                               ,non_const<rand_e>{},stretch_alfa{}),
-
-                           Fr{Candidate_mcmc{},[](auto& mt_a,
-                                                   auto const& pos,
-                                                   auto const& calc_next_fa,
-                                                   auto const& nwalkers_a,
-                                                   auto const& all_current_mcmc_a,
-                                                   auto const& current_mcmc_a ,
-                                                   auto const& model_fa,
-                                                   auto const& data_ea ,
-                                                   auto const& beta_a,
-                                                   auto const & z_a)
-                              {
-
-                                auto mt=vector_space(x_i_view_non_const(rand_e{},mt_a));
-                                auto var=vector_space(x_i(Pos<beta_ei,walker_ei>{},pos),
-                                                        x_i_view_const(global_Current_mcmc{},all_current_mcmc_a),
-                                                        x_i_view_const(Current_mcmc{},current_mcmc_a),
-                                                        x_i_view_const(Size<walker_ei>{},nwalkers_a),
-                                                        f_i_view_const(Model_f{},model_fa),
-                                                        x_i_view_const(data_ei{},data_ea),
-                                                        x_i_view_const(beta_ei{},beta_a),
-                                                        x_i_view_const(z_v{},z_a));
-                                return random_calculate(calc_next_fa,mt,var);
-                              },non_const<rand_e>{},
-                              Pos<beta_ei,walker_ei>{},
-                              calculate_next_mcmc_fi{},
-                              Size<walker_ei>{},
-                              all<global_Current_mcmc>{},
-                              Current_mcmc{},
-                              Model_f{},
-                              data_ei{},
-                              beta_ei{}, z_v{}},
-                           F(logAccept_k{},[](auto const& current_a,auto const& candidate_a, auto z_a){
-
-                                 auto const& current_logP_a=current_a[logP_k{}]();
-                                 auto const& candidate_logP_a=candidate_a[logP_k{}]();
-                                 auto const& Parameters_a=current_a[Parameters_ei{}]();
-
-                                 // TODO: implement logpr as a value so difference between logp are properly assesed
-                                 return  (candidate_logP_a-current_logP_a )  +
-                                        log(z_a) * v(double(Parameters_a.size() - 1),dimension_less{});
-
-                               }, Current_mcmc{}, Candidate_mcmc{},z_v{}),
-                           Fr(accept_k{},[](auto& mt_a,auto const& logA_a){
-                                 double A = std::exp(logA_a.value());
-                                 double r = std::uniform_real_distribution<double>(0, 1)(mt_a.value());
-                                 return  v(int(r < A),dimension_less{});
-                                 //       return  int(r < -1.0);
-
-                               }, non_const<rand_e>{}, logAccept_k{})} )
-                   );
-
-
 
 
   auto next_inside_q=
@@ -2229,44 +2113,6 @@ auto parallel_emcee_parallel_parallel_for_q(const Model_q& model,
                    );
 
 
-  auto next_parallel_f=quimulun{
-      Fr(pos<Step_mcmc>{},[](auto& mt_a,
-                               auto const& pos_a,
-                               auto const& alfa,
-                               auto const& calc_step_fa,
-                               auto const& calc_next_fa,
-                               auto const& nwalkers_a,
-                               auto const& all_current_mcmc_a,
-                               auto const& current_mcmc_a ,
-                               auto const& model_fa,
-                               auto const& data_ea ,
-                               auto const& beta_a){
-            auto mt=vector_space(x_i_view_non_const(rand_e{},mt_a));
-            auto var=vector_space(x_i_view_const(stretch_alfa{},alfa),
-                                    f_i_view_const(calculate_next_mcmc_fi{},calc_next_fa),
-                                    x_i(Pos<beta_ei,walker_ei>{},v(pos_a,dimension_less{})),
-                                    x_i_view_const(global_Current_mcmc{},all_current_mcmc_a),
-                                    x_i_view_const(Current_mcmc{},current_mcmc_a),
-                                    x_i_view_const(Size<walker_ei>{},nwalkers_a),
-                                    f_i_view_const(Model_f{},model_fa),
-                                    x_i_view_const(data_ei{},data_ea),
-                                    x_i_view_const(beta_ei{},beta_a));
-            return random_calculate(calc_step_fa,mt,var);
-
-          },
-          non_const<rand_e>{},
-          stretch_alfa{},
-          calculate_step_fi{},
-          calculate_next_mcmc_fi{} ,
-          Size<walker_ei>{},
-          all<Current_mcmc>{},
-          Current_mcmc{},
-          Model_f{},
-          data_ei{},
-          beta_ei{})
-  };
-
-
   auto next_parallel_q=quimulun{
       View(global_Current_mcmc{},Current_mcmc{}),
       Frq(pos<Step_mcmc>{}
@@ -2286,8 +2132,6 @@ auto parallel_emcee_parallel_parallel_for_q(const Model_q& model,
 
      };
 
-
-
   auto accept_candidate_or_current_parallel=quimulun{
       F(Next_mcmc{},
           [](auto&& current, auto&& step){
@@ -2298,7 +2142,6 @@ auto parallel_emcee_parallel_parallel_for_q(const Model_q& model,
               return std::move(current);}
           ,Current_mcmc{},Step_mcmc{})
   };
-
 
   auto temperature_jump_parallel=quimulun{
       Fr(all<Transition<beta_ei>>{},[](auto& mt_a,auto const & beta_a, auto const &num_walkers_a){
@@ -2372,12 +2215,7 @@ auto parallel_emcee_parallel_parallel_for_q(const Model_q& model,
             return  v<int,dimension_less>(int(r < A));
 
           }, non_const<Start<rand_e>>{}, logAccept_k{})
-
-
-
-
   };
-
 
   auto actualize_jump_parallel=quimulun{
       F{all<Current_mcmc>{},[](auto&& next_mcmc_a, auto const& trans_beta_a,  auto const& accept_k, auto const& beta_a){
@@ -2409,14 +2247,8 @@ auto parallel_emcee_parallel_parallel_for_q(const Model_q& model,
         }, non_const<Next_mcmc>{}, Transition<beta_ei>{}, accept_k{}, beta_ei{}}
   };
 
-
-
-  auto currentParameters_parallel_v=random_calculate_parallel_for(
-      inside_init_Parameters_parallel,random_parallel_v,initParameters_q_parallel,modeldata,initwalkers_v);
-
   auto currentParameters_parallel_q=random_calculate_parallel_for(
       inside_init_Parameters_parallel_q,random_parallel_v,initParameters_q_parallel_q,modeldata,initwalkers_v);
-
 
   auto compute_Evidence_parallel=quimulun{
       F(all<Average<Current<logLik_ei>>>{},[](auto const& mcmc_a,auto const& beta)
@@ -2550,9 +2382,6 @@ auto parallel_emcee_parallel_parallel_for_q(const Model_q& model,
     // to_DataFrame_body_index(fname,i,decimate_factor,output);
     to_DataFrame_body_index_new(fname_parallel,i,time,decimate_factor,currentParameters_parallel_q,data,modeldata,initwalkers_v);
     to_DataFrame_body_index_new(fname_parallel,i,time,decimate_factor,Evidence_parallel_v,modeldata);
-
-
-
   }
 
   return 1;
