@@ -1978,7 +1978,7 @@ auto parallel_emcee_parallel_parallel_for(const Model_q& model,
     auto d=tnow-startTime;
     double time=1.0e-6*std::chrono::duration_cast<std::chrono::microseconds>(d).count()/60.0;
     if (i%100==0)
-      std::cerr<<"\n i_sample="<<i<<"\t "<<"time="<<time<<"\t "<<(Evidence_parallel_v|myselect<Current<Evidence_ei>>{})<<"\n";
+      std::cerr<<"\n i_sample="<< i<<"\t "<<"time="<<time<<"\t "<<(Evidence_parallel_v|myselect<Current<Evidence_ei>>{})<<"\n";
 
     if (i==0)
     {

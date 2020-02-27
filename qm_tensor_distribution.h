@@ -61,12 +61,9 @@ struct Normal_Distribution
   template<class unit,class Rnd>
   auto sample(const logv<double,unit>& mean, const v<double,dimension_less>& stddev,Rnd& mt)const
   {
-    std::cerr<<"sample: &mt="<<&mt<<"\n";
 
     std::normal_distribution<double> N{mean.value(),stddev.value()};
-    std::cerr<<"llego aqui\n";
     double out=N(mt.value());
-    std::cerr<<"pase\n";
 
     return logv(std::move(out),unit{});
   }

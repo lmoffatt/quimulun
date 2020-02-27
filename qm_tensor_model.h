@@ -848,7 +848,7 @@ auto calculate_parallel_for(const Frq<Id,Calc,Fi,Xrandom,Xs...>& , x_random&& mt
   }else
   {
 
-    auto  out=apply_random_calculate(Calc{},get_from(Fi{},d...),get_from(non_const<Xrandom>{},std::forward<x_random>(mt)),get_from(Xs{},d...)...);
+    auto  out=apply_random_calculate_parallel_for(Calc{},get_from(Fi{},d...),get_from(non_const<Xrandom>{},std::forward<x_random>(mt)),get_from(Xs{},d...)...);
 
     return x_i(Id{},std::move(out));
   }
@@ -867,7 +867,7 @@ auto calculate_parallel_for(const Frq<pos<Id>,Calc,Fi,Xrandom,Posi,Xs...>& , x_r
   }else
   {
 
-    auto  out=apply_random_calculate_pos(Calc{},get_from(Fi{},d...),get_from(non_const<Xrandom>{},std::forward<x_random>(x)),Posi{},get_from(Xs{},std::forward<Datas>(d)...)...);
+    auto  out=apply_random_calculate_pos_parallel_for(Calc{},get_from(Fi{},d...),get_from(non_const<Xrandom>{},std::forward<x_random>(x)),Posi{},get_from(Xs{},std::forward<Datas>(d)...)...);
 
     return x_i(Id{},std::move(out));
   }
