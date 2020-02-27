@@ -175,8 +175,10 @@ auto operator<<(vec<I0...>, vec<I1...>)
 
 }
 
-template< class Value_type,class... myIndex,class...Datas>
-auto consolidate(vec<myIndex...>,const Datas&...d);
+template< class Value_type,class myIndex,class...Datas>
+auto consolidate(vec<myIndex>,const Datas&...d);
+template< class Value_type,class...Datas>
+auto consolidate(vec<>,const Datas&...d);
 
 template <class Vector, class X, class... X1, class Position, class Value, class... Datum1>
 void fill_vector_field(Vector&v,Position& p,vec<X,X1...> ,const Value& one,const Datum1&... two);
@@ -402,6 +404,7 @@ auto apply_random(F&& f,random& mt,
     if constexpr (myvec::index_size==0)
     {
       auto p=Position<>{};
+      //std::cerr<<"apply_random: &mt="<<&mt<<"\n";
       return std::invoke(std::forward<F>(f),mt(p),ti(p)...);
     }
     else
@@ -625,9 +628,10 @@ auto apply_random_parallel_for(F&& f,random& mt,
   } while(out.next(p));
 
 
-  #pragma omp parallel for
+  //#pragma omp parallel for
   for (std::size_t i=0; i<allpos.size(); ++i)
   {
+    //std::cerr<<"&mt(allpos[i])="<<&mt(allpos[i])<<"\n";
     out(allpos[i])=std::invoke(std::forward<F>(f),mt(allpos[i]),ti(allpos[i])...);
   }
   return out;
@@ -671,7 +675,7 @@ auto apply_sample_parallel_for(F&& f,random& mt,
   } while(out.next(p));
 
 
-//#pragma omp parallel for
+#pragma omp parallel for
   for (std::size_t i=0; i<allpos.size(); ++i)
   {
     out(allpos[i])=f.sample(ti(allpos[i])...,mt(allpos[i]));
@@ -700,32 +704,17 @@ auto apply_parallel(F&& f,
 
 
 
-template< class Value_type,class...Datas>
-auto consolidate(const Datas...d)
-{
-  typedef decltype ((vec<>{}<<...<<typename get_Field_Indexes<Datas>::type{})) myvec;
-
-  typedef vector_field<myvec,Value_type> myField;
-
-
-
-  typedef typename myField::value_type myValue_type;
-
-  myValue_type out;
-  auto p=myField::begin();
-
-  fill_vector(out,p,myvec{},d...);
-
-  return myField(std::move(out));
-}
 
 template <class Vector, class Position, class... Datum>
 void fill_vector_field(Vector&,Position& ,vec<>, const Datum&...  )
 {}
 
-template <class Vector, class Position, class... X1>
-void fill_vector_field(Vector&,Position& ,vec<X1...>)
-{}
+template <class Vector, class Position, class X1>
+void fill_vector_field(Vector& v,Position& ,vec<X1>)
+{
+  v.resize(1);
+
+}
 
 
 template <class Vector, class X, class... X1, class Position, class Value, class... Datum1>
@@ -745,7 +734,7 @@ void fill_vector_field(Vector&v,Position& p,vec<X,X1...> ,const Value& one,const
 
 
 template< class Value_type,class... myIndex,class...Datas>
-auto consolidate(vec<myIndex...>,const Datas&...d)
+auto consolidate_old(vec<myIndex...>,const Datas&...d)
 {
   typedef decltype ((...<<get_Field_Indexes_t<Datas>{})<<vec<myIndex...>{}) myvec;
 
@@ -759,7 +748,7 @@ auto consolidate(vec<myIndex...>,const Datas&...d)
 
     typedef typename myField::value_type myValue_type;
 
-    myValue_type out;
+    myValue_type out{};
     auto p=myField::begin();
 
     fill_vector_field(out,p,myvec{},d...);
@@ -767,6 +756,58 @@ auto consolidate(vec<myIndex...>,const Datas&...d)
     return myField(std::move(out));
   }
 }
+
+
+
+template< class Value_type,class...Datas>
+auto consolidate(vec<>,const Datas&...d)
+{
+  typedef decltype ((...<<get_Field_Indexes_t<Datas>{})) myvec;
+
+  if constexpr (myvec::index_size==0)
+  {
+    return Value_type{};
+  }
+  else
+  {
+    typedef vector_field<myvec,Value_type> myField;
+
+    typedef typename myField::value_type myValue_type;
+
+    myValue_type out{};
+    auto p=myField::begin();
+
+    fill_vector_field(out,p,myvec{},d...);
+
+    return myField(std::move(out));
+  }
+}
+
+template< class Value_type,class myIndex,class...Datas>
+auto consolidate(vec<myIndex>,const Datas&...d)
+{
+  typedef decltype ((...<<get_Field_Indexes_t<Datas>{})<<vec<myIndex>{}) myvec;
+  typedef decltype ((...<<get_Field_Indexes_t<Datas>{})) myvecs;
+
+  if constexpr (myvec::index_size==0)
+  {
+    return Value_type{};
+  }
+  else
+  {
+    typedef vector_field<myvec,Value_type> myField;
+
+    typedef typename myField::value_type myValue_type;
+
+    myValue_type out{};
+    auto p=myField::begin();
+
+    fill_vector_field(out,p,myvec{},d...);
+
+    return myField(std::move(out));
+  }
+}
+
 
 
 

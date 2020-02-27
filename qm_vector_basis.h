@@ -9,6 +9,12 @@ template<class Id> struct pass_id{};
 
 
 
+template<class x_i, class Position=std::decay_t<decltype (std::declval<x_i>().begin() ) > >
+constexpr inline bool self_referred_v = std::is_same_v<std::decay_t<decltype(std::declval<x_i>())>,std::decay_t<decltype (std::declval<x_i>()(Position{}))>>;
+
+
+
+
 template<class e_i, class Value_type>
 struct x_i
 {
@@ -74,18 +80,36 @@ public:
   }
 
 
-  auto& operator()()const &{ return value_;}
-  auto& operator()()&{ return value_;}
-  auto operator()()&& {return value_;}
+  auto& operator()()const &{
+    return value_;
+  }
+  auto& operator()()&{
+    return value_;
+  }
+  auto operator()()&& {
+    return value_;
+  }
 
 
 
 
   template<class Position>
-  x_i_view_non_const<ei,std::decay_t<decltype (value_(Position{}))>> operator()(const Position& p){ return value_(p);}
+  auto operator()(const Position& p)->std::conditional_t<self_referred_v<Value_type,Position>,x_i&, decltype (make_x_i_view(e_i{},value_(p)))>
+  {
+    if constexpr (self_referred_v<Value_type,Position>)
+      return *this;
+    else
+      return make_x_i_view(e_i{},value_(p));
+  }
 
   template<class Position>
-  x_i_view_const<ei,std::decay_t<decltype (value_(Position{}))>> operator()(const Position& p)const { return value_(p);}
+  auto operator()(const Position& p) const ->std::conditional_t<self_referred_v<Value_type,Position>,x_i const&, decltype (make_x_i_view(e_i{},value_(p)))>
+  {
+    if constexpr (self_referred_v<Value_type,Position>)
+      return *this;
+    else
+      return make_x_i_view(e_i{},value_(p));
+  }
 
   template<class... iUps, class... iDowns>
   auto operator()(up<iUps...> u, dn<iDowns...> d){return x_i<decltype (ei{}(u,d)),value_type>{ei{}(u,d),(*this)()};}
@@ -248,6 +272,15 @@ template<class e_i,class Value_type> struct get_Field_Indexes <x_i<e_i,Value_typ
 };
 
 
+
+template<class e_i, class Value_type>
+x_i_view_non_const<e_i,Value_type> make_x_i_view(e_i,Value_type& x);
+
+template<class e_i, class Value_type>
+x_i_view_const<e_i,Value_type> make_x_i_view(e_i,Value_type const & x);
+
+
+
 template<class e_i, class Value_type>
 struct x_i_view_non_const
 {
@@ -274,12 +307,12 @@ private:
   Value_type* value_;
 public:
 
-  x_i_view_non_const(value_type& x):value_{&x}{}
+  explicit x_i_view_non_const(value_type& x):value_{&x}{}
   explicit x_i_view_non_const(e_i,value_type& x):value_{&x}{}
 
-  x_i_view_non_const const& operator[](e_i)const & {return *this;}
+  auto operator[](e_i)const  {return make_x_i_view(e_i{},*value_);}
   //x_i& operator[](e_i) & {return *this;}
-  x_i_view_non_const& operator[](non_const<e_i>)  {return *this;}
+  auto& operator[](non_const<e_i>)  {return *this;}
 
   friend auto begin(const x_i_view_non_const& me){ return begin(me());}
 
@@ -303,25 +336,49 @@ public:
   }
 
 
-  auto& operator()()const &{ return *value_;}
-  auto& operator()()&{ return *value_;}
-  auto operator()()&& {return *value_;}
+  auto& operator()()const { return *value_;}
+  auto& operator()(){ return *value_;}
 
 
+  explicit x_i_view_non_const(const x_i_view_non_const& other):
+                                                        value_{other.value_}
 
+  {}
 
-//  template<class Position>
-//  auto& operator()(const Position& p){ return value_(p);}
+  explicit x_i_view_non_const(x_i_view_non_const&& other):
+                                                   value_{other.value_}{}
 
-//  template<class Position>
-//  auto& operator()(const Position& p)const { return value_(p);}
+   x_i_view_non_const& operator=( x_i_view_non_const& other)
+  {
+    value_=other.value_;
+    return *this;
+  }
+  x_i_view_non_const& operator=(x_i_view_non_const&& other)
+  {
+    value_=std::move(other.value_);
+    return *this;
+  }
+
+  ~x_i_view_non_const(){}
 
 
   template<class Position>
-  x_i_view_non_const<ei,std::decay_t<decltype ((*value_)(Position{}))>> operator()(const Position& p){ return (*value_)(p);}
+  auto operator()(const Position& p)->std::conditional_t<self_referred_v<Value_type,Position>,x_i_view_non_const&,
+                                                           std::decay_t<decltype (make_x_i_view(e_i{},(*value_)(p)))>>
+  {
+    if constexpr (self_referred_v<Value_type,Position>)
+      return *this;
+    else
+      return make_x_i_view(e_i{},(*value_)(p));
+  }
 
   template<class Position>
-  x_i_view_const<ei,std::decay_t<decltype ((*value_)(Position{}))>> operator()(const Position& p)const { return (*value_)(p);}
+  auto operator()(const Position& p)const
+  {
+    return make_x_i_view(e_i{},(*value_)(p));
+  }
+
+
 
 
 
@@ -348,16 +405,6 @@ public:
   {
     return p;
   }
-
-
-
-
-
-
-
-
-
-
 
 
 };
@@ -389,7 +436,7 @@ private:
   Value_type const* value_;
 public:
 
-  x_i_view_const(const value_type& x):value_{&x}{}
+  explicit x_i_view_const(const value_type& x):value_{&x}{}
   explicit x_i_view_const(e_i,const value_type& x):value_{&x}{}
 
 
@@ -424,10 +471,16 @@ public:
 //  auto& operator()(const Position& p)const { return value_(p);}
 
 
+
   template<class Position>
-  x_i_view_const<ei,std::decay_t<decltype ((*value_)(Position{}))>> operator()(const Position& p)const { return (*value_)(p);}
-
-
+  auto operator()(const Position& p)const ->std::conditional_t<self_referred_v<Value_type,Position>,x_i_view_const const&,
+                                                           std::decay_t<decltype (make_x_i_view(e_i{},(*value_)(p)))>>
+  {
+    if constexpr (self_referred_v<Value_type,Position>)
+      return *this;
+    else
+      return make_x_i_view(e_i{},(*value_)(p));
+  }
 
   template<class... iUps, class... iDowns>
   auto operator()(up<iUps...> u, dn<iDowns...> d){return x_i_view_const<decltype (ei{}(u,d)),value_type>{ei{}(u,d),(*this)()};}
@@ -452,8 +505,41 @@ public:
     return p;
   }
 
+ explicit x_i_view_const(const x_i_view_const& other):value_{other.value_}{}
+
+  explicit x_i_view_const(x_i_view_const&& other):value_{std::move(other.value_)}{}
+
+  x_i_view_const& operator=(const x_i_view_const& other)
+  {
+    value_=other.value_;
+    return *this;
+  }
+  x_i_view_const& operator=(x_i_view_const&& other)
+  {
+    value_=other.value_;
+    return *this;
+  }
+
+  ~x_i_view_const(){}
+
+
+
 
 };
+
+
+
+template<class e_i, class Value_type>
+x_i_view_non_const<e_i,Value_type> make_x_i_view(e_i,Value_type& x)
+{
+  return x_i_view_non_const(e_i{},x);
+}
+
+template<class e_i, class Value_type>
+x_i_view_const<e_i,Value_type> make_x_i_view(e_i,Value_type const & x)
+{
+  return x_i_view_const(e_i{},x);
+}
 
 
 template<class e_i,class Value_type,class... Xs> struct get_Field_Indexes <x_i_view_const<e_i,vector_field< vec<Xs...>,Value_type>>>

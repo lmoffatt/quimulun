@@ -1522,7 +1522,7 @@ auto parallel_emcee_parallel(const Model_q& model,  const data_q& data,const vec
     auto tnow=std::chrono::steady_clock::now();
     auto d=tnow-startTime;
     double time=1.0e-6*std::chrono::duration_cast<std::chrono::microseconds>(d).count()/60.0;
-    if (i%20==0)
+    if (i%100==0)
     std::cerr<<"\n i_sample="<<i<<"\t "<<"time="<<time<<"\t "<<(Evidence_parallel_v|myselect<Current<Evidence_ei>>{})<<"\n";
 
 
@@ -2386,6 +2386,9 @@ auto parallel_emcee_parallel_parallel_for_q(const Model_q& model,
 
   return 1;
 }
+
+
+
 
 
 //template<class Model_q0, class data_q0,class Model_q1, class data_q1  /* ,class betas_v, class nwalkers_v*/>

@@ -42,6 +42,11 @@ struct all_view_const<vector_field<vec<Xs...>,valuetype>>
   template<class Position>
   auto const& operator()(const Position& )const { return *me;}
 
+  all_view_const(const all_view_const& other):me{other.me}{}
+  all_view_const( all_view_const&& other):me{other.me}{}
+  all_view_const& operator=(const all_view_const& other){me=other.me; return *this;}
+  all_view_const& operator=( all_view_const&& other){me=other.me; return *this;}
+  ~all_view_const(){}
 
 
 
@@ -57,36 +62,25 @@ struct all_view_non_const<vector_field<vec<Xs...>,valuetype>>
   static constexpr auto begin() {return Position<>{};}
   constexpr bool next(Position<>& )const {return false;}
 
-  auto& operator()() const {return *me;}
+  auto const& operator()() const {return *me;}
 
   template<class Position>
   auto& operator()(const Position& ){ return *me;}
 
 
   template<class Position>
-  auto& operator()(const Position& )const { return *me;}
+  auto const& operator()(const Position& )const { return *me;}
+
+  all_view_non_const(const all_view_non_const& other):me{other.me}{}
+  all_view_non_const( all_view_non_const&& other):me{other.me}{}
+  all_view_non_const& operator=(const all_view_non_const& other){me=other.me; return *this;}
+  all_view_non_const& operator=( all_view_non_const&& other){me=other.me; return *this;}
+  ~all_view_non_const(){}
+
+
 
 };
 
-template<class...Xs, class valuetype>
-struct all<vector_field<vec<Xs...>,valuetype>&&>
-{
-  vector_field<vec<Xs...>,valuetype> me;
-
-  all(vector_field<vec<Xs...>,valuetype>&& v):me{std::move(v)}{}
-  static constexpr auto begin() {return Position<>{};}
-  constexpr bool next(Position<>& )const {return false;}
-
-  auto& operator()() const {return me;}
-
-  template<class Position>
-  auto& operator()(const Position& ){ return me;}
-
-
-  template<class Position>
-  auto& operator()(const Position& )const { return me;}
-
-};
 
 
 template<class Id, class...Xs, class valuetype>
@@ -109,11 +103,11 @@ public:
   auto operator()() const {return me;}
 
   template<class Position>
-  auto operator()(const Position& ){ return *this;}
+  auto operator()(const Position& ){ return make_x_i_view(Id{},me());}
 
 
   template<class Position>
-  auto operator()(const Position& )const { return *this;}
+  auto operator()(const Position& )const { return make_x_i_view(Id{},me());}
 
 };
 
@@ -127,7 +121,7 @@ public:
   all_view_non_const<vector_field<vec<Xs...>,valuetype>> me;
 
   x_i_view_non_const(x_i<Id,vector_field<vec<Xs...>,valuetype>> & v):me{v()}{}
-  x_i_view_non_const(x_i_view_non_const<Id,vector_field<vec<Xs...>,valuetype>> & v):me{v()}{}
+  x_i_view_non_const(x_i_view_non_const<Id,vector_field<vec<Xs...>,valuetype>>& v):me{v()}{}
 
 
   static constexpr auto begin() {return Position<>{};}
@@ -136,39 +130,13 @@ public:
   auto& operator()() const {return me;}
 
   template<class Position>
-  auto& operator()(const Position& ){ return *this;}
+  auto operator()(const Position& ){ return make_x_i_view(Id{},me());}
 
 
   template<class Position>
-  auto& operator()(const Position& )const { return *this;}
+  auto operator()(const Position& )const { return make_x_i_view(Id{},me());}
 
 };
-
-template<class Id, class...Xs, class valuetype>
-class x_i<all<Id>,all<vector_field<vec<Xs...>,valuetype>>>
-{
-public:
-  typedef Id ei;
-
-  using myId=Id;
-
-  all<vector_field<vec<Xs...>,valuetype>> me;
-
-  x_i(x_i<Id,vector_field<vec<Xs...>,valuetype>>&& v):me{std::move(v())}{}
-  static constexpr auto begin() {return Position<>{};}
-  constexpr bool next(Position<>& )const {return false;}
-
-  auto& operator()() const {return me;}
-
-  template<class Position>
-  auto& operator()(const Position& ){ return *this;}
-
-
-  template<class Position>
-  auto& operator()(const Position& )const { return *this;}
-
-};
-
 
 auto make_all(Nothing){return Nothing{};}
 
@@ -179,32 +147,53 @@ auto make_all(x_i<Id,vector_field<vec<Xs...>,valuetype>>const & v)
   return x_i_view_const<all<Id>,all_view_const<vector_field<vec<Xs...>,valuetype>>>(v);
 }
 
-template<class Id, class...Xs, class valuetype>
-auto make_all(x_i_view_const<Id,vector_field<vec<Xs...>,valuetype>>const & v)
+template<class Id, class valuetype>
+    auto make_all(x_i<Id,valuetype>const & v)->std::conditional_t<self_referred_v<valuetype>,
+                                                                 decltype (v),
+                                                                 x_i_view_const<all<Id>,all_view_const<valuetype>>>
 {
-  return x_i_view_const<all<Id>,all_view_const<vector_field<vec<Xs...>,valuetype>>>(v);
+  if constexpr (self_referred_v<valuetype>)
+    return v;
+  else
+    return x_i_view_const<all<Id>,all_view_const<valuetype>>(v);
 }
 
-template<class Id, class...Xs, class valuetype>
-auto& make_all(x_i_view_const<all<Id>,all_view_const<vector_field<vec<Xs...>,valuetype>>>const & v)
+
+template<class Id, class valuetype>
+auto make_all(x_i_view_const<Id,valuetype>const & v)->std::conditional_t<self_referred_v<valuetype>,
+                                                                 decltype (v),
+                                                                 x_i_view_const<all<Id>,all_view_const<valuetype>>>
 {
-  return v;
+  if constexpr (self_referred_v<valuetype>)
+    return v;
+  else
+    return x_i_view_const<all<Id>,all_view_const<valuetype>>(v);
 }
 
 
 
-
-template<class Id, class...Xs, class valuetype>
-auto make_all(x_i<Id,vector_field<vec<Xs...>,valuetype>> & v)
+template<class Id, class valuetype>
+auto make_all(x_i<Id,valuetype> & v)->std::conditional_t<self_referred_v<valuetype>,
+                                                                 decltype (v),
+                                                                 x_i_view_non_const<all<Id>,all_view_non_const<valuetype>>>
 {
-  return x_i_view_non_const<all<Id>,all_view_non_const<vector_field<vec<Xs...>,valuetype>>>(v);
+  if constexpr (self_referred_v<valuetype>)
+    return v;
+  else
+    return x_i_view_non_const<all<Id>,all_view_non_const<valuetype>>(v);
 }
 
-template<class Id, class...Xs, class valuetype>
-auto make_all(x_i<Id,vector_field<vec<Xs...>,valuetype>> && v)
+template<class Id, class valuetype>
+auto make_all(x_i_view_non_const<Id,valuetype> & v)->std::conditional_t<self_referred_v<valuetype>,
+                                                           decltype (v),
+                                                           x_i_view_non_const<all<Id>,all_view_non_const<valuetype>>>
 {
-  return x_i<all<Id>,all<vector_field<vec<Xs...>,valuetype>>>(std::move(v));
+  if constexpr (self_referred_v<valuetype>)
+    return v;
+  else
+    return x_i_view_non_const<all<Id>,all_view_non_const<valuetype>>(v);
 }
+
 
 template <class anId, class...Datas>
 auto get_from(all<anId>, Datas&&...ds)->decltype (make_all((get_xi_from_this(anId{},std::forward<Datas>(ds))||...))())
@@ -258,6 +247,11 @@ template <class anId, class...Datas
 auto get_from(non_const<anId>, Datas&&...ds)->decltype ((get_xi_from_this(non_const<anId>{},std::forward<Datas>(ds))||...)())
 {
   // using test=typename anId::this_id;
+//  auto&& x=((get_xi_from_this(non_const<anId>{},std::forward<Datas>(ds)))||...);
+//  std::cerr<<"get_from: &x="<<&x<<"\n";
+//  std::cerr<<"get_from: &x()="<<&x()<<"\n";
+
+ // return x();
   return ((get_xi_from_this(non_const<anId>{},std::forward<Datas>(ds)))||...)();
 }
 
@@ -506,16 +500,24 @@ template<class Id,class G, class Xrandom,class... Xs,class x_rand,class... Param
           typename=std::enable_if_t<!is_this_template_class<all,Id>::value&&!is_this_template_class<pos,Id>::value >>
 auto myInvoke(const Fr<Id,G,Xrandom,Xs...>& f, x_rand&& mt,Param&& ... par)
 {
-  auto mymt=get_from(non_const<Xrandom>{},std::forward<x_rand>(mt));
-  auto  out=apply_random(f.f(),mymt,get_from(Xs{},std::forward<Param>(par)...)...);
+
+
+  //using test=typename decltype (get_from(non_const<Xrandom>{},std::forward<x_rand>(mt)))::ja;
+//  using test2=typename decltype (std::forward<x_rand>(mt))::ja;
+
+ // auto& mymt=get_from(non_const<Xrandom>{},std::forward<x_rand>(mt));
+ // std::cerr<<"myInvoke: &mt="<<&mt<<"\n";
+//  std::cerr<<"myInvoke: &get_from(non_const<Xrandom>{},std::forward<x_rand>(mt))="<<&get_from(non_const<Xrandom>{},std::forward<x_rand>(mt))<<"\n";
+
+  auto  out=apply_random(f.f(),get_from(non_const<Xrandom>{},std::forward<x_rand>(mt)),get_from(Xs{},std::forward<Param>(par)...)...);
   return x_i(Id{},std::move(out));
 
 }
 template<class Id,class G, class Xrandom,class... Xs,class x_rand,class... Param,
           typename=std::enable_if_t<!is_this_template_class<all,Id>::value&&!is_this_template_class<pos,Id>::value >>
-auto myInvoke_parallel_for(const Fr<Id,G,Xrandom,Xs...>& f, x_rand& x,Param&& ... par)
+auto myInvoke_parallel_for(const Fr<Id,G,Xrandom,Xs...>& f, x_rand&& x,Param&& ... par)
 {
-  auto  out=apply_random_parallel_for(f.f(),x[non_const<Xrandom>{}](),get_from(Xs{},std::forward<Param>(par)...)...);
+  auto  out=apply_random_parallel_for(f.f(),get_from(non_const<Xrandom>{},std::forward<x_rand>(x)),get_from(Xs{},std::forward<Param>(par)...)...);
   return x_i(Id{},std::move(out));
 
 }
@@ -1470,6 +1472,7 @@ auto sample_Id(const quimulun<Fs...>& qui, Random& mt,Id, Datas&&...d)
 template <class...Fs,class...ds, class x_random,class... Par_ids, class...Datas >
 auto sample(const quimulun<Fs...>& qui, x_random& mt,myselect<Par_ids...>,Datas&&...d)
 {
+ // std::cerr<<"sample: &mt="<<&mt<<"\n";
 
   return (vector_space<>{}+...+sample_Id(qui,mt,Par_ids{},std::forward<Datas>(d)...));
 }
@@ -1553,7 +1556,7 @@ auto calculate_parallel_for(const quimulun<Fs...>& qui, Datas&&...d)
 
 
 
-template < class... Fs,class x_random,class Id,class...Ds2,  class... Datas>
+template < class Id,class... Fs,class x_random,class...Ds2,  class... Datas>
 auto random_calculate_Id(const quimulun<Fs...>& qui,x_random&& mt, Id,Datas&&...d)
 {
   return calculate(qui[Id{}],std::forward<x_random>(mt),qui,std::forward<Datas>(d)...);
@@ -1570,6 +1573,7 @@ auto random_calculate_Id_parallel_for(const quimulun<Fs...>& qui,x_random&& mt, 
 template <class...Fs,class x_random,class...ds,class... Var_ids, class...Datas >
 auto random_calculate_this(const quimulun<Fs...>& qui, x_random&& mt,myselect<Var_ids...>,  Datas&&... d)
 {
+  //std::cerr<<"random_calculate_this: &mt="<<&mt<<"\n";
   return (vector_space<>{}+...+random_calculate_Id(qui,std::forward<x_random>(mt),Var_ids{},std::forward<Datas>(d)...));
 }
 
