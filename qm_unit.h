@@ -40,6 +40,7 @@ template<int N2,class m, int N, typename=std::enable_if_t<N%N2==0,int>>
 constexpr u<m,N/N2> pow_inv(u<m,N>) {return {};}
 
 
+
 template <class m> struct u<m,0>{using type=p<>;};
 
 template <class m> struct u<m,1>{
@@ -163,6 +164,8 @@ auto operator/(p<>,p<>)
 }
 
 
+template<int N>
+constexpr dimension_less pow_inv(dimension_less) {return {};}
 
 
 

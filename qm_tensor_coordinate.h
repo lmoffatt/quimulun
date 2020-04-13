@@ -1,6 +1,6 @@
 #ifndef QM_TENSOR_COORDINATE_H
 #define QM_TENSOR_COORDINATE_H
-#include "qm_vector_field.h"
+#include "qm_vector_field_declaration.h"
 
 
 template<class Id> struct Size{
@@ -171,6 +171,27 @@ public:
 
   Coord(Id ,G&& g, Xs&&...):g_{std::move(g)}{}
 };
+
+
+template<class...> class Coord_new;
+
+template<class Id,class G, class... Xs>
+class  Coord_new<Id,G,Arguments<Xs...>>
+{
+private:
+  G g_;
+public:
+  typedef   Id myId;
+  auto &operator[](Id)const {return *this;}
+
+  auto& get_G()const {return  g_;}
+
+  Coord_new(Id&& ,G&& g, Arguments<Xs...>&&):g_{std::move(g)}{}
+};
+
+template<class Id,class G, class... Xs> Coord_new(Id&& ,G&& g, Arguments<Xs...>&&)->Coord_new<Id,G,Arguments<Xs...>>;
+
+
 
 
 template <class...> struct extract_function_Id;

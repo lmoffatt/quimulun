@@ -2,7 +2,7 @@
 #define QM_TENSOR_DERIVATIVE_H
 
 
-#include "qm_vector_space.h"
+#include "qm_vector_space_declaration.h"
 #include<algorithm>
 //namespace qm {
 

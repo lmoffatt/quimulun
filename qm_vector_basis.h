@@ -280,7 +280,6 @@ template<class e_i, class Value_type>
 x_i_view_const<e_i,Value_type> make_x_i_view(e_i,Value_type const & x);
 
 
-
 template<class e_i, class Value_type>
 struct x_i_view_non_const
 {
@@ -539,6 +538,45 @@ template<class e_i, class Value_type>
 x_i_view_const<e_i,Value_type> make_x_i_view(e_i,Value_type const & x)
 {
   return x_i_view_const(e_i{},x);
+}
+
+
+template<class e_i, class Value_type>
+x_i_view_non_const<e_i,Value_type> make_view(x_i<e_i,Value_type>& x)
+{
+  return x_i_view_non_const(e_i{},x());
+}
+
+template<class e_i, class Value_type>
+x_i_view_const<e_i,Value_type> make_view(x_i<e_i,Value_type>const & x)
+{
+  return x_i_view_const(e_i{},x());
+}
+
+
+template<class e_i, class Value_type>
+f_i_view_const<e_i,Value_type> make_view(f_i<e_i,Value_type>const & x)
+{
+  return f_i_view_const(e_i{},x());
+}
+
+
+template<class e_i, class Value_type>
+x_i_view_const<e_i,Value_type> make_view(x_i_view_const<e_i,Value_type>const & x)
+{
+  return x_i_view_const(e_i{},x());
+}
+
+template<class e_i, class Value_type>
+x_i_view_const<e_i,Value_type> make_view(x_i_view_non_const<e_i,Value_type>const & x)
+{
+  return x_i_view_const(e_i{},x());
+}
+
+template<class e_i, class Value_type>
+x_i_view_non_const<e_i,Value_type> make_view(x_i_view_non_const<e_i,Value_type> & x)
+{
+  return x_i_view_non_const(e_i{},x());
 }
 
 

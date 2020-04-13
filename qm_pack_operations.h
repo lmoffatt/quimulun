@@ -28,6 +28,18 @@ constexpr bool is_in_pack(Id, Cs<Ids...>)
 {
   return (std::is_same_v<Id,Ids >||...||false);
 }
+template<template<class...>class Cs,class... Xs, class... X2s>
+constexpr bool is_sub_set_of(Cs<Xs...>,Cs<X2s...>)
+{
+  return (is_in_pack<Xs,X2s...>()&&...&&true);
+}
+
+
+template<template<class...>class Cs,class... Xs, class... X2s>
+constexpr bool same_pack_set(Cs<Xs...>,Cs<X2s...>)
+{
+  return is_sub_set_of(Cs<Xs...>{},Cs<X2s...>{})&&is_sub_set_of(Cs<X2s...>{},Cs<Xs...>{});
+}
 
 
 
@@ -182,7 +194,7 @@ struct pack_difference<Cs<>,Cs<Ts...>>
 
 
 
-template<class... Ts, class...Us>
+template<template<class...> class Cs,class... Ts, class...Us>
 struct pack_difference<Cs<Ts...>,Cs<Us...>>
 {
   typedef pack_concatenation_t<

@@ -1,6 +1,6 @@
 #ifndef QM_DATA_FRAME_H
 #define QM_DATA_FRAME_H
-#include "qm_tensor_model.h"
+#include "qm_tensor_model_evaluation.h"
 #include <fstream>
 template <class> struct row_type;
 template <class V> using row_type_t=typename row_type<V>::type;

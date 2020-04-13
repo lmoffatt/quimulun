@@ -1,7 +1,7 @@
 #ifndef QM_TENSOR_BASE_H
 #define QM_TENSOR_BASE_H
 #include "mytypetraits.h"
-#include "qm_vector_field.h"
+#include "qm_vector_field_declaration.h"
 
 
 

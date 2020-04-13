@@ -258,12 +258,27 @@ struct f_i;
 
 template<class e_i, class Value_type>
 struct f_i_view_const;
+template<class...> struct vec;
+
+template<class...> struct vector_field;
+
+template<class...> struct x_i_vector_field_const;
+
+template<class...> struct vector_space;
+
+template<class Value_type,class... Xs> class vector_field<vec<Xs...>,Value_type>;
+
+template<class Id,class... xs,class... Xs>
+struct x_i_vector_field_const<vector_field<vec<Xs...>,vector_space<xs...>>, Id>;
+
 
 
 template<class C>
 inline constexpr bool only_xi_of_fi_v=is_this_template_class_v<x_i,C>||
 is_this_template_class_v<x_i_view_const,C>||
 is_this_template_class_v<x_i_view_non_const,C>||
+is_this_template_class_v<x_i_view_non_const,C>||
+is_this_template_class_v<x_i_vector_field_const,C>||
 is_this_template_class_v<f_i_view_const,C>||
 is_this_template_class_v<f_i,C>;
 
@@ -378,6 +393,8 @@ template <class anId, class...Datas, typename=std::enable_if_t<!is_this_template
 template<class...T>
 struct Error
 {
+  using myResult_type=Error;
+
   Error(T&&...){}
   Error()=default;
   Error(Error&&)=default;
@@ -394,7 +411,7 @@ struct Error
   {return std::forward<Something>(s);}
 
 
-   constexpr auto size(){return 0;}
+   static constexpr auto size(){return 0;}
   using myIds=Cs<>;
 
   Error operator()()const {return {};}
@@ -402,6 +419,14 @@ struct Error
 };
 
 
+
+
+template<class V,class...T>
+auto clean_Error(Error<T...>&&){return V{};}
+
+template<class V,class T>
+auto clean_Error(T&& t)->decltype (t)
+{return std::forward<T>(t);}
 
 
 #endif // QM_BASICS_H
