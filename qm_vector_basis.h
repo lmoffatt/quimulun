@@ -588,6 +588,55 @@ template<class e_i,class Value_type> struct get_Field_Indexes <x_i_view_const<e_
 {
   typedef vec<> type;
 };
+template<class... xis>
+class x_i_tuple_view_const;
+
+
+
+template<class... xis>
+auto make_x_i_tuple_view_const(xis const& ... x)
+{ return x_i_tuple_view_const<xis...>(x...);
+}
+
+
+template<class... x_is>
+    class x_i_tuple_view_const
+{
+  std::tuple<x_is const&...> tu_;
+
+public:
+  template<std::size_t I>
+  auto get()const->decltype (std::get<I>(tu_)()(Position<>{}))
+  {
+    return std::get<I>(tu_)()(Position<>{});
+  }
+
+  auto& operator()()const {return *this;}
+
+  template<class Position>
+  auto operator()(const Position& p)const
+  {
+    using myvec= decltype ((vec<>{}<<...<<get_Field_Indexes_t<x_is>{}));
+    if constexpr(std::is_same_v<vec<>,myvec >)
+    {
+      return *this;
+    }
+    else
+    {
+      return std::apply([&p](auto&... t){return make_x_i_tuple_view_const(t(p)...);},tu_);
+    }
+
+  }
+
+
+  explicit x_i_tuple_view_const(const x_is&... xs):tu_{xs...}{}
+};
+
+
+
+template<std::size_t I, class...xis>
+auto get(const x_i_tuple_view_const<xis...>& x)->decltype (x.template get<I>())
+{return x.template get<I>();}
 
 
 

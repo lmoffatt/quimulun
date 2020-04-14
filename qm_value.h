@@ -480,7 +480,12 @@ struct Log10_rev{
     return pow(10.0,x);}
 };
 
-
+template<typename T>
+auto myInvoke(Log10_rev,const T& x)
+{
+  using std::pow;
+  return pow(10.0,x);
+}
 
 
 #endif // QM_VALUE_H
