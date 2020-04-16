@@ -9,22 +9,6 @@
 
 
 
-template<class Id, class V>
-auto get_at(const V& x, Id)->decltype (x[Id{}])
-{
-  return x[Id{}];
-}
-
-template<class Id, class... Xs, class...xis>
-auto get_at(const vector_field<vec<Xs...>,vector_space<xis...>>& x,Id)
-{
-  if constexpr (std::is_same_v<decltype (std::declval<vector_space<xis...>>()[Id{}]),Nothing >)
-    return Nothing{};
-  else
-    return x_i_vector_field_const<vector_field<vec<Xs...>,vector_space<xis...>>,Id>(x,Id{});
-}
-
-
 
 
 
@@ -33,23 +17,21 @@ template<class...v_is> class vector_tuple
 private:
   std::tuple<v_is...> v_;
 
+public:
   using  self_type=vector_tuple;
 
-//  typedef Cs<typename v_is::ei...> my_eis;
-//  typedef Cs<typename v_is::myId...> myIds;
-//  typedef Cs<v_is...> myx_is;
-//  using myIndex=Index<typename v_is::ei...>;
-
-
-
-
-
-public:
+  //  typedef Cs<typename v_is::ei...> my_eis;
+  using myIds= pack_concatenation_t<myIds_t<v_is>...>;
+  //  typedef Cs<v_is...> myx_is;
+  //  using myIndex=Index<typename v_is::ei...>;
 
   auto& getTuple(){return v_;}
   auto & getTuple()const {return v_;}
 
 
+
+  template<class Position>
+  auto const & operator()(const Position&) const {return *this;}
 
 
   template<class andId>
@@ -57,6 +39,26 @@ public:
   {
     return std::apply([](auto const&... t){return (get_at(t, andId{})||...||Nothing{});}, v_);
   }
+
+
+  friend auto operator + (const vector_tuple& one, const vector_tuple& two)
+  {
+    return vector_tuple(std::get<v_is>(one.v_)+std::get<v_is>(two.v_)...);
+  }
+
+  template<class value>
+  friend auto operator *(const vector_tuple& one, const value& a)
+  {
+    return vector_tuple<std::decay_t<decltype (std::declval<v_is>()*a)>...>(std::get<v_is>(one.v_)*a...);
+  }
+
+  friend auto operator - (const vector_tuple& one, const vector_tuple& two)
+  {
+     return vector_tuple<std::decay_t<decltype (std::declval<v_is>()-std::declval<v_is>())>...>(std::get<v_is>(one.v_)-std::get<v_is>(two.v_)...);
+  }
+
+
+
 
 
 static constexpr auto size() {return sizeof... (v_is);}

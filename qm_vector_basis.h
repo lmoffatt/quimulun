@@ -271,6 +271,11 @@ template<class e_i,class Value_type> struct get_Field_Indexes <x_i<e_i,Value_typ
   typedef vec<> type;
 };
 
+template<class... Is> struct get_Field_Indexes <Position<Is...>>
+{
+  typedef vec<Is...> type;
+};
+
 
 
 template<class e_i, class Value_type>

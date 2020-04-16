@@ -8,6 +8,10 @@
 template<class...> struct Cs{};
 template<class...> class C{};
 
+
+template<template<class...> class Cs,class...Ts>
+constexpr auto size_of_pack(Cs<Ts...>){return sizeof... (Ts);}
+
 template <typename T> struct C<T> { typedef T type; };
 
 

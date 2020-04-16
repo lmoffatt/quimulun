@@ -47,6 +47,8 @@ auto operator - (const x_i<logpr<up<Ups...>,dn<Downs...>>, value_type0>& one,
 
 
 struct Sample{};
+struct SampleParameters{};
+
 struct logProbability{};
 struct FisherInformationMatrix{};
 
@@ -152,10 +154,23 @@ public:
   D(Id&& ,Distribution&&, Arguments<Xs...>&&){}
 };
 
+template<class Id,class Distribution, class... Xs, class...XXs>
+struct  D<Id,Distribution,Arguments<Xs...>, Index_struct<XXs...>>
+{
+public:
+
+  typedef   Id myId;
+  auto& operator[](Id)const {return *this;}
+  auto& operator[](Id) {return *this;}
+  D(Id&& ,Distribution&&, Arguments<Xs...>&&,Index_struct<XXs...>&&){}
+};
+
 
 template<class Id,class Distribution, class... Xs>
 D(Id&& ,Distribution&&, Arguments<Xs...>&&)->D<Id,Distribution,Arguments<Xs...>>;
 
+template<class Id,class Distribution, class... Xs, class...XXs>
+D(Id&& ,Distribution&&, Arguments<Xs...>&&, Index_struct<XXs...>&&)->D<Id,Distribution,Arguments<Xs...>,Index_struct<XXs...>>;
 
 template <class Id, class F, class Distribution, class G, class ...Xs >
 class Sampler
@@ -180,8 +195,12 @@ public:
 
 template <class> struct extract_distribution_Id{using type=Cs<>;};
 
+template< class Id,class Distribution, class... Xs, class... XXs>
+struct extract_distribution_Id<D<Id,Distribution,Arguments<Xs...>,Index_struct<XXs...>>>{using type=Cs<Id>;};
+
 template< class Id,class Distribution, class... Xs>
 struct extract_distribution_Id<D<Id,Distribution,Arguments<Xs...>>>{using type=Cs<Id>;};
+
 
 template<class C> using extract_distribution_Id_t=typename extract_distribution_Id<C>::type;
 

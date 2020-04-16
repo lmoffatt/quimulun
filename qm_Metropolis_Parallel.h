@@ -1309,7 +1309,7 @@ template<typename Model_f,typename data_ei, typename beta_ei, typename walker_ei
   auto operator()(Arguments<Model_f, data_ei, beta_ei, walker_ei>&&)
 {
   return quimulun{
-      Dq_new(Parameters_ei{},Sample{},Model_f{},Arguments<data_ei>{},Index_struct<beta_ei,walker_ei>{}),
+      Dq_new(Parameters_ei{},SampleParameters{},Model_f{},Arguments<data_ei>{},Index_struct<beta_ei,walker_ei>{}),
       Fq_new(Variables_ei{},Calculator_new{},Model_f{},Arguments<data_ei,Parameters_ei>{}),
       Fq_new(logPrior_ei{},logPrior_new{},Model_f{},Arguments<data_ei,Parameters_ei,Variables_ei>{}),
       Fq_new(logLik_ei{},logLikelihood_new{},Model_f{},Arguments<data_ei,Parameters_ei,Variables_ei>{}),
@@ -1327,10 +1327,10 @@ struct Stretch_move_q {
         D(Chosen<walker_ei>{},Uniform_Index_Distribution<std::size_t>{},Arguments<Size_at_Index_new<Parameters_ei,walker_ei>>{}),
         F_new(Index_of<Chosen<walker_ei>>{},
           [](auto pos, auto const& walker_a, auto const&  size_walker_a){
-            pos[walker_ei{}]()=(pos[walker_ei{}]()+walker_a.value()) % size_walker_a;
+              pos[walker_ei{}]()=(pos[walker_ei{}]()+walker_a.value()) % size_walker_a.value();
             return pos;},
           Arguments<pos_new<Parameters_ei>,Chosen<walker_ei>,Size_at_Index_new<Parameters_ei,walker_ei>>{}),
-      D(z_v{},stretch_move_Distribution<double>{},Arguments<stretch_alfa>{}),
+        D(z_v{},stretch_move_Distribution<double>{},Arguments<stretch_alfa>{},Index_struct<Parameters_ei>{}),
         F_new(Out<Parameters_ei>{},
           [](auto const& parameter_a,auto const& chosen_parameter, auto const& z_a)
           {
@@ -1457,7 +1457,10 @@ struct temperature_jump_exec_q {
 };
 
 struct nstep{};
-struct Proposal{};
+struct Proposal{
+  constexpr static auto  className=my_static_string("Proposal");
+
+};
 
 struct Metropolis_Hastings_emcee_q
 {

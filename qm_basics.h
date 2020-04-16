@@ -31,6 +31,7 @@ struct Nothing{
 
   Nothing operator()()const {return {};}
 
+  using result_type=Nothing;
 };
 
 
@@ -131,18 +132,22 @@ private :
 public:
   static constexpr auto className=my_static_string("pos_")+Id::className;
   Position(std::size_t i_v):i{i_v}{}
+   Position()=default;
   using innerId=Id;
   auto& operator[](Id)const {return *this;}
   auto& operator[](Id) {return *this;}
   auto& operator()()const {return  i;}
   auto& operator()() {return  i;}
-  Position()=default;
   auto& operator++(){ ++i; return *this;}
   std::size_t inc(Id)
   {
     ++i;
     return i;
   }
+  template<class aPosition>
+  Position(const aPosition& p):i{p[Id{}]()}{  }
+
+
   friend std::ostream& operator<<(std::ostream& os, const Position& me) {
     os<<className.c_str()<<"="<<me();
     return os;}
@@ -185,6 +190,12 @@ using recursive_t=typename recursive<id0,id_in>::type;
 template <class Id, class... Ids> struct Position<Id,Ids...>:Position<Id>,Position<Ids>...
 {
   static constexpr auto className=(Position<Id>::className+...+Position<Ids>::className);
+
+
+  template<class aPosition>
+  Position (const aPosition& p):Position<Id>{p},Position<Ids>{p}...{}
+
+  Position()=default;
 
   using Position<Id>::operator[];
   using Position<Ids>::operator[]...;
@@ -260,16 +271,14 @@ template<class e_i, class Value_type>
 struct f_i_view_const;
 template<class...> struct vec;
 
-template<class...> struct vector_field;
+template<class...> class vector_field;
 
-template<class...> struct x_i_vector_field_const;
+template<class, class > struct x_i_vector_field_const;
 
 template<class...> struct vector_space;
 
 template<class Value_type,class... Xs> class vector_field<vec<Xs...>,Value_type>;
 
-template<class Id,class... xs,class... Xs>
-struct x_i_vector_field_const<vector_field<vec<Xs...>,vector_space<xs...>>, Id>;
 
 
 

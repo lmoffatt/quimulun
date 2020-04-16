@@ -27,7 +27,10 @@ template<>struct Index_struct<>{};
 template<class...Args>
 struct Outputs{};
 
-template<class Id_of_vector, class sub_Id> struct sub{};
+template<class Id_of_vector, class sub_Id> struct sub{
+  constexpr static auto  className=Id_of_vector::className+my_static_string("_sub_")+sub_Id::className;
+
+};
 
 template<class IdField, class IdPosValue> struct subElement{};
 
@@ -55,7 +58,17 @@ template<class Id, class Index> struct Size_at_Index_new{};
 template<class Id> struct From{};
 template<class Id> struct To{};
 
-template<class Id> struct Out{};
+template<class Id> struct Out{
+  constexpr static auto  className=my_static_string("Out_")+Id::className;
+
+};
+
+
+template<class Id> struct Proper_Id{using type=Id;};
+
+template<class Id> struct Proper_Id<Out<Id>>{using type=Id;};
+
+template<class Id> using Proper_Id_t=typename Proper_Id<Id>::type;
 
 
 
@@ -389,6 +402,9 @@ public:
 
 
 
+
+
+
   bool next(Position<Xs...>& p)const
   {
     return vec<Xs...>::next(value_,p);
@@ -408,14 +424,33 @@ public:
 
 };
 
+
+
+template<class T>
+struct getIds_of {using type=typename T::myIds;};
+
+template< class ...x_is, class... Xs>
+struct getIds_of<vector_field<vec<Xs...>,vector_space<x_is...>>>
+{
+  using type=typename vector_space<x_is...>::myIds;
+};
+
+template<class T>
+using myIds_t=typename getIds_of<std::decay_t<T>>::type;
+
+
+
+
+
 template<class...> struct vector_field_size;
 
-template<class Value_type,class... Xs, class Index>
-struct vector_field_size<vector_field<vec<Xs...>,Value_type>, Index>
+template<class vectorfield, class Index>
+struct
+    vector_field_size<vectorfield, Index>
 {
-  vector_field<vec<Xs...>,Value_type>const & v_;
+  vectorfield const & v_;
 
-  vector_field_size(vector_field<vec<Xs...>,Value_type>const & v, Index): v_{v}{}
+  vector_field_size(vectorfield const & v, Index): v_{v}{}
 
   template<class Position>
   auto operator()(const Position& p)const
@@ -426,20 +461,63 @@ struct vector_field_size<vector_field<vec<Xs...>,Value_type>, Index>
 
 };
 
-template<class...> struct x_i_vector_field_const;
 
-template<class Id,class... xs,class... Xs>
-struct x_i_vector_field_const<vector_field<vec<Xs...>,vector_space<xs...>>, Id>
+template<class vectorspace>
+struct
+    vector_space_size
 {
-  vector_field<vec<Xs...>,vector_space<xs...>>const & v_;
-
-  x_i_vector_field_const(vector_field<vec<Xs...>,vector_space<xs...>>const & v, Id): v_{v}{}
+    vector_space_size(const vectorspace&){}
 
   template<class Position>
-  auto operator()(const Position& p)const->decltype (v_(p)[Id{}]())
+  constexpr auto operator()(const Position& )const
+  {
+    return vectorspace::size();
+  }
+  auto& operator()()const {return *this;}
+
+};
+
+
+
+
+
+
+
+template<class vectorfield, class Index>
+struct get_Field_Indexes <
+    vector_field_size<vectorfield, Index>
+    >
+{
+  using type=pack_until_this_t<Index,get_Field_Indexes_t<vectorfield>>;
+};
+
+
+
+
+
+
+
+
+template<class vectorfield, class Id>
+struct
+ x_i_vector_field_const
+{
+  vectorfield const & v_;
+
+  using myIndexes=typename vectorfield:: myIndexes;
+
+  static constexpr auto size(){return size_of_pack(myIds_t<vectorfield>{});}
+
+  x_i_vector_field_const(vectorfield const & v, Id): v_{v}{}
+
+  template<class Position>
+  auto operator()(const Position& p)const->decltype (get_at(v_(p),Id{})())
   {
     return v_(p)[Id{}]();
   }
+
+  template<class Index,class Position>
+  auto size(Index,const Position& p) const { return v_.size(Index{},p);}
 
 
 
@@ -449,6 +527,91 @@ struct x_i_vector_field_const<vector_field<vec<Xs...>,vector_space<xs...>>, Id>
 
 
 
+
+
+template<class Id, class V>
+auto get_at(const V& x, Id)->decltype (x[Id{}])
+{
+  return x[Id{}];
+}
+
+template<class Id, class... Xs, class Value>
+auto get_at(const vector_field<vec<Xs...>,Value>& x,Id)
+{
+  if constexpr (std::is_same_v<decltype (get_at(std::declval<Value>(),Id{})),Nothing >)
+    return Nothing{};
+  else
+    return x_i_vector_field_const(x,Id{});
+}
+
+
+
+template<class Id,class... xs,class... Xs>
+struct get_Field_Indexes <
+    x_i_vector_field_const<vector_field<vec<Xs...>,vector_space<xs...>>, Id>
+    >
+{
+  using type=vec<Xs...>;
+};
+
+
+
+template<class Id, class vectorfield>
+struct vector_field_Position
+{
+  vectorfield const & v_;
+
+  using myPosition=transfer_t<typename vectorfield::myIndexes,Position<>>;
+
+  vector_field_Position(Id, vectorfield const & v): v_{v}{}
+
+  template<class... Is>
+  auto operator()(const Position<Is...>& p)const
+  {
+    return myPosition(p);
+  }
+  auto& operator()()const {return *this;}
+
+};
+
+template<class Id, class vectorfield>
+struct get_Field_Indexes <
+    vector_field_Position<Id,vectorfield>
+    >
+{
+  using type=get_Field_Indexes_t<vectorfield>;
+};
+
+
+
+
+template<class vectorfield, class Position>
+struct vector_field_subElement
+{
+  vectorfield const & v_;
+  Position const & p_;
+
+
+  vector_field_subElement(vectorfield const & v, Position const & p): v_{v},p_{p}{}
+
+  template<class Pos>
+  auto operator()(const Pos& p)const
+  {
+    return v_(p_(p));
+  }
+  auto& operator()()const {return *this;}
+
+};
+
+
+
+template<class vectorfield, class Position>
+struct get_Field_Indexes <
+    vector_field_subElement<vectorfield,Position>
+    >
+{
+  using type=get_Field_Indexes_t<Position>;
+};
 
 
 template <class Vector, class Position, class... Datum>

@@ -206,6 +206,26 @@ auto Invoke_on_this(Sample,const D<Id,Distribution,Arguments<Xs...>>& ,Rnd& mt, 
 
 }
 
+template<class Id,class Distribution, class... Xs,class... XXs,class Rnd, class...Datas>
+auto Invoke_on_this(Sample,const D<Id,Distribution,Arguments<Xs...>,Index_struct<XXs...>> ,Rnd& mt, const Datas&...ds)
+{
+  auto res=((find_in(Xs{},ds...)&&...)&&...&&find_in(XXs{},ds...));
+  if constexpr (!std::is_same_v<decltype (res),Has_been_found >)
+  {
+    auto e=Error(Arguments_not_found(Id{},res));
+    return e;
+  }else
+
+  {
+    auto d=Distribution{};
+    auto  out=apply_op(Sample{},d,mt,get_from(Xs{},ds...)...);
+    return x_i(Id{},std::move(out));
+  }
+
+}
+
+
+
 template<class Id,class Distribution, class... Xs,class...Datas>
 auto Invoke_on_this(logProbability,const D<Id,Distribution,Arguments<Xs...>>& ,const Datas&...ds)
 {

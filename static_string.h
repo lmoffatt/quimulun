@@ -80,7 +80,7 @@ public:
     return true;
   }
   template <std::size_t N2>
-  friend constexpr  bool operator == (const my_static_string& one, const my_static_string<N2>& two )
+  friend constexpr  bool operator == (const my_static_string& , const my_static_string<N2>&  )
   {return false;}
 
 };
