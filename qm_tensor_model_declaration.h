@@ -13,6 +13,10 @@ struct logProbability_new{};
 struct logPrior_new{};
 struct logLikelihood_new{};
 
+
+struct Conditional_choice{};
+
+
 template<class T> struct Result{
   using type=Result<T>;
   using result_type=T;
@@ -207,6 +211,13 @@ auto make_all(x_i_view_const<Id,valuetype>const & v)->std::conditional_t<self_re
     return x_i_view_const<all<Id>,all_view_const_t<valuetype>>(v);
 }
 
+template<class... xs>
+struct get_Field_Indexes <
+    all_view_const<xs...>
+    >
+{
+  typedef vec<> type;
+};
 
 
 
@@ -231,6 +242,8 @@ auto make_all(x_i_view_non_const<Id,valuetype> & v)->std::conditional_t<self_ref
   else
     return x_i_view_non_const<all<Id>,all_view_non_const<valuetype>>(v);
 }
+
+
 
 
 
@@ -429,6 +442,18 @@ public:
   Dq_new(Id&& ,Calc&&,Fi&& , Arguments<Xs...>&&){}
 };
 
+template<class Id,class Calc,class Fi, class... Xs>
+struct  Dq_new<Id,Calc,Fi,Arguments_xi<Xs...>>
+{
+public:
+  typedef   Id myId;
+  auto &operator[](Id)const {return *this;}
+
+  Dq_new(Id&& ,Calc&&,Fi&& , Arguments_xi<Xs...>&&){}
+};
+
+
+
 template<class Id,class Calc,class Fi, class... Xs, class... Is>
 struct  Dq_new<Id,Calc,Fi,Arguments<Xs...>, Index_struct<Is...>>
 {
@@ -441,6 +466,10 @@ public:
 
 template<class Id,class Calc,class Fi, class... Xs>
 Dq_new(Id&& ,Calc&&,Fi&& , Arguments<Xs...>&&)->Dq_new<Id,Calc,Fi,Arguments<Xs...>>;
+
+template<class Id,class Calc,class Fi, class... Xs>
+Dq_new(Id&& ,Calc&&,Fi&& , Arguments_xi<Xs...>&&)->Dq_new<Id,Calc,Fi,Arguments_xi<Xs...>>;
+
 
 template<class Id,class Calc,class Fi, class... Xs, class... Is>
 Dq_new(Id&& ,Calc&&,Fi&& , Arguments<Xs...>&&, Index_struct<Is...>&&)->Dq_new<Id,Calc,Fi,Arguments<Xs...>, Index_struct<Is...>>;

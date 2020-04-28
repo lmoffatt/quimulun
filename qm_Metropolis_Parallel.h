@@ -1305,39 +1305,60 @@ auto parallel_emcee_parallel_parallel_for_q2(const Model_q& model,
 
 struct parallel_model_q
 {
-template<typename Model_f,typename data_ei, typename beta_ei, typename walker_ei>
+  template<typename Model_f,typename data_ei, typename beta_ei, typename walker_ei>
   auto operator()(Arguments<Model_f, data_ei, beta_ei, walker_ei>&&)
-{
-  return quimulun{
-      Dq_new(Parameters_ei{},SampleParameters{},Model_f{},Arguments<data_ei>{},Index_struct<beta_ei,walker_ei>{}),
-      Fq_new(Variables_ei{},Calculator_new{},Model_f{},Arguments<data_ei,Parameters_ei>{}),
-      Fq_new(logPrior_ei{},logPrior_new{},Model_f{},Arguments<data_ei,Parameters_ei,Variables_ei>{}),
-      Fq_new(logLik_ei{},logLikelihood_new{},Model_f{},Arguments<data_ei,Parameters_ei,Variables_ei>{}),
-      F_new(logP_k{},[](auto const& logPrior_a, auto const& logLik_a, auto beta_a){return logPrior_a+beta_a*logLik_a;},Arguments< logPrior_ei,logLik_ei,beta_ei>{})
-  };
-}
+  {
+    return quimulun{
+        Dq_new(Parameters_ei{},SampleParameters{},Model_f{},Arguments<data_ei>{},Index_struct<beta_ei,walker_ei>{}),
+        Fq_new(Variables_ei{},Calculator_new{},Model_f{},Arguments<data_ei,Parameters_ei>{}),
+        Fq_new(logPrior_ei{},logPrior_new{},Model_f{},Arguments<data_ei,Parameters_ei,Variables_ei>{}),
+        Fq_new(logLik_ei{},logLikelihood_new{},Model_f{},Arguments<data_ei,Parameters_ei,Variables_ei>{}),
+        F_new(logP_k{},[](auto const& logPrior_a, auto const& logLik_a, auto beta_a){return logPrior_a+beta_a*logLik_a;},Arguments< logPrior_ei,logLik_ei,beta_ei>{})
+    };
+  }
 };
 
 struct Stretch_move_q {
 
   template<class Parameters_ei,class walker_ei,class stretch_alfa>
-  auto operator()(Arguments<Parameters_ei, Size_at_Index_new<Parameters_ei,walker_ei>,stretch_alfa>&&)const
+  auto prepare(Arguments<Parameters_ei, walker_ei,stretch_alfa>&&)const
   {
-  return quimulun{
-        D(Chosen<walker_ei>{},Uniform_Index_Distribution<std::size_t>{},Arguments<Size_at_Index_new<Parameters_ei,walker_ei>>{}),
+    return quimulun{
+        D(Chosen<walker_ei>{},Uniform_Index_Distribution<std::size_t>{},Arguments<Size_at_Index_new<Parameters_ei,walker_ei>>{}, Index_struct<Parameters_ei>{}),
         F_new(Index_of<Chosen<walker_ei>>{},
-          [](auto pos, auto const& walker_a, auto const&  size_walker_a){
+            [](auto pos, auto const& walker_a, auto const&  size_walker_a){
               pos[walker_ei{}]()=(pos[walker_ei{}]()+walker_a.value()) % size_walker_a.value();
-            return pos;},
-          Arguments<pos_new<Parameters_ei>,Chosen<walker_ei>,Size_at_Index_new<Parameters_ei,walker_ei>>{}),
+              return pos;},
+            Arguments<pos_new<Parameters_ei>,Chosen<walker_ei>,Size_at_Index_new<Parameters_ei,walker_ei>>{}),
         D(z_v{},stretch_move_Distribution<double>{},Arguments<stretch_alfa>{},Index_struct<Parameters_ei>{}),
-        F_new(Out<Parameters_ei>{},
-          [](auto const& parameter_a,auto const& chosen_parameter, auto const& z_a)
-          {
-            return (parameter_a - chosen_parameter) * z_a + chosen_parameter;
-          },Arguments<Parameters_ei,subElement<Parameters_ei,Index_of<Chosen<walker_ei>>>,z_v>{})
-  };
-}
+    };
+  }
+    template<class Parameters_ei,class walker_ei,class stretch_alfa>
+    auto sample(Arguments<Parameters_ei, walker_ei,stretch_alfa>&&)const
+    {
+      return quimulun{
+           F_new(Out<Parameters_ei>{},
+              [](auto const& parameter_a,auto const& chosen_parameter, auto const& z_a)
+              {
+                return (parameter_a - chosen_parameter) * z_a + chosen_parameter;
+              },Arguments<Parameters_ei,subElement<Parameters_ei,Index_of<Chosen<walker_ei>>>,z_v>{})
+      };
+  }
+
+  template<class Proposal,class Current, class Candidate, class Current_Parameters_ei>
+  auto test(Arguments_xi<Proposal, Current, Candidate, Current_Parameters_ei>&&){
+    return quimulun(
+        F_new(logAccept_k{},[](auto const& current_logP_a,auto const& candidate_logP_a, auto size_param, auto z_a){
+
+              return  (candidate_logP_a-current_logP_a )  +
+                     log(z_a) * v(size_param - 1.0,dimension_less{});
+
+            }, Arguments<sub<Current,logP_k>, sub<Candidate,logP_k>,Size<sub<Current_Parameters_ei,Parameters_ei>>,sub<Proposal,z_v>>{}),
+
+        D(accept_k{},Bernoulli_Distribution{},Arguments<logAccept_k>{}));}
+
+
+
 };
 
 
@@ -1351,52 +1372,53 @@ struct temperature_jump_eval_q {
         {
             D(even_or_odd{}, Bernoulli_Distribution{}, Arguments<>{}),
             Coord_new(index_new<Transition<beta_ei>>{},FoG{IndexCoordinate{}, [](auto size_beta_a, auto even_or_odd_a){
-                  if (even_or_odd_a.value()) return (size_beta_a-1)/2;
-                                                              else return size_beta_a/2;}},
-                Arguments<Size<beta_ei>,even_or_odd>{}),
+                                                              if (even_or_odd_a.value())
+                                                                return (size_beta_a-v(1ul,dimension_less{}))/v(2ul,dimension_less{});
+                                                              else return size_beta_a/v(2ul,dimension_less{});}},
+                      Arguments<Size_at_Index_new<beta_ei,beta_ei>,even_or_odd>{}),
             F_new(From<num_walkers_ei>{},
                 [](auto index_transition, auto const& walker_size_a, auto even_or_odd_a){
                   auto pos=Position<beta_ei>{};
                   pos[beta_ei{}]()=index_transition.value()*2;
-                  if (even_or_odd_a) ++pos[beta_ei{}]();
-                  return walker_size_a[pos];
+                  if (even_or_odd_a.value()) ++pos[beta_ei{}]();
+                  return walker_size_a(pos);
                 },
                 Arguments<index_new<Transition<beta_ei>>,num_walkers_ei,even_or_odd>{}),
             F_new(To<num_walkers_ei>{},
                 [](auto index_transition, auto const& walker_size_a, auto even_or_odd_a){
                   auto pos=Position<beta_ei>{};
                   pos[beta_ei{}]()=index_transition.value()*2+1;
-                  if (even_or_odd_a) ++pos[beta_ei{}]();
-                  return walker_size_a[pos];
+                  if (even_or_odd_a.value()) ++pos[beta_ei{}]();
+                  return walker_size_a(pos);
                 },
                 Arguments<index_new<Transition<beta_ei>>,num_walkers_ei,even_or_odd>{}),
             D(From<walker_ei>{},Uniform_Index_Distribution<std::size_t>{},Arguments<From<num_walkers_ei>>{}),
             D(To<walker_ei>{},Uniform_Index_Distribution<std::size_t>{},Arguments<To<num_walkers_ei>>{}),
-            F_new(pos_new<From<walker_ei>>{},[](auto const &index_a,auto const& From_walker, auto even_or_odd_a){
+            F_new(pos<From<walker_ei>>{},[](auto const &index_a,auto const& From_walker, auto even_or_odd_a){
                   auto pos=Position<beta_ei,walker_ei>{};
-                  std::size_t i0=even_or_odd_a?1:0;
-                  pos[beta_ei{}]()=index_a*2+i0;
+                  auto  i0=even_or_odd_a.value()?1ul:0ul;
+                  pos[beta_ei{}]()=index_a.value()*2+i0;
                   pos[walker_ei{}]()=From_walker.value();
                   return pos;
                 },Arguments<index_new<Transition<beta_ei>>,From<walker_ei>,even_or_odd>{}),
-            F_new(pos_new<To<walker_ei>>{},[](auto const &index_a,auto const& To_walker,  auto even_or_odd_a){
+            F_new(pos<To<walker_ei>>{},[](auto const &index_a,auto const& To_walker,  auto even_or_odd_a){
                   auto pos=Position<beta_ei,walker_ei>{};
-                  std::size_t i0=even_or_odd_a?1:0;
-                  pos[beta_ei{}]()=index_a*2+i0+1;
+                  auto  i0=even_or_odd_a.value()?1ul:0ul;
+                  pos[beta_ei{}]()=index_a.value()*2+i0+1;
                   pos[walker_ei{}]()=To_walker.value();
                   return pos;
                 },Arguments<index_new<Transition<beta_ei>>,To<walker_ei>,even_or_odd>{}),
             F_new(Out<logAccept_k>{},[](auto const &start_beta_a,auto const& end_beta_a, auto const& start_logLik_a, auto const & end_logLik_a)
                 {
 
-                  return  -(start_beta_a - end_beta_a) *
-                         (start_logLik_a -end_logLik_a);
-                },Arguments<subElement<beta_ei,pos_new<From<walker_ei>>>,
-                          subElement<beta_ei,pos_new<To<walker_ei>>>,
-                          subElement<sub<mcmc,logLik_ei>,pos_new<From<walker_ei>>>,
-                          subElement<sub<mcmc,logLik_ei>,pos_new<To<walker_ei>>>>{}),
+                      return  -(start_beta_a - end_beta_a) *
+                             (start_logLik_a -end_logLik_a);
+                  },Arguments<subElement<beta_ei,pos<From<walker_ei>>>,
+                          subElement<beta_ei,pos<To<walker_ei>>>,
+                          subElement<sub<mcmc,logLik_ei>,pos<From<walker_ei>>>,
+                          subElement<sub<mcmc,logLik_ei>,pos<To<walker_ei>>>>{}),
             D(Out<accept_k>{},Bernoulli_Distribution{},Arguments<Out<logAccept_k>>{}),
-                    };
+            };
   }
 
 };
@@ -1428,7 +1450,7 @@ struct temperature_jump_exec_q {
                   return std::move(parameters_a);
 
 
-                }, Arguments<non_const<Parameters_ei>, pos_new<To<walker_ei>>,pos_new<From<walker_ei>>, accept_k>{}),
+                }, Arguments<non_const<Parameters_ei>, pos<To<walker_ei>>,pos<From<walker_ei>>, accept_k>{}),
             F_new(all<Out<mcmc>>{},[](auto&& next_mcmc_a, auto const& to_w, auto const& from_w,  auto const& accept_a, auto const& beta_a){
                   auto p=to_w.begin();
                   do
@@ -1450,51 +1472,71 @@ struct temperature_jump_exec_q {
                   return std::move(next_mcmc_a);
 
 
-                }, Arguments<non_const<mcmc>, pos_new<To<walker_ei>>,pos_new<From<walker_ei>>, accept_k, beta_ei>{})
+                }, Arguments<non_const<mcmc>, pos<To<walker_ei>>,pos<From<walker_ei>>, accept_k, beta_ei>{})
         };
   }
 
 };
 
 struct nstep{};
+
 struct Proposal{
   constexpr static auto  className=my_static_string("Proposal");
 
 };
 
-struct Metropolis_Hastings_emcee_q
+struct Proposed_preparation{
+  constexpr static auto  className=my_static_string("Proposed_preparation");
+
+};
+
+
+struct Metropolis_step_outcome{
+  constexpr static auto  className=my_static_string("Metropolis_step_outcome");
+
+
+};
+
+
+    struct pick_Parameter_f{};
+
+    struct Metropolis_Hastings_emcee_q
 {
-template< class model_fi,class model_data_ei, class proposed_distribution_fi, class distribution_data_ei>
-  auto operator() (Arguments<model_fi, model_data_ei,proposed_distribution_fi,distribution_data_ei>&&)const
-{
-  return quimulun{
-      Dq_new(Current<Parameters_ei>{},Sample{},model_fi{},Arguments<model_data_ei>{}),
-      Fq_new(Current<mcmc>{},Calculator_new{},model_fi{},Arguments<Current<Parameters_ei>,model_data_ei>{}),
-
-      Dq_new(Proposal{},Sample{},proposed_distribution_fi{},Arguments<Current<Parameters_ei>,distribution_data_ei>{}),
-      Fq_new(Candidate<mcmc>{},Calculator_new{},model_fi{},Arguments<Proposal,model_data_ei>{}),
-
-      F_new(logAccept_k{},[](auto const& current_logP_a,auto const& candidate_logP_a, auto size_param, auto z_a){
-
-            return  (candidate_logP_a-current_logP_a )  +
-                   log(z_a) * v(size_param - 1.0,dimension_less{});
-
-          }, Arguments<sub<Current<mcmc>,logP_k>, sub<Candidate<mcmc>,logP_k>,Size<sub<Current<Parameters_ei>,Parameters_ei>>,sub<Proposal,z_v>>{}),
-
-      D(accept_k{},Bernoulli_Distribution{},Arguments<logAccept_k>{}),
-      F_new(sub<Out<Current<Parameters_ei>>,Parameters_ei>{},[](bool accept, auto&& current_xs, auto&& proposal)
-          {
-            return accept? std::move(proposal): std::move(current_xs);
-          }, Arguments<accept_k,sub<Current<Parameters_ei>,Parameters_ei>,sub<Proposal,Parameters_ei>>{}),
-      F_new(Out<Current<mcmc>>{},[](bool accept, auto&& current_mcmc, auto&& candidate_mcmc)
-          {
-            return accept? std::move(candidate_mcmc): std::move(current_mcmc);
-          }, Arguments<accept_k,Current<mcmc>,Candidate<mcmc>>{}),
+  template< class model_fi,class model_data_ei>
+  auto start (Arguments<model_fi, model_data_ei>&&)const
+  {
+    return quimulun{
+        Dq_new(Current<Parameters_ei>{},SampleParameters{},model_fi{},Arguments<model_data_ei>{}),
+        Fq_new(Current<mcmc>{},Calculator_new{},model_fi{},Arguments<Current<Parameters_ei>,model_data_ei>{}),
 
 
-  };
+        };
 
-}
+  }
+
+
+  template< class model_fi,class model_data_ei,
+            class proposed_distribution_preparation_fi, class proposed_distribution_execution_fi,
+            class proposed_distribution_metropolis_test_fi,
+            class distribution_data_ei>
+  auto step(Arguments<model_fi, model_data_ei,proposed_distribution_preparation_fi,proposed_distribution_execution_fi,proposed_distribution_metropolis_test_fi,distribution_data_ei>&&)const
+  {
+    return quimulun{
+        Dq_new(Proposed_preparation{},Sample{},proposed_distribution_preparation_fi{},Arguments<Current<Parameters_ei>,distribution_data_ei>{}),
+        Fq_new(Candidate<Parameters_ei>{},Calculator_new{},proposed_distribution_execution_fi{},Arguments<Proposed_preparation,Current<Parameters_ei>,distribution_data_ei>{}),
+
+        Fq_new(Candidate<mcmc>{},Calculator_new{},model_fi{},Arguments<Candidate<Parameters_ei>,model_data_ei>{}),
+        Dq_new(Metropolis_step_outcome{}, Sample{},proposed_distribution_metropolis_test_fi{},
+               Arguments_xi<Proposed_preparation,Current<Parameters_ei>,Current<mcmc>,Candidate<mcmc>>{}  ),
+        F_new(Out<Current<Parameters_ei>>{},Conditional_choice{},
+              Arguments<sub<Metropolis_step_outcome, accept_k>,non_const<Current<Parameters_ei>>,non_const<Candidate<Parameters_ei>>>{}),
+        F_new(Out<Current<mcmc>>{},Conditional_choice{},
+              Arguments<sub<Metropolis_step_outcome, accept_k>,non_const<Current<mcmc>>,non_const<Candidate<mcmc>>>{}),
+
+
+        };
+
+  }
 };
 
 struct Parallel_Metropolis_Hastings_emcee_step_q
@@ -1502,17 +1544,17 @@ struct Parallel_Metropolis_Hastings_emcee_step_q
   struct nstep{};
   struct Thermo_Jump{};
 
-  template< class emcee_fi,class input_data_ei, class thermo_jump_result_fi, class thermo_jump_apply_result_fi>
-  auto operator() (Arguments<emcee_fi, input_data_ei,thermo_jump_result_fi, thermo_jump_apply_result_fi>&&)const
+  template< class emcee_fi_start,class emcee_fi_step,class input_data_ei, class thermo_jump_result_fi, class thermo_jump_apply_result_fi>
+  auto operator() (Arguments<emcee_fi_start, emcee_fi_step,input_data_ei,thermo_jump_result_fi, thermo_jump_apply_result_fi>&&)const
   {
 
 
     return quimulun
-    {
+        {
 
-            Dq_new(Start_new<Step_mcmc,nstep>{},Sample{},emcee_fi{},Arguments<input_data_ei>{}),
-            Dq_new(Candidate_mcmc{},Sample{},emcee_fi{},Arguments<Step_mcmc,input_data_ei>{}),
-            Dq_new(Thermo_Jump{},Sample{},thermo_jump_result_fi{},Arguments<Step_mcmc,input_data_ei>{}),
+            Dq_new(Start_new<Step_mcmc,nstep>{},Sample{},emcee_fi_start{},Arguments<input_data_ei>{}),
+            Dq_new(Candidate_mcmc{},Sample{},emcee_fi_step{},Arguments<Step_mcmc,input_data_ei>{}),
+            Dq_new(Thermo_Jump{},Sample{},thermo_jump_result_fi{},Arguments<Candidate_mcmc,input_data_ei>{}),
             Fq_new(Next_new<Step_mcmc,nstep>{},Calculator_new{},thermo_jump_apply_result_fi{}, Arguments<Thermo_Jump, Candidate_mcmc>{})
 
 
@@ -1525,88 +1567,99 @@ struct Parallel_Metropolis_Hastings_emcee_step_q
 
 struct parallel_model{};
 struct parallel_data{};
-struct proposed_distribution_fi{};
-struct distribution_data_ei{};
-struct emcee_fi{};
+struct proposed_distribution_preparation_fi{};
+struct proposed_distribution_execution_fi{};
+struct proposed_distribution_metropolis_test_fi{};
+struct distribution_data_ei{};;
+struct emcee_fi_start{};
+struct emcee_fi_step{};
 struct input_data_ei{};
 struct thermo_jump_result_fi{};
 struct thermo_jump_apply_result_fi{};
 struct Parallel_Metropolis_Hastings_emcee_q
 {
 
-template< class Model_f,class data_ei, class beta_ei, class num_walkers_ei, class walker_ei, class distribution_data_ei>
+  template< class Model_f,class data_ei, class beta_ei, class num_walkers_ei, class walker_ei, class distribution_data_ei>
   auto operator() (Arguments<num_walkers_ei,Model_f, data_ei,beta_ei, walker_ei,distribution_data_ei>&&)const
-{
+  {
 
 
 
-  auto model_def=quimulun{
-      Coord_new(walker_ei{},IndexCoordinate{},Arguments<num_walkers_ei>{}),
-      f_i(parallel_model{},parallel_model_q{}(Arguments<Model_f, data_ei, beta_ei, walker_ei>{})),
-      F_new(parallel_data{},Glue_new{},Arguments<Model_f,data_ei,beta_ei,walker_ei>{}),
-      f_i(proposed_distribution_fi{},Stretch_move_q{}(Arguments<Parameters_ei, Size_at_Index_new<Parameters_ei,walker_ei>,stretch_alfa>{})),
-      F_new(distribution_data_ei{},Glue_new{},Arguments<stretch_alfa>{}),
-      f_i(emcee_fi{},Metropolis_Hastings_emcee_q{}(Arguments<parallel_model, parallel_data,proposed_distribution_fi,distribution_data_ei>{})),
-      F_new(input_data_ei{},Glue_new{},Arguments<parallel_model, parallel_data,proposed_distribution_fi,distribution_data_ei>{}),
-      f_i(thermo_jump_result_fi{},temperature_jump_eval_q{}(Arguments<beta_ei, num_walkers_ei, mcmc>{})),
-      f_i(thermo_jump_apply_result_fi{},temperature_jump_exec_q{}(Arguments<Parameters_ei,  walker_ei, accept_k,mcmc>{}))
+    auto model_def=quimulun{
+        Coord_new(walker_ei{},IndexCoordinate{},Arguments<num_walkers_ei>{}),
+        f_i(parallel_model{},parallel_model_q{}(Arguments<Model_f, data_ei, beta_ei, walker_ei>{})),
+        F_new(parallel_data{},Glue_new{},Arguments<Model_f,data_ei,beta_ei,walker_ei>{}),
+        f_i(proposed_distribution_preparation_fi{},Stretch_move_q{}.prepare(Arguments<Parameters_ei, walker_ei,stretch_alfa>{})),
+        f_i(proposed_distribution_execution_fi{},Stretch_move_q{}.sample(Arguments<Parameters_ei, walker_ei,stretch_alfa>{})),
+        f_i(proposed_distribution_metropolis_test_fi{},Stretch_move_q{}.test(Arguments_xi<Proposed_preparation, Current<mcmc>, Candidate<mcmc>, Current<Parameters_ei>>{})),
+        F_new(distribution_data_ei{},Glue_new{},Arguments<stretch_alfa>{}),
+        f_i(emcee_fi_start{},Metropolis_Hastings_emcee_q{}.start(Arguments<parallel_model, parallel_data>{})),
+        f_i(emcee_fi_step{},Metropolis_Hastings_emcee_q{}.step(Arguments<parallel_model, parallel_data,
+                                                                          proposed_distribution_preparation_fi,proposed_distribution_execution_fi,proposed_distribution_metropolis_test_fi,distribution_data_ei>{})),
+        F_new(input_data_ei{},Glue_new{},Arguments<parallel_model, parallel_data,proposed_distribution_preparation_fi,proposed_distribution_execution_fi,
+                                                     proposed_distribution_metropolis_test_fi,distribution_data_ei, beta_ei,num_walkers_ei>{}),
+        f_i(thermo_jump_result_fi{},temperature_jump_eval_q{}(Arguments<beta_ei, num_walkers_ei, Current<mcmc>>{})),
+        f_i(thermo_jump_apply_result_fi{},temperature_jump_exec_q{}(Arguments<Parameters_ei,  walker_ei, accept_k,Current<mcmc>>{}))
 
 
-  };
+    };
 
 
-  return std::move(model_def)+
-         Parallel_Metropolis_Hastings_emcee_step_q{}
-         (Arguments<emcee_fi, input_data_ei,thermo_jump_result_fi, thermo_jump_apply_result_fi>{});
+    //  using test=typename decltype (std::move(model_def)+
+    //                                 Parallel_Metropolis_Hastings_emcee_step_q{}
+    //                                 (Arguments<emcee_fi, input_data_ei,thermo_jump_result_fi, thermo_jump_apply_result_fi>{}))::q;
+
+    return std::move(model_def)+
+           Parallel_Metropolis_Hastings_emcee_step_q{}
+           (Arguments<emcee_fi_start,emcee_fi_step, input_data_ei,thermo_jump_result_fi, thermo_jump_apply_result_fi>{});
 
 
 
 
-}
+  }
 };
 
 
 
+struct   num_walkers_ei{};
 
 
 struct parallel_emcee_parallel_parallel_for_declarativa {
 
-  struct   num_walkers_ei{};
+
   struct distribution_data_ei{};
 
-template<class Model_q, class data_q /* ,class betas_v, class nwalkers_v*/>
+  template<class Model_q, class data_q /* ,class betas_v, class nwalkers_v*/>
   auto operator()(const Model_q& model,
-                                                      const data_q& data,
-                                                      const vector_field<vec<beta_ei>,v<double,dimension_less>>& betas,
-                                                      const v<std::size_t,dimension_less>& nw,
-                                                      std::mt19937::result_type seed,
-                                                      long int nsamples,
-                                                      const std::vector<std::size_t>& decimate_factor,
-                                                      const std::string& filename)
-{
-  std::mt19937_64 mt0_parallel(seed);
+                  const data_q& data,
+                  const vector_field<vec<beta_ei>,v<double,dimension_less>>& betas,
+                  const v<std::size_t,dimension_less>& nw,
+                  std::mt19937::result_type seed,
+                  long int nsamples,
+                  const std::vector<std::size_t>& decimate_factor,
+                  const std::string& filename)
+  {
+    std::mt19937_64 mt0_parallel(seed);
 
-  auto mt=v(mt0_parallel,dimension_less{});
-  auto modeldata=quimulun{
-      f_i(Model_f{},model),
-      x_i(stretch_alfa{},v(2.0,dimension_less{})),
-      x_i(data_ei{},data),
-      x_i(beta_ei{},betas),
-      x_i(num_walkers_ei{},nw)
-  };
+    auto mt=v(mt0_parallel,dimension_less{});
+    auto modeldata=quimulun{
+        f_i(Model_f{},model),
+        x_i(stretch_alfa{},v(2.0,dimension_less{})),
+        x_i(data_ei{},data),
+        x_i(beta_ei{},betas),
+        x_i(num_walkers_ei{},nw)
+    };
 
-  auto mcee=Parallel_Metropolis_Hastings_emcee_q{}(Arguments<num_walkers_ei,Model_f, data_ei,beta_ei, walker_ei,distribution_data_ei>{});
+    auto mcee=Parallel_Metropolis_Hastings_emcee_q{}(Arguments<num_walkers_ei,Model_f, data_ei,beta_ei, walker_ei,distribution_data_ei>{});
 
-  auto res=sample_Operation(mcee,mt,modeldata);
-
-
+    auto res=sample_loop_Operation(mcee,mt,modeldata);
 
 
-  auto fname_parallel=filename+"_"+ time_now() + "_" + std::to_string(seed)+"_parallel";
-
-  auto rand0_parallel_v=vector_space{x_i(Start<rand_e>{},v(std::move(mt0_parallel),dimension_less{}))};
 
 
+    auto fname_parallel=filename+"_"+ time_now() + "_" + std::to_string(seed)+"_parallel";
+
+    auto rand0_parallel_v=vector_space{x_i(Start<rand_e>{},v(std::move(mt0_parallel),dimension_less{}))};
 
 
 
@@ -1618,66 +1671,68 @@ template<class Model_q, class data_q /* ,class betas_v, class nwalkers_v*/>
 
 
 
-  std::string f_jump_name_parallel=filename+"_jump_parallel.txt";
-
-  std::ofstream f_jump_parallel(f_jump_name_parallel.c_str());
-
-  std::chrono::steady_clock::time_point startTime=std::chrono::steady_clock::now();
 
 
+    std::string f_jump_name_parallel=filename+"_jump_parallel.txt";
 
+    std::ofstream f_jump_parallel(f_jump_name_parallel.c_str());
 
-
-//  for (long int i=0; i<nsamples; ++i)
-//  {
+    std::chrono::steady_clock::time_point startTime=std::chrono::steady_clock::now();
 
 
 
-//    auto next_candidate_parallel_v=random_calculate_parallel_for(next_parallel_q,random_parallel_v,next_inside_q,currentParameters_parallel_q,modeldata);
-
-//    auto next_parameter_parallel_v=transfer(accept_candidate_or_current_parallel,std::move(currentParameters_parallel_q), std::move(next_candidate_parallel_v));
-
-//    auto after_temperature_jump_parallel=random_calculate_parallel_for(temperature_jump_parallel,rand0_parallel_v,next_parameter_parallel_v,modeldata);
 
 
-//    if (i==0)
-//    {
-//      auto output_jump_parallel=vector_space(x_i{isample{},v(i,dimension_less{})})+(after_temperature_jump_parallel|myremove<accept_k>{});
-//      to_DataFrame_title(f_jump_parallel,output_jump_parallel);
+    //  for (long int i=0; i<nsamples; ++i)
+    //  {
 
-//    }
-//    if (i%100000==0)
-//    {
-//      auto output_jump_parallel=vector_space(x_i{isample{},v(i,dimension_less{})})+(after_temperature_jump_parallel|myremove<accept_k>{});
 
-//      to_DataFrame_body(f_jump_parallel,output_jump_parallel);
-//    }
-//    currentParameters_parallel_q=transfer(actualize_jump_parallel,std::move(next_parameter_parallel_v),after_temperature_jump_parallel,modeldata);
 
-//    auto Evidence_parallel_v=calculate_parallel_for(compute_Evidence_parallel,currentParameters_parallel_q,modeldata);
+    //    auto next_candidate_parallel_v=random_calculate_parallel_for(next_parallel_q,random_parallel_v,next_inside_q,currentParameters_parallel_q,modeldata);
 
-//    auto tnow=std::chrono::steady_clock::now();
-//    auto d=tnow-startTime;
-//    double time=1.0e-6*std::chrono::duration_cast<std::chrono::microseconds>(d).count()/60.0;
-//    if (i%100==0)
-//      std::cerr<<"\n i_sample="<<i<<"\t "<<"time="<<time<<"\t "<<(Evidence_parallel_v|myselect<Current<Evidence_ei>>{})<<"\n";
+    //    auto next_parameter_parallel_v=transfer(accept_candidate_or_current_parallel,std::move(currentParameters_parallel_q), std::move(next_candidate_parallel_v));
 
-//    if (i==0)
-//    {
-//      //   to_DataFrame_title_index(fname,output);
-//      to_DataFrame_title_index_new(fname_parallel,currentParameters_parallel_q,data,modeldata,initwalkers_v);
-//      to_DataFrame_title_index_new(fname_parallel,Evidence_parallel_v,data,modeldata,initwalkers_v);
-//      to_DataFrame_title_index_new(fname_parallel,data,modeldata,initwalkers_v);
-//      to_DataFrame_body_index_new(fname_parallel,i,time,decimate_factor,data,modeldata);
+    //    auto after_temperature_jump_parallel=random_calculate_parallel_for(temperature_jump_parallel,rand0_parallel_v,next_parameter_parallel_v,modeldata);
 
-//    }
-//    // to_DataFrame_body_index(fname,i,decimate_factor,output);
-//    to_DataFrame_body_index_new(fname_parallel,i,time,decimate_factor,currentParameters_parallel_q,data,modeldata,initwalkers_v);
-//    to_DataFrame_body_index_new(fname_parallel,i,time,decimate_factor,Evidence_parallel_v,modeldata);
-//  }
 
-  return 1;
-}
+    //    if (i==0)
+    //    {
+    //      auto output_jump_parallel=vector_space(x_i{isample{},v(i,dimension_less{})})+(after_temperature_jump_parallel|myremove<accept_k>{});
+    //      to_DataFrame_title(f_jump_parallel,output_jump_parallel);
+
+    //    }
+    //    if (i%100000==0)
+    //    {
+    //      auto output_jump_parallel=vector_space(x_i{isample{},v(i,dimension_less{})})+(after_temperature_jump_parallel|myremove<accept_k>{});
+
+    //      to_DataFrame_body(f_jump_parallel,output_jump_parallel);
+    //    }
+    //    currentParameters_parallel_q=transfer(actualize_jump_parallel,std::move(next_parameter_parallel_v),after_temperature_jump_parallel,modeldata);
+
+    //    auto Evidence_parallel_v=calculate_parallel_for(compute_Evidence_parallel,currentParameters_parallel_q,modeldata);
+
+    //    auto tnow=std::chrono::steady_clock::now();
+    //    auto d=tnow-startTime;
+    //    double time=1.0e-6*std::chrono::duration_cast<std::chrono::microseconds>(d).count()/60.0;
+    //    if (i%100==0)
+    //      std::cerr<<"\n i_sample="<<i<<"\t "<<"time="<<time<<"\t "<<(Evidence_parallel_v|myselect<Current<Evidence_ei>>{})<<"\n";
+
+    //    if (i==0)
+    //    {
+    //      //   to_DataFrame_title_index(fname,output);
+    //      to_DataFrame_title_index_new(fname_parallel,currentParameters_parallel_q,data,modeldata,initwalkers_v);
+    //      to_DataFrame_title_index_new(fname_parallel,Evidence_parallel_v,data,modeldata,initwalkers_v);
+    //      to_DataFrame_title_index_new(fname_parallel,data,modeldata,initwalkers_v);
+    //      to_DataFrame_body_index_new(fname_parallel,i,time,decimate_factor,data,modeldata);
+
+    //    }
+    //    // to_DataFrame_body_index(fname,i,decimate_factor,output);
+    //    to_DataFrame_body_index_new(fname_parallel,i,time,decimate_factor,currentParameters_parallel_q,data,modeldata,initwalkers_v);
+    //    to_DataFrame_body_index_new(fname_parallel,i,time,decimate_factor,Evidence_parallel_v,modeldata);
+    //  }
+
+    return 1;
+  }
 
 };
 

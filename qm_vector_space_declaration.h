@@ -20,7 +20,8 @@ template<> struct vector_space<>
   template<class xi>
   auto operator + (xi&& x)&&
   {
-    if constexpr (is_this_template_class_v<x_i,xi>||is_this_template_class_v<x_i_view_const,xi>||is_this_template_class_v<x_i_view_non_const,xi>)
+//    if constexpr (is_this_template_class_v<x_i,xi>||is_this_template_class_v<x_i_view_const,xi>||is_this_template_class_v<x_i_view_non_const,xi>)
+if constexpr (is_any_of_these_template_classes<x_i,x_i_view_const,x_i_view_non_const>::template value<xi>)
        return vector_space<std::decay_t<xi>>{std::forward<xi>(x)};
     else
       return std::forward<xi>(x);
@@ -498,7 +499,7 @@ auto operator | (x_i<e_i,Value_type_i>&& one, x_i<e_j,Value_type_j> && two)
 }
 
 template<class... x_is, class x_j>
-auto operator | (vector_space<x_is...>&& one, x_j && two)
+auto  operator | (vector_space<x_is...>&& one, x_j && two)
 {
   if constexpr (is_in_pack<x_j,x_is... >())
   {

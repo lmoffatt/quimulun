@@ -63,6 +63,7 @@ private:
   std::bernoulli_distribution d_;
 
 public:
+  using distribution_type=std::bernoulli_distribution;
   auto& d(){return d_;}
 };
 

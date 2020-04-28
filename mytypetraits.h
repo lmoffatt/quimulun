@@ -73,11 +73,23 @@ struct is_this_template_class
 template<template<class ...>class V, class...Ts>
 struct is_this_template_class<V,V<Ts...>>
 {
+
   static constexpr bool value=true;
 };
 
 template<template<class ...>class V, class T>
 inline constexpr bool is_this_template_class_v= is_this_template_class<V,std::decay_t<T>>::value;
+
+
+
+
+template<template<class ...>class... Vs>
+struct is_any_of_these_template_classes
+{
+  template<class T>
+  static constexpr bool value=(is_this_template_class_v<Vs,T>||...);
+};
+
 
 
 
@@ -95,6 +107,9 @@ auto operator |(T&& t , F&& f)->decltype (std::invoke(std::forward<F>(f),std::fo
 {
   return std::invoke(std::forward<F>(f),std::forward<T>(t));
 }
+
+
+
 
 
 

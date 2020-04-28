@@ -132,7 +132,7 @@ private :
 public:
   static constexpr auto className=my_static_string("pos_")+Id::className;
   Position(std::size_t i_v):i{i_v}{}
-   Position()=default;
+  Position()=default;
   using innerId=Id;
   auto& operator[](Id)const {return *this;}
   auto& operator[](Id) {return *this;}
@@ -275,6 +275,10 @@ template<class...> class vector_field;
 
 template<class, class > struct x_i_vector_field_const;
 
+template<class, class > struct x_i_vector_field_non_const;
+
+
+
 template<class...> struct vector_space;
 
 template<class Value_type,class... Xs> class vector_field<vec<Xs...>,Value_type>;
@@ -284,23 +288,24 @@ template<class Value_type,class... Xs> class vector_field<vec<Xs...>,Value_type>
 
 template<class C>
 inline constexpr bool only_xi_of_fi_v=is_this_template_class_v<x_i,C>||
-is_this_template_class_v<x_i_view_const,C>||
-is_this_template_class_v<x_i_view_non_const,C>||
-is_this_template_class_v<x_i_view_non_const,C>||
-is_this_template_class_v<x_i_vector_field_const,C>||
-is_this_template_class_v<f_i_view_const,C>||
-is_this_template_class_v<f_i,C>;
+                                        is_this_template_class_v<x_i_view_const,C>||
+                                        is_this_template_class_v<x_i_view_non_const,C>||
+                                        is_this_template_class_v<x_i_view_non_const,C>||
+                                        is_this_template_class_v<x_i_vector_field_const,C>||
+                                        is_this_template_class_v<x_i_vector_field_non_const,C>||
+                                        is_this_template_class_v<f_i_view_const,C>||
+                                        is_this_template_class_v<f_i,C>;
 
 template<class C>
 inline constexpr bool only_xi_of_fi_const_v=is_this_template_class_v<x_i,C>||
-                                        is_this_template_class_v<x_i_view_const,C>||
-                                        is_this_template_class_v<f_i_view_const,C>||
-                                        is_this_template_class_v<f_i,C>;
+                                              is_this_template_class_v<x_i_view_const,C>||
+                                              is_this_template_class_v<f_i_view_const,C>||
+                                              is_this_template_class_v<f_i,C>;
 
 
 template<class C>
 inline constexpr bool only_xi_of_fi_non_const_v=is_this_template_class_v<x_i,C>||
-                                        is_this_template_class_v<x_i_view_non_const,C>;
+                                                  is_this_template_class_v<x_i_view_non_const,C>;
 
 
 
@@ -308,7 +313,7 @@ inline constexpr bool only_xi_of_fi_non_const_v=is_this_template_class_v<x_i,C>|
 
 template<class C>
 auto only_xi_or_fi(C&& x)->std::conditional_t<(only_xi_of_fi_v<C>),
-    decltype(x),Nothing>
+                                                decltype(x),Nothing>
 {
   if constexpr (only_xi_of_fi_v<C>)
     return std::forward<C>(x);
@@ -391,7 +396,7 @@ auto get_from(anId, Datas&&...ds)->decltype ((get_xi_from_this(anId{},std::forwa
 
 
 template <class anId, class...Datas, typename=std::enable_if_t<!is_this_template_class_v<pass_id,anId>>>
-    auto find_in(anId, Datas&&...ds)
+auto find_in(anId, Datas&&...ds)
 {
   if constexpr (std::is_same_v<decltype (get_from(anId{},std::forward<Datas>(ds)...)),Nothing >)
     return Not_found<anId>{};
@@ -420,7 +425,7 @@ struct Error
   {return std::forward<Something>(s);}
 
 
-   static constexpr auto size(){return 0;}
+  static constexpr auto size(){return 0;}
   using myIds=Cs<>;
 
   Error operator()()const {return {};}

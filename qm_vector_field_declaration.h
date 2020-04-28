@@ -14,6 +14,13 @@ struct Arguments{
 };
 template<>struct Arguments<>{};
 
+template<class...Args>
+struct Arguments_xi{
+  explicit Arguments_xi(Args&&...){}
+  Arguments_xi()=default;
+};
+template<>struct Arguments_xi<>{};
+
 
 
 template<class...Args>
@@ -32,12 +39,19 @@ template<class Id_of_vector, class sub_Id> struct sub{
 
 };
 
+
+
 template<class IdField, class IdPosValue> struct subElement{};
 
 template<class Id> struct pos_new{};
 
-template<class Id> struct index_new{};
+template<class Id> struct index_new{
 
+  static constexpr auto className=my_static_string("Index_")+Id::className;
+
+};
+
+template<class Id> struct all_new{};
 
 
 
@@ -69,6 +83,20 @@ template<class Id> struct Proper_Id{using type=Id;};
 template<class Id> struct Proper_Id<Out<Id>>{using type=Id;};
 
 template<class Id> using Proper_Id_t=typename Proper_Id<Id>::type;
+
+
+template<class Id> struct Target_Id{using type=Id;};
+
+template<class Id, class InsideId> struct Target_Id<sub<Id,InsideId>>{using type=Id;};
+
+template<class Id, class pos> struct Target_Id<Start_new<Id,pos>>{using type=Id;};
+template<class Id, class pos> struct Target_Id<Next_new<Id,pos>>{using type=Id;};
+
+
+
+template<class Id> using Target_Id_t=typename Target_Id<Id>::type;
+
+
 
 
 
@@ -105,10 +133,7 @@ struct get_Field_Indexes;
 template<class... T>
 struct get_All_Indexes;
 
-template<class T>
-struct get_Field_Indexes<T>{
-  typedef vec<> type;
-};
+
 
 
 template<class T>
@@ -429,6 +454,11 @@ public:
 template<class T>
 struct getIds_of {using type=typename T::myIds;};
 
+template<class Id, class Value>
+struct getIds_of<x_i<Id,Value>> {using type= Cs<Id>;};
+
+
+
 template< class ...x_is, class... Xs>
 struct getIds_of<vector_field<vec<Xs...>,vector_space<x_is...>>>
 {
@@ -460,6 +490,9 @@ struct
   auto& operator()()const {return *this;}
 
 };
+
+
+
 
 
 template<class vectorspace>
@@ -511,9 +544,14 @@ struct
   x_i_vector_field_const(vectorfield const & v, Id): v_{v}{}
 
   template<class Position>
-  auto operator()(const Position& p)const->decltype (get_at(v_(p),Id{})())
+  auto operator()(const Position& p)const//->decltype (get_at(v_(p),Id{})())
   {
-    return v_(p)[Id{}]();
+//    using test=typename Cs<Id,vectorfield>::vector_field;
+//    using test2=typename Cs<Id,decltype(p)>::position;
+//    using test3=typename Cs<Id,decltype (v_(p))>::test_position;
+//    using test4=typename Cs<Id,decltype (get_at(v_(p),Id{}))>::get_at;
+  //  using test2=typename Cs<Id,decltype(p),vectorfield>::vector_field;
+    return get_at(v_(p),Id{})();
   }
 
   template<class Index,class Position>
@@ -527,17 +565,60 @@ struct
 
 
 
+template<class vectorfield, class Id>
+struct
+    x_i_vector_field_non_const
+{
+  vectorfield  & v_;
+
+  using myIndexes=typename vectorfield:: myIndexes;
+
+  static constexpr auto size(){return size_of_pack(myIds_t<vectorfield>{});}
+
+  x_i_vector_field_non_const(vectorfield  & v, Id): v_{v}{}
+
+  template<class Position>
+  auto operator()(const Position& p)->decltype (get_at(v_(p),Id{})())
+  {
+    // using test=typename Cs<Id,decltype (v_),decltype (get_at(v_(p),Id{})())>::vector_field;
+    return get_at(v_(p),Id{})();
+  }
+
+  template<class Index,class Position>
+  auto size(Index,const Position& p) const { return v_.size(Index{},p);}
+
+
+
+  auto& operator()() {return *this;}
+
+};
+
+
 
 
 template<class Id, class V>
 auto get_at(const V& x, Id)->decltype (x[Id{}])
 {
+//  using test=typename std::conditional_t<is_this_template_class_v<non_const,Id>,
+//                                           Id,std::vector<double>>::value_type;
   return x[Id{}];
 }
 
-template<class Id, class... Xs, class Value>
+
+template<class Id, class V, typename=std::enable_if_t<!std::is_const_v<V>>>
+auto get_at( V& x, non_const<Id>)->decltype (x[non_const<Id>{}])
+{
+//  using test=typename std::conditional_t<is_this_template_class_v<non_const,Id>,
+//                                           Id,std::vector<double>>::value_type;
+    return x[non_const<Id>{}];
+}
+
+
+template<class Id, class... Xs, class Value,typename =std::enable_if_t<!is_this_template_class_v<non_const,Id>>>
 auto get_at(const vector_field<vec<Xs...>,Value>& x,Id)
 {
+//  using test=typename std::conditional_t<is_this_template_class_v<non_const,Id>,
+//                                           Id,std::vector<double>>::value_type;
   if constexpr (std::is_same_v<decltype (get_at(std::declval<Value>(),Id{})),Nothing >)
     return Nothing{};
   else
@@ -545,10 +626,63 @@ auto get_at(const vector_field<vec<Xs...>,Value>& x,Id)
 }
 
 
+template<class Id, class... Xs, class Value>
+auto get_at( vector_field<vec<Xs...>,Value>& x,Id)
+{
+  //using test=typename std::conditional_t<is_this_template_class_v<non_const,Id>,
+   //                                        Id,std::vector<double>>::value_type;
+  if constexpr (std::is_same_v<decltype (get_at(std::declval<Value&>(),Id{})),Nothing >)
+    return Nothing{};
+  else
+    return x_i_vector_field_non_const(x,Id{});
+}
+
+template<class vectorfield, class Idinside, class Id,typename =std::enable_if_t<!is_this_template_class_v<non_const,Id>>>
+auto get_at(const x_i_vector_field_const<vectorfield,Idinside>& x, Id)
+{
+  //  using test=typename std::conditional_t<is_this_template_class_v<non_const,Id>,
+  //                                           Id,std::vector<double>>::value_type;
+
+  using Pos=transfer_t<get_Field_Indexes_t<vectorfield>,Position<>>;
+
+
+  if constexpr (std::is_same_v<decltype (get_at(x(Pos{}),Id{})),Nothing >)
+    return Nothing{};
+  else
+    return x_i_vector_field_const(x,Id{});
+}
+
+
+template<class... Xs,class Value>
+struct get_Field_Indexes <
+    vector_field<vec<Xs...>,Value>
+    >
+{
+  using type=vec<Xs...>;
+};
+
+template<class vector_space>
+struct get_Field_Indexes <
+    vector_space_size<vector_space>
+    >
+{
+  using type=vec<>;
+};
+
+
+template<class Id,class vectorfield>
+struct get_Field_Indexes <
+    x_i_vector_field_const<vectorfield, Id>
+    >
+{
+  using type=get_Field_Indexes_t<vectorfield>;
+};
+
+
 
 template<class Id,class... xs,class... Xs>
 struct get_Field_Indexes <
-    x_i_vector_field_const<vector_field<vec<Xs...>,vector_space<xs...>>, Id>
+    x_i_vector_field_non_const<vector_field<vec<Xs...>,vector_space<xs...>>, Id>
     >
 {
   using type=vec<Xs...>;
@@ -556,14 +690,14 @@ struct get_Field_Indexes <
 
 
 
+
 template<class Id, class vectorfield>
 struct vector_field_Position
 {
-  vectorfield const & v_;
 
   using myPosition=transfer_t<typename vectorfield::myIndexes,Position<>>;
 
-  vector_field_Position(Id, vectorfield const & v): v_{v}{}
+  vector_field_Position(Id, vectorfield const & ){}
 
   template<class... Is>
   auto operator()(const Position<Is...>& p)const
@@ -583,6 +717,22 @@ struct get_Field_Indexes <
 };
 
 
+template <class vectorfield>
+class all_view_const_new
+{
+  vectorfield const& v_;
+public:
+  all_view_const_new(vectorfield const & v):v_{v}{}
+
+  auto& operator()()const {return *this;}
+
+  template<class Position>
+  auto operator()(const Position&)const
+  {
+    return v_();
+  }
+};
+
 
 
 template<class vectorfield, class Position>
@@ -597,6 +747,7 @@ struct vector_field_subElement
   template<class Pos>
   auto operator()(const Pos& p)const
   {
+  //  using test=typename Cs<decltype (p),decltype (p_(p)),decltype (v_(p_(p)))>::laconcha;
     return v_(p_(p));
   }
   auto& operator()()const {return *this;}
@@ -718,12 +869,57 @@ auto consolidate(vec<myIndex>,const Datas&...d)
 }
 
 
-
-
-
-template<class Value_type,class... Xs> struct get_Field_Indexes <vector_field< vec<Xs...>,Value_type>>
+template<class Value_type, class unit>
+struct get_Field_Indexes <
+    v<Value_type,unit>
+    >
 {
-  typedef vec<Xs...> type;
+  typedef vec<> type;
+};
+
+template<class Value_type, class... unit>
+struct get_Field_Indexes <
+    logv<Value_type,unit...>
+    >
+{
+  typedef vec<> type;
+};
+
+
+template<class... Fs>
+struct get_Field_Indexes <
+    quimulun<Fs...>
+    >
+{
+  typedef vec<> type;
+};
+
+
+template<class... xs>
+struct get_Field_Indexes <
+    vector_space<xs...>
+    >
+{
+  typedef vec<> type;
+};
+
+
+
+template<class... xs>
+struct get_Field_Indexes <
+   f_i<xs...>
+    >
+{
+  typedef vec<> type;
+};
+
+
+template<class... xs>
+struct get_Field_Indexes <
+    x_i_view_non_const<xs...>
+    >
+{
+  typedef vec<> type;
 };
 
 

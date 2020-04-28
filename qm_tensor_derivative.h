@@ -568,7 +568,7 @@ operator *(const  Derivative<v<T,unit>,vector_space<Ds...>>& one,  const Derivat
 }
 
 template<class T, class unit, class unit2,class... Ds, class ...Ds2,
-          typename=std::enable_if_t<std::is_same_v<dimension_less,unit >|std::is_same_v<dimension_less,unit2 >,int>>
+          typename=std::enable_if_t<std::is_same_v<dimension_less,unit >||std::is_same_v<dimension_less,unit2 >,int>>
 auto
 operator *(const  Derivative<logv<T,unit>,vector_space<Ds...>>& one,  const Derivative<logv<T,unit2>,vector_space<Ds2...>>& two)
 {

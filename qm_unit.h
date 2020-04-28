@@ -98,24 +98,24 @@ template<class m, int N,class ...ms, int...Ns> struct p<u<m,N>,u<ms,Ns>...>:u<m,
 
 
 template<class... us, class m, int N>
-constexpr auto operator| (Cs<p<us...>,p<>>, u<m,N>)
+constexpr auto operator | (Cs<p<us...>,p<>>, u<m,N>)
 {
       return p<us...,u<m,N>>{};
 
 }
 
 template<class... us,class m0, int N0,class ...ms, int...Ns,  int N, typename =std::enable_if_t<N+N0!=0,int>>
-constexpr auto operator| (Cs<p<us...>,p<u<m0,N0>,u<ms,Ns>...>>, u<m0,N>){
+constexpr auto operator | (Cs<p<us...>,p<u<m0,N0>,u<ms,Ns>...>>, u<m0,N>){
         return p<us...,u<m0,N+N0>,u<ms,Ns>...>{};
  }
 
  template<class... us,class m0, int N0,class ...ms, int...Ns>
- constexpr auto operator| (Cs<p<us...>,p<u<m0,N0>,u<ms,Ns>...>>, u<m0,-N0>){
+ constexpr auto operator | (Cs<p<us...>,p<u<m0,N0>,u<ms,Ns>...>>, u<m0,-N0>){
    return p<us...,u<ms,Ns>...>{};
  }
 
  template<class... us,class m0, int N0,class ...ms, int...Ns, class m, int N, typename =std::enable_if_t<!std::is_same_v<m,m0 >,int>>
-constexpr auto operator| (Cs<p<us...>,p<u<m0,N0>,u<ms,Ns>...>>, u<m,N>){
+constexpr auto operator | (Cs<p<us...>,p<u<m0,N0>,u<ms,Ns>...>>, u<m,N>){
 
    if constexpr (m::className<m0::className)
        return p<us...,u<m,N>,u<m0,N0>,u<ms,Ns>...>{};

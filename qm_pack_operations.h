@@ -9,6 +9,7 @@ template<class...> struct Cs{};
 template<class...> class C{};
 
 
+
 template<template<class...> class Cs,class...Ts>
 constexpr auto size_of_pack(Cs<Ts...>){return sizeof... (Ts);}
 
@@ -44,6 +45,13 @@ constexpr bool same_pack_set(Cs<Xs...>,Cs<X2s...>)
 {
   return is_sub_set_of(Cs<Xs...>{},Cs<X2s...>{})&&is_sub_set_of(Cs<X2s...>{},Cs<Xs...>{});
 }
+
+
+
+
+
+
+
 
 
 
@@ -126,13 +134,13 @@ template <template <class> class F_t, class D> using
 
 
 template<class... Fs, class...Us>
-static constexpr auto operator | (Cs<Fs...>,Cs<Us...>)
+static constexpr auto operator || (Cs<Fs...>,Cs<Us...>)
 {
   return Cs<Fs...,Us...>{};
 }
 
 template<class... Fs, class U>
-static constexpr auto operator | (Cs<Fs...>,U)
+static constexpr auto operator || (Cs<Fs...>,U)
 {
   return Cs<Fs...,U>{};
 }
@@ -141,7 +149,7 @@ static constexpr auto operator | (Cs<Fs...>,U)
 template<class...Ts>
 struct pack_concatenation
 {
-  typedef decltype ((...|Ts{})) type;
+  typedef decltype ((...||Ts{})) type;
 };
 template<class...Ts>
 using pack_concatenation_t=typename pack_concatenation<Ts...>::type;
@@ -325,9 +333,9 @@ struct pack_end{};
 template<class...Ts> struct Cs_end{};
 
 template <class...Ts>
-auto operator| (Cs<Ts...>, Cs<pack_end>){return Cs_end<Ts...>{};}
+auto operator || (Cs<Ts...>, Cs<pack_end>){return Cs_end<Ts...>{};}
 template <class...Ts, class...Us>
-auto operator| (Cs_end<Ts...>, Cs<Us...>){return Cs_end<Ts...>{};}
+auto operator || (Cs_end<Ts...>, Cs<Us...>){return Cs_end<Ts...>{};}
 
 
 template<class I, template <class...>class vec,class...Xs>
@@ -339,7 +347,7 @@ struct pack_until_this<I,vec<I,Xs...>>
 template<class I, template <class...>class vec,class...Xs>
 struct pack_until_this<I,vec<Xs...>>
 {
-  typedef transfer_t<decltype ((std::conditional_t<std::is_same_v<I,Xs>,Cs<pack_end>,Cs<Xs>>{}|...)),vec<>> type;
+  typedef transfer_t<decltype ((std::conditional_t<std::is_same_v<I,Xs>,Cs<pack_end>,Cs<Xs>>{}||...)),vec<>> type;
 };
 
 
@@ -469,6 +477,55 @@ template <class...Ts,  class ...Tu> struct pack_to_column<std::tuple<Ts...>,Tu..
 {
   using type=pack_to_column_t<std::index_sequence_for<Ts...>,std::tuple<Ts...>,Tu...>;
 };
+
+
+
+template<template<class ...>class V>
+struct filter_this_template_class
+{
+  template<class T>
+  static constexpr bool value=is_this_template_class_v<V,T>;
+};
+
+template<class >struct is_in_this_set;
+
+template<template<class...>class C, class... Ts>
+struct is_in_this_set<C<Ts...>>
+{
+  template<class T>
+  static constexpr bool value=is_in_pack(T{},C<Ts...>{});
+};
+
+
+
+
+template<class F>struct Not{
+  template<class T>
+  static constexpr bool value=! F::template value<T>;
+
+};
+
+template<class F, class G>struct Or{
+  template<class T>
+  static constexpr bool value= (F::template value<T> || G::template value<T>);
+
+};
+
+
+
+
+template<class F>
+struct filter_by{};
+
+template<template <class...> class V, class ...Ts, class filter>
+auto operator | (V<Ts...>, filter_by<filter>)
+{
+  return transfer_t<decltype ((Cs<>{}||...||std::conditional_t<filter::template value<Ts>,Cs<Ts>,Cs<>>{})),V<>>{};
+
+}
+
+
+
 
 
 

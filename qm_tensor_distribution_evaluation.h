@@ -2,23 +2,23 @@
 #define QM_TENSOR_DISTRIBUTION_EVALUATION_H
 #include <qm_tensor_distribution_declaration.h>
 
-template<class unit,class Rnd>
-bool myInvoke(Sample, Bernoulli_Distribution& d, Rnd& mt)
+template<class Rnd>
+auto myInvoke(Sample, Bernoulli_Distribution& d, Rnd& mt)
 {
 
-  return d.d()(mt.value());
+  return v<bool,dimension_less>(d.d()(mt.value()));
 }
 
 template<class unit,class Rnd>
-bool myInvoke(Sample, Bernoulli_Distribution& d, Rnd& mt,const v<double,unit>& p)
+auto myInvoke(Sample, Bernoulli_Distribution& , Rnd& mt,const v<double,unit>& p)
 {
 
-  return d.d()(mt.value(),p.value());
+  return v(Bernoulli_Distribution::distribution_type{p.value()}(mt.value()),dimension_less{});
 }
 template<class unit,class Rnd>
-bool myInvoke(Sample, Bernoulli_Distribution& d, Rnd& mt,const logv<double,unit>& p)
+auto myInvoke(Sample, Bernoulli_Distribution& , Rnd& mt,const logv<double,unit>& p)
 {
-  return d.d()(std::exp(mt.value()),p.value());
+  return v(Bernoulli_Distribution::distribution_type{std::exp(p.value())}(mt.value()),dimension_less{});
 }
 
 
@@ -164,7 +164,7 @@ auto myInvoke(Sample, stretch_move_Distribution<Real>, Rnd& mt,const v<Real,dime
 {
   std::uniform_real_distribution<double> U(std::sqrt(1.0 / alfa.value()),
                                            std::sqrt(alfa.value()));
-  return  sqr(U(mt));
+  return  sqr(U(mt.value()));
 }
 
 

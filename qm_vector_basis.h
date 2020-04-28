@@ -271,6 +271,7 @@ template<class e_i,class Value_type> struct get_Field_Indexes <x_i<e_i,Value_typ
   typedef vec<> type;
 };
 
+
 template<class... Is> struct get_Field_Indexes <Position<Is...>>
 {
   typedef vec<Is...> type;
@@ -593,9 +594,24 @@ template<class e_i,class Value_type> struct get_Field_Indexes <x_i_view_const<e_
 {
   typedef vec<> type;
 };
+template<class e_i,class Value_type,class... Xs> struct get_Field_Indexes <x_i_view_non_const<e_i,vector_field< vec<Xs...>,Value_type>>>
+{
+  typedef vec<Xs...> type;
+};
+template<class e_i,class Value_type> struct get_Field_Indexes <x_i_view_non_const<e_i,Value_type>>
+{
+  typedef vec<> type;
+};
+
+
 template<class... xis>
 class x_i_tuple_view_const;
 
+template<class... xis>
+struct get_Field_Indexes <x_i_tuple_view_const<xis...>>
+{
+  typedef vec<> type;
+};
 
 
 template<class... xis>
