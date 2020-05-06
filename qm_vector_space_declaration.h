@@ -299,7 +299,9 @@ template<class...x_is> struct vector_space: private x_is...
     (((*this)[non_const<typename x_is_common::ei>{}]+=y[typename x_is_common::ei{}]),...);
   }
 
-  vector_space()=default;
+  vector_space(){
+ //   auto o=(x_is{},...);
+  };
 
 
 

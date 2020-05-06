@@ -25,6 +25,8 @@ public:
   //  typedef Cs<v_is...> myx_is;
   //  using myIndex=Index<typename v_is::ei...>;
 
+  vector_tuple()=default;
+
   auto& getTuple(){return v_;}
   auto & getTuple()const {return v_;}
 
@@ -103,15 +105,13 @@ public:
 
   static constexpr auto size() {return sizeof... (v_is);}
 
-  explicit vector_tuple(v_is&&...xs):v_{std::move(xs)...}{}
+  explicit vector_tuple(v_is&&...xs):v_{std::forward<v_is>(xs)...}{}
   explicit vector_tuple(v_is const&...xs):v_{xs...}{}
 
 
 
-  vector_tuple()=default;
 
 };
-
 
 
 

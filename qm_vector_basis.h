@@ -10,7 +10,7 @@ template<class Id> struct pass_id{};
 
 
 template<class x_i, class Position=std::decay_t<decltype (std::declval<x_i>().begin() ) > >
-constexpr inline bool self_referred_v = std::is_same_v<std::decay_t<decltype(std::declval<x_i>())>,std::decay_t<decltype (std::declval<x_i>()(Position{}))>>;
+constexpr inline bool self_referred_v = std::is_same_v<std::decay_t<decltype(std::declval<x_i const&>())>,std::decay_t<decltype (std::declval<x_i const &>()(Position{}))>>;
 
 
 
@@ -424,7 +424,7 @@ public:
 
   typedef e_i ei;
 
-
+  x_i_view_const()=default;
 
   typedef e_i myId;
 

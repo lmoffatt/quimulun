@@ -3,20 +3,20 @@
 #include <qm_tensor_distribution_declaration.h>
 
 template<class Rnd>
-auto myInvoke(Sample, Bernoulli_Distribution& d, Rnd& mt)
+auto myInvoke(Sample, Bernoulli_Distribution d, Rnd& mt)
 {
 
   return v<bool,dimension_less>(d.d()(mt.value()));
 }
 
 template<class unit,class Rnd>
-auto myInvoke(Sample, Bernoulli_Distribution& , Rnd& mt,const v<double,unit>& p)
+auto myInvoke(Sample, Bernoulli_Distribution , Rnd& mt,const v<double,unit>& p)
 {
 
   return v(Bernoulli_Distribution::distribution_type{p.value()}(mt.value()),dimension_less{});
 }
 template<class unit,class Rnd>
-auto myInvoke(Sample, Bernoulli_Distribution& , Rnd& mt,const logv<double,unit>& p)
+auto myInvoke(Sample, Bernoulli_Distribution , Rnd& mt,const logv<double,unit>& p)
 {
   return v(Bernoulli_Distribution::distribution_type{std::exp(p.value())}(mt.value()),dimension_less{});
 }
@@ -37,7 +37,7 @@ auto myInvoke(logProbability,  Bernoulli_Distribution,bool x,const v<double,unit
 
 
 template<class Int,class unit,class Rnd>
-auto myInvoke(Sample, Uniform_Integer_Distribution<Int>& d,Rnd& mt,const v<Int,unit>& min, const v<Int,unit>& max)
+auto myInvoke(Sample, Uniform_Integer_Distribution<Int> d,Rnd& mt,const v<Int,unit>& min, const v<Int,unit>& max)
 {
   return v<Int,unit>(d.d()(mt.value(),min.value(),max.value()));
 }
@@ -57,7 +57,7 @@ auto myInvoke(logProbability, Uniform_Integer_Distribution<Int>,const v<Int,unit
 }
 
 template<class Int,class unit,class Rnd>
-auto myInvoke(Sample, Uniform_Index_Distribution<Int>& d,Rnd& mt,const v<Int,unit>& min, const v<Int,unit>& max)
+auto myInvoke(Sample, Uniform_Index_Distribution<Int> d,Rnd& mt,const v<Int,unit>& min, const v<Int,unit>& max)
 {
   return v<Int,unit>(d.d()(mt.value(),min.value(),max.value()-1));
 }
@@ -80,14 +80,14 @@ auto myInvoke(logProbability, Uniform_Index_Distribution<Int>,const v<Int,unit>&
 
 
 template<class Real,class unit,class Rnd>
-auto myInvoke(Sample, Normal_Distribution<Real>& d,Rnd& mt, const v<double,unit>& mean, const v<double,unit>& stddev)
+auto myInvoke(Sample, Normal_Distribution<Real> d,Rnd& mt, const v<double,unit>& mean, const v<double,unit>& stddev)
 {
 
   return v<double,unit>(d.d()(mt.value())*stddev.value()+mean.value());
 }
 
 template<class Real,class unit,class Rnd>
-auto myInvoke(Sample, Normal_Distribution<Real>& d,Rnd& mt, const logv<double,unit>& mean, const v<double,dimension_less>& stddev)
+auto myInvoke(Sample, Normal_Distribution<Real> d,Rnd& mt, const logv<double,unit>& mean, const v<double,dimension_less>& stddev)
 {
   double out=d.d()(mt.value())*stddev.value()+mean.value();
   return logv(std::move(out),unit{});
@@ -95,13 +95,13 @@ auto myInvoke(Sample, Normal_Distribution<Real>& d,Rnd& mt, const logv<double,un
 
 
 template<class Real,class unit>
-auto myInvoke(logProbability, const Normal_Distribution<Real>& ,const v<double,unit>& x,const v<double,unit>& mean, const v<double,unit>& stddev)
+auto myInvoke(logProbability,  Normal_Distribution<Real> ,const v<double,unit>& x,const v<double,unit>& mean, const v<double,unit>& stddev)
 {
   return -0.5 * std::log(2 * PI) -  log(stddev) -
          v(0.5) * sqr((x - mean) / stddev);
 }
 template<class Real,class vx, class vm,class vs>
-auto myInvoke(logProbability, const Normal_Distribution<Real>& ,const vx& x,const vm& mean, const vs& stddev)
+auto myInvoke(logProbability,  Normal_Distribution<Real> ,const vx& x,const vm& mean, const vs& stddev)
 {
 
 
@@ -110,7 +110,7 @@ auto myInvoke(logProbability, const Normal_Distribution<Real>& ,const vx& x,cons
 }
 
 template<class Real,class derVar,class derMean, class derStd>
-auto myInvoke(FisherInformationMatrix, const Normal_Distribution<Real>& ,const derVar& var ,const derMean& mean ,const derStd& stddev )
+auto myInvoke(FisherInformationMatrix, const Normal_Distribution<Real> ,const derVar& var ,const derMean& mean ,const derStd& stddev )
 {
 
   auto dvar= Df(var)/center(stddev);
@@ -126,22 +126,22 @@ auto myInvoke(FisherInformationMatrix, const Normal_Distribution<Real>& ,const d
 
 
 template<class Real,class unit,class Rnd>
-auto myInvoke(Sample, Exponential_Distribution<Real>& d,Rnd& mt, const v<double,unit>& mean)
+auto myInvoke(Sample, Exponential_Distribution<Real> d,Rnd& mt, const v<double,unit>& mean)
 {
   return v<double,unit>(d.d()(mt)/center(mean).value());
 }
 
 template<class Real,class unit>
-auto myInvoke(logProbability, Exponential_Distribution<Real>& ,const v<double,unit>& x,const v<double,unit>& mean)
+auto myInvoke(logProbability, Exponential_Distribution<Real> ,const v<double,unit>& x,const v<double,unit>& mean)
 {     return -log(mean) -(x/ mean);
 }
 template<class Real,class vx, class vm>
-auto myInvoke(logProbability, Exponential_Distribution<Real>& ,const vx& x,const vm& mean)
+auto myInvoke(logProbability, Exponential_Distribution<Real> ,const vx& x,const vm& mean)
 {     return -log(mean) -(x/ mean);
 }
 
 template<class Real,class derVar,class derMean>
-auto myInvoke(FisherInformationMatrix, Exponential_Distribution<Real>& ,const derVar& var,const derMean& mean )
+auto myInvoke(FisherInformationMatrix, Exponential_Distribution<Real> ,const derVar& var,const derMean& mean )
 {
   auto dvar= Df(var)/center(mean);
   auto dmean= Df(mean)/center(mean);

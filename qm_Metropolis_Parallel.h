@@ -1555,7 +1555,7 @@ struct Parallel_Metropolis_Hastings_emcee_step_q
             Dq_new(Start_new<Step_mcmc,nstep>{},Sample{},emcee_fi_start{},Arguments<input_data_ei>{}),
             Dq_new(Candidate_mcmc{},Sample{},emcee_fi_step{},Arguments<Step_mcmc,input_data_ei>{}),
             Dq_new(Thermo_Jump{},Sample{},thermo_jump_result_fi{},Arguments<Candidate_mcmc,input_data_ei>{}),
-            Fq_new(Next_new<Step_mcmc,nstep>{},Calculator_new{},thermo_jump_apply_result_fi{}, Arguments<Thermo_Jump, Candidate_mcmc>{})
+            Fq_new(Next_new<Step_mcmc,nstep>{},Calculator_new{},thermo_jump_apply_result_fi{}, Arguments<Thermo_Jump, Candidate_mcmc,input_data_ei>{})
 
 
         };
@@ -1592,12 +1592,12 @@ struct Parallel_Metropolis_Hastings_emcee_q
         f_i(proposed_distribution_preparation_fi{},Stretch_move_q{}.prepare(Arguments<Parameters_ei, walker_ei,stretch_alfa>{})),
         f_i(proposed_distribution_execution_fi{},Stretch_move_q{}.sample(Arguments<Parameters_ei, walker_ei,stretch_alfa>{})),
         f_i(proposed_distribution_metropolis_test_fi{},Stretch_move_q{}.test(Arguments_xi<Proposed_preparation, Current<mcmc>, Candidate<mcmc>, Current<Parameters_ei>>{})),
-        F_new(distribution_data_ei{},Glue_new{},Arguments<stretch_alfa>{}),
+        F_new(distribution_data_ei{},Glue_new{},Arguments<stretch_alfa,walker_ei,beta_ei>{}),
         f_i(emcee_fi_start{},Metropolis_Hastings_emcee_q{}.start(Arguments<parallel_model, parallel_data>{})),
         f_i(emcee_fi_step{},Metropolis_Hastings_emcee_q{}.step(Arguments<parallel_model, parallel_data,
                                                                           proposed_distribution_preparation_fi,proposed_distribution_execution_fi,proposed_distribution_metropolis_test_fi,distribution_data_ei>{})),
         F_new(input_data_ei{},Glue_new{},Arguments<parallel_model, parallel_data,proposed_distribution_preparation_fi,proposed_distribution_execution_fi,
-                                                     proposed_distribution_metropolis_test_fi,distribution_data_ei, beta_ei,num_walkers_ei>{}),
+                                                     proposed_distribution_metropolis_test_fi,distribution_data_ei, beta_ei,num_walkers_ei, walker_ei>{}),
         f_i(thermo_jump_result_fi{},temperature_jump_eval_q{}(Arguments<beta_ei, num_walkers_ei, Current<mcmc>>{})),
         f_i(thermo_jump_apply_result_fi{},temperature_jump_exec_q{}(Arguments<Parameters_ei,  walker_ei, accept_k,Current<mcmc>>{}))
 

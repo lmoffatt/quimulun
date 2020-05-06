@@ -148,6 +148,7 @@ public:
   Position(const aPosition& p):i{p[Id{}]()}{  }
 
 
+
   friend std::ostream& operator<<(std::ostream& os, const Position& me) {
     os<<className.c_str()<<"="<<me();
     return os;}

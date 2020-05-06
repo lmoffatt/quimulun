@@ -299,6 +299,7 @@ private:
 public:
   typedef   Id myId;
   auto &operator[](Id)const {return *this;}
+  F_new()=default;
 
   auto& f()const{ return g_;}
   auto& f(){ return g_;}
@@ -424,8 +425,23 @@ public:
   typedef   Id myId;
   auto &operator[](Id)const {return *this;}
 
+  Fq_new()=default;
   Fq_new(Id&& ,Calc&&,Fi&& , Arguments<Xs...>&&){}
 };
+
+template<class Id,class pos, class Calc,class Fi, class... Xs>
+struct  Fq_new<Start_new<Id,pos>,Calc,Fi,Arguments<Xs...>>
+{
+public:
+  typedef   Start_new<Id,pos> myId;
+  auto &operator[](Id)const {return *this;}
+  auto &operator[](myId)const {return *this;}
+
+Fq_new()=default;
+  Fq_new(myId&& ,Calc&&,Fi&& , Arguments<Xs...>&&){}
+};
+
+
 
 template<class Id,class Calc,class Fi, class... Xs>
 Fq_new(Id&& ,Calc&&,Fi&& , Arguments<Xs...>&&)->Fq_new<Id,Calc,Fi,Arguments<Xs...>>;
@@ -439,8 +455,24 @@ public:
   typedef   Id myId;
   auto &operator[](Id)const {return *this;}
 
+  Dq_new()=default;
   Dq_new(Id&& ,Calc&&,Fi&& , Arguments<Xs...>&&){}
 };
+
+template<class Id,class pos,class Calc,class Fi, class... Xs>
+struct  Dq_new<Start_new<Id,pos>,Calc,Fi,Arguments<Xs...>>
+{
+public:
+  typedef   Start_new<Id,pos> myId;
+  auto &operator[](Id)const {return *this;}
+  auto &operator[](myId)const {return *this;}
+  Dq_new()=default;
+
+  Dq_new(myId&& ,Calc&&,Fi&& , Arguments<Xs...>&&){}
+};
+
+
+
 
 template<class Id,class Calc,class Fi, class... Xs>
 struct  Dq_new<Id,Calc,Fi,Arguments_xi<Xs...>>
@@ -448,6 +480,7 @@ struct  Dq_new<Id,Calc,Fi,Arguments_xi<Xs...>>
 public:
   typedef   Id myId;
   auto &operator[](Id)const {return *this;}
+  Dq_new()=default;
 
   Dq_new(Id&& ,Calc&&,Fi&& , Arguments_xi<Xs...>&&){}
 };
@@ -460,6 +493,7 @@ struct  Dq_new<Id,Calc,Fi,Arguments<Xs...>, Index_struct<Is...>>
 public:
   typedef   Id myId;
   auto &operator[](Id)const {return *this;}
+  Dq_new()=default;
 
   Dq_new(Id&& ,Calc&&,Fi&& , Arguments<Xs...>&&, Index_struct<Is...>&&){}
 };
@@ -681,11 +715,11 @@ public:
 
 
 private:
-  Value_type const& value_;
+  Value_type const* value_;
 public:
-
-  explicit f_i_view_const(const value_type& x):value_{x}{}
-  explicit f_i_view_const(e_i,const value_type& x):value_{x}{}
+  f_i_view_const(){}
+  explicit f_i_view_const(const value_type& x):value_{&x}{}
+  explicit f_i_view_const(e_i,const value_type& x):value_{&x}{}
 
 
   f_i_view_const const& operator[](e_i)const  {return *this;}
@@ -701,15 +735,15 @@ public:
 
 
 
-  auto& operator()()const { return value_;}
+  auto& operator()()const { return *value_;}
 
 
 
   template<class Position>
-  auto& operator()(const Position& p){ return value_(p);}
+  auto& operator()(const Position& p){ return (*value_)(p);}
 
   template<class Position>
-  auto& operator()(const Position& p)const { return value_(p);}
+  auto& operator()(const Position& p)const { return (*value_)(p);}
 
 };
 
@@ -734,6 +768,8 @@ template<class...Fs > struct  quimulun: public Fs...{
   
   quimulun(Fs&&...f):Fs{std::move(f)}...{}
   quimulun(const Fs&...f):Fs{f}...{}
+  quimulun()=default;
+
 
   friend constexpr auto begin(const quimulun& ){ return Position<>{};}
 

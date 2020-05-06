@@ -78,11 +78,11 @@ template<class Id> struct Out{
 };
 
 
-template<class Id> struct Proper_Id{using type=Id;};
+template<class Id> struct Outer_Id{using type=Id;};
 
-template<class Id> struct Proper_Id<Out<Id>>{using type=Id;};
+template<class Id> struct Outer_Id<Out<Id>>{using type=Id;};
 
-template<class Id> using Proper_Id_t=typename Proper_Id<Id>::type;
+template<class Id> using Outer_Id_t=typename Outer_Id<Id>::type;
 
 
 template<class Id> struct Target_Id{using type=Id;};
@@ -297,6 +297,11 @@ auto consolidate(vec<>,const Datas&...d);
 template <class Vector, class X, class... X1, class Position, class Value, class... Datum1>
 void fill_vector_field(Vector&v,Position& p,vec<X,X1...> ,const Value& one,const Datum1&... two);
 
+
+template <class Vector, class X, class... X1, class Position, class Value, class... Datum1>
+void fill_vector_field_new(Vector&v,Position& p,vec<X,X1...> ,const Value& one,const Datum1&... two);
+
+
 template<class...> class vector_field;
 
 
@@ -351,6 +356,7 @@ public:
   }
 
 
+
   template<class Position>
   auto& operator()(const Position& p){ return vec<Xs...>::get(value_,p);}
 
@@ -396,7 +402,10 @@ public:
   template<class I>
   static auto begin(I)->std::enable_if_t<is_in_pack(I{},Cs<Xs...>{}),pack_until_this_t<I,Position<Xs...>>>
 
-  {return pack_until_this_t<I,Position<Xs...>>{};}
+  {
+    //using test =typename C<I,pack_until_this_t<I,Position<Xs...>>>::ggreg;
+    return pack_until_this_t<I,Position<Xs...>>{};
+  }
 
 
 
@@ -480,6 +489,9 @@ struct
 {
   vectorfield const & v_;
 
+  template<class Index2, class Position, typename =std::enable_if_t<!std::is_same_v<Index, Index2>>>
+  auto size(Index2,const Position& p)const  {return v_.size(Index2{},p);}
+
   vector_field_size(vectorfield const & v, Index): v_{v}{}
 
   template<class Position>
@@ -491,7 +503,8 @@ struct
 
 };
 
-
+template<class vectorfield, class Index>
+vector_field_size(vectorfield const & v, Index)->vector_field_size<vectorfield,Index>;
 
 
 
@@ -535,13 +548,15 @@ template<class vectorfield, class Id>
 struct
  x_i_vector_field_const
 {
-  vectorfield const & v_;
+  vectorfield const * v_;
+
+  using myId=Id;
 
   using myIndexes=typename vectorfield:: myIndexes;
 
   static constexpr auto size(){return size_of_pack(myIds_t<vectorfield>{});}
 
-  x_i_vector_field_const(vectorfield const & v, Id): v_{v}{}
+  x_i_vector_field_const(vectorfield const & v, Id): v_{&v}{}
 
   template<class Position>
   auto operator()(const Position& p)const//->decltype (get_at(v_(p),Id{})())
@@ -551,11 +566,11 @@ struct
 //    using test3=typename Cs<Id,decltype (v_(p))>::test_position;
 //    using test4=typename Cs<Id,decltype (get_at(v_(p),Id{}))>::get_at;
   //  using test2=typename Cs<Id,decltype(p),vectorfield>::vector_field;
-    return get_at(v_(p),Id{})();
+return get_at((*v_)(p),Id{})();
   }
 
   template<class Index,class Position>
-  auto size(Index,const Position& p) const { return v_.size(Index{},p);}
+  auto size(Index,const Position& p) const { return v_->size(Index{},p);}
 
 
 
@@ -578,10 +593,10 @@ struct
   x_i_vector_field_non_const(vectorfield  & v, Id): v_{v}{}
 
   template<class Position>
-  auto operator()(const Position& p)->decltype (get_at(v_(p),Id{})())
+  auto operator()(const Position& p) ->decltype (get_at(v_(p),non_const<Id>{})())
   {
     // using test=typename Cs<Id,decltype (v_),decltype (get_at(v_(p),Id{})())>::vector_field;
-    return get_at(v_(p),Id{})();
+    return get_at(v_(p),non_const<Id>{})();
   }
 
   template<class Index,class Position>
@@ -592,6 +607,21 @@ struct
   auto& operator()() {return *this;}
 
 };
+
+
+
+
+template<class vectorfield, class Id>
+x_i_vector_field_non_const<vectorfield,Id> make_vector_field_view(vectorfield& x, Id)
+{
+  return x_i_vector_field_non_const<vectorfield,Id>(x,Id{});
+}
+
+template<class vectorfield, class Id>
+x_i_vector_field_const<vectorfield,Id> make_vector_field_view(vectorfield const & x, Id)
+{
+  return x_i_vector_field_const<vectorfield,Id>(x,Id{});
+}
 
 
 
@@ -627,7 +657,7 @@ auto get_at(const vector_field<vec<Xs...>,Value>& x,Id)
 
 
 template<class Id, class... Xs, class Value>
-auto get_at( vector_field<vec<Xs...>,Value>& x,Id)
+auto get_at( vector_field<vec<Xs...>,Value>& x,non_const<Id>)
 {
   //using test=typename std::conditional_t<is_this_template_class_v<non_const,Id>,
    //                                        Id,std::vector<double>>::value_type;
@@ -694,10 +724,16 @@ struct get_Field_Indexes <
 template<class Id, class vectorfield>
 struct vector_field_Position
 {
+  vectorfield const * v_;
 
   using myPosition=transfer_t<typename vectorfield::myIndexes,Position<>>;
 
-  vector_field_Position(Id, vectorfield const & ){}
+  vector_field_Position(Id, vectorfield const & v ):v_{&v}{}
+
+  template<class Index, class Position>
+  auto size(Index,const Position& p)const  {return v_->size(Index{},p);}
+
+
 
   template<class... Is>
   auto operator()(const Position<Is...>& p)const
@@ -735,19 +771,25 @@ public:
 
 
 
-template<class vectorfield, class Position>
+template<class vectorfield, class Position_field>
 struct vector_field_subElement
 {
   vectorfield const & v_;
-  Position const & p_;
+  Position_field const & p_;
+
+  template<class Index, class Position>
+  auto size(Index,const Position& p)const  {return p_.size(Index{},p_(p));}
 
 
-  vector_field_subElement(vectorfield const & v, Position const & p): v_{v},p_{p}{}
+
+  vector_field_subElement(vectorfield const & v, Position_field const & p): v_{v},p_{p}{}
 
   template<class Pos>
   auto operator()(const Pos& p)const
   {
-  //  using test=typename Cs<decltype (p),decltype (p_(p)),decltype (v_(p_(p)))>::laconcha;
+//   using test=typename Cs<vectorfield,Position,decltype (p)>::laconcha;
+//   using test2=typename Cs<decltype (p_(p))>::laconcha;
+//   using test3=typename Cs<decltype (v_(p_(p)))>::laconcha;
     return v_(p_(p));
   }
   auto& operator()()const {return *this;}
@@ -776,6 +818,19 @@ void fill_vector_field(Vector& v,Position& ,vec<X1>)
 
 }
 
+template <class Vector, class Position, class... Datum>
+void fill_vector_field_new(Vector&,Position& ,vec<>, const Datum&...  )
+{}
+
+template <class Vector, class Position, class X1>
+void fill_vector_field_new(Vector& v,Position& ,vec<X1>)
+{
+  v.resize(1);
+
+}
+
+
+
 
 template <class Vector, class X, class... X1, class Position, class Value, class... Datum1>
 void fill_vector_field(Vector&v,Position& p,vec<X,X1...> ,const Value& one,const Datum1&... two)
@@ -791,6 +846,20 @@ void fill_vector_field(Vector&v,Position& p,vec<X,X1...> ,const Value& one,const
   else fill_vector_field(v,p,vec<X,X1...>{},two...);
 }
 
+template <class Vector, class X, class... X1, class Position, class Value, class... Datum1>
+void fill_vector_field_new(Vector&v,Position& p,vec<X,X1...> ,const Value& one,const Datum1&... two)
+{
+  if constexpr (is_in_pack(X{},get_Field_Indexes_t<Value>{}))
+  {
+    //using test=typename Cs< get_Field_Indexes_t<Value>,Value>::ge;
+    auto n=one().size(X{},p);
+    v.resize(n);
+    auto& i=p[X{}]();
+    for (i=0; i<n; ++i)
+      fill_vector_field_new(v[i],p,vec<X1...>{},one,two...);
+  }
+  else fill_vector_field_new(v,p,vec<X,X1...>{},two...);
+}
 
 
 template< class Value_type,class... myIndex,class...Datas>

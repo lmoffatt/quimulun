@@ -112,6 +112,7 @@ private:
 
 public:
   auto& d(){return d_;}
+  Normal_Distribution()=default;
 
 
 };
@@ -148,7 +149,7 @@ template<class Id,class Distribution, class... Xs>
 struct  D<Id,Distribution,Arguments<Xs...>>
 {
 public:
-
+ D()=default;
   typedef   Id myId;
   auto& operator[](Id)const {return *this;}
   auto& operator[](Id) {return *this;}
@@ -159,7 +160,7 @@ template<class Id,class Distribution, class... Xs, class...XXs>
 struct  D<Id,Distribution,Arguments<Xs...>, Index_struct<XXs...>>
 {
 public:
-
+  D()=default;
   typedef   Id myId;
   auto& operator[](Id)const {return *this;}
   auto& operator[](Id) {return *this;}
