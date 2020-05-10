@@ -12,19 +12,35 @@ struct Nothing{
   friend Nothing operator||(Nothing, Nothing ){return Nothing{};}
 
   template<class Something>
-  friend auto operator-( Something&& s, Nothing)->decltype (s)
+  friend decltype(auto) operator-( Something&& s, Nothing)//->decltype (s)
   {return std::forward<Something>(s);}
 
   template<class Something>
-  friend auto operator+( Something&& s, Nothing)->decltype (s)
+  friend decltype(auto) operator+( Something&& s, Nothing)//->decltype (s)
   {return std::forward<Something>(s);}
 
+
+
   template<class Something>
-  friend auto operator||(Nothing, Something&& s)->decltype (s)
-  {return std::forward<Something>(s);}
+  friend Something operator||(Nothing, Something&& s)//->decltype (s)
+  {return s;}
+
+//  template<class Something>
+//  friend auto& operator||(Nothing, const Something& s)//->decltype (s)
+//  {return s;}
+
+
+
   template<class Something>
-  friend auto operator||( Something&& s, Nothing)->decltype (s)
-  {return std::forward<Something>(s);}
+  friend Something operator||( Something&& s, Nothing)//->decltype (s)
+  {return s;}
+
+//  template<class Something>
+//  friend auto& operator||( const Something& s, Nothing)//->decltype (s)
+//  {return s;}
+
+
+
 
   constexpr auto size(){return 0;}
   using myIds=Cs<>;
@@ -98,7 +114,7 @@ template <class Id0, class Id,class Idnext,class... Ids> struct CycleIndex<Id0,I
   inline constexpr auto next(Id){return Idnext{};}
 
   template<class anId>
-  auto operator()(anId)->std::enable_if_t<is_in_pack<anId,Id,Idnext,Ids...>(),std::variant<Id,Idnext,Ids...>>
+  decltype(auto) operator()(anId)//->std::enable_if_t<is_in_pack<anId,Id,Idnext,Ids...>(),std::variant<Id,Idnext,Ids...>>
   {
     return std::variant<Id,Idnext,Ids...>{next(anId{})};
   }
@@ -313,11 +329,11 @@ inline constexpr bool only_xi_of_fi_non_const_v=is_this_template_class_v<x_i,C>|
 
 
 template<class C>
-auto only_xi_or_fi(C&& x)->std::conditional_t<(only_xi_of_fi_v<C>),
-                                                decltype(x),Nothing>
+auto only_xi_or_fi(C&& x)
+    ->std::conditional_t<(only_xi_of_fi_v<C>),C,Nothing>
 {
   if constexpr (only_xi_of_fi_v<C>)
-    return std::forward<C>(x);
+    return x;
   else
     return Nothing{};
 
@@ -325,11 +341,12 @@ auto only_xi_or_fi(C&& x)->std::conditional_t<(only_xi_of_fi_v<C>),
 
 
 template<class C>
-auto only_xi(C&& x)->std::conditional_t<
-    (is_this_template_class<x_i,std::decay_t<C>>::value||
-     is_this_template_class<x_i_view_const,std::decay_t<C>>::value||
-     is_this_template_class<x_i_view_non_const,std::decay_t<C>>::value),
-    decltype(x),Nothing>
+decltype(auto) only_xi(C&& x)
+//    ->std::conditional_t<
+//    (is_this_template_class<x_i,std::decay_t<C>>::value||
+//     is_this_template_class<x_i_view_const,std::decay_t<C>>::value||
+//     is_this_template_class<x_i_view_non_const,std::decay_t<C>>::value),
+//    decltype(x),Nothing>
 {
   if constexpr (is_this_template_class<x_i,std::decay_t<C>>::value||
                 is_this_template_class<x_i_view_const,std::decay_t<C>>::value||
@@ -351,7 +368,7 @@ template <class...> struct quimulun;
 
 template <class anId, class X
           , typename =std::enable_if_t< (only_xi_of_fi_v<X>)&&(!is_this_template_class_v<non_const , anId>)  ,int> >
-auto get_xi_from_this(anId, X&& xi)->std::conditional_t<std::is_same_v<anId,typename std::decay_t<X>::myId >, decltype (std::forward<X>(xi)),Nothing>
+decltype(auto) get_xi_from_this(anId, X&& xi)//->std::conditional_t<std::is_same_v<anId,typename std::decay_t<X>::myId >, decltype (std::forward<X>(xi)),Nothing>
 {
   if constexpr (std::is_same_v<anId,typename std::decay_t<X>::myId >)
     return std::forward<X>(xi);
@@ -361,8 +378,8 @@ auto get_xi_from_this(anId, X&& xi)->std::conditional_t<std::is_same_v<anId,type
 
 template <class anId, class X
           , typename =std::enable_if_t< (only_xi_of_fi_v<X>) > >
-auto get_xi_from_this(non_const<anId>, X&& xi)->
-    std::conditional_t<std::is_same_v<anId,typename std::decay_t<X>::myId >, decltype (std::forward<X>(xi)),Nothing>
+decltype(auto) get_xi_from_this(non_const<anId>, X&& xi)
+   // ->std::conditional_t<std::is_same_v<anId,typename std::decay_t<X>::myId >, decltype (std::forward<X>(xi)),Nothing>
 {
   if constexpr (std::is_same_v<anId,typename std::decay_t<X>::myId >)
     return std::forward<X>(xi);

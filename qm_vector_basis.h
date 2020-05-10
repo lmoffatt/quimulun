@@ -345,7 +345,7 @@ public:
   auto& operator()(){ return *value_;}
 
 
-  explicit x_i_view_non_const(const x_i_view_non_const& other):
+  x_i_view_non_const(const x_i_view_non_const& other):
                                                         value_{other.value_}
 
   {}
@@ -445,6 +445,29 @@ public:
   explicit x_i_view_const(e_i,const value_type& x):value_{&x}{}
 
 
+  // explicit
+  x_i_view_const(const x_i_view_const& other):value_{other.value_}{}
+
+  // explicit
+  x_i_view_const(x_i_view_const&& other):value_{std::move(other.value_)}{}
+
+  x_i_view_const& operator=(const x_i_view_const& other)
+  {
+    value_=other.value_;
+    return *this;
+  }
+  x_i_view_const& operator=(x_i_view_const&& other)
+  {
+    value_=other.value_;
+    return *this;
+  }
+
+  ~x_i_view_const(){}
+
+
+
+
+
   x_i_view_const const& operator[](e_i)const & {return *this;}
   //x_i& operator[](e_i) & {return *this;}
 
@@ -510,22 +533,6 @@ public:
     return p;
   }
 
- explicit x_i_view_const(const x_i_view_const& other):value_{other.value_}{}
-
-  explicit x_i_view_const(x_i_view_const&& other):value_{std::move(other.value_)}{}
-
-  x_i_view_const& operator=(const x_i_view_const& other)
-  {
-    value_=other.value_;
-    return *this;
-  }
-  x_i_view_const& operator=(x_i_view_const&& other)
-  {
-    value_=other.value_;
-    return *this;
-  }
-
-  ~x_i_view_const(){}
 
 
 

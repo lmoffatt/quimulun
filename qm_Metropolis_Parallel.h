@@ -1553,7 +1553,7 @@ struct Parallel_Metropolis_Hastings_emcee_step_q
         {
 
             Dq_new(Start_new<Step_mcmc,nstep>{},Sample{},emcee_fi_start{},Arguments<input_data_ei>{}),
-            Dq_new(Candidate_mcmc{},Sample{},emcee_fi_step{},Arguments<Step_mcmc,input_data_ei>{}),
+            Dq_new(Candidate_mcmc{},Sample{},emcee_fi_step{},Arguments<non_const<Step_mcmc>,input_data_ei>{}),
             Dq_new(Thermo_Jump{},Sample{},thermo_jump_result_fi{},Arguments<Candidate_mcmc,input_data_ei>{}),
             Fq_new(Next_new<Step_mcmc,nstep>{},Calculator_new{},thermo_jump_apply_result_fi{}, Arguments<Thermo_Jump, Candidate_mcmc,input_data_ei>{})
 

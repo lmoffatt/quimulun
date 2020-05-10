@@ -59,15 +59,23 @@ public:
 
 
   template<class andId, typename=std::enable_if_t<!is_this_template_class_v<non_const,andId>>>
-  auto operator[](andId)const//->decltype (std::apply([](auto const&... t){return (get_at(t, andId{})||...||Nothing{});}, v_))
+  decltype(auto) operator[](andId)const//->decltype ( (get_at(std::declval<v_is const&>(), andId{})||...||Nothing{}))
   {
-    return std::apply([](auto const&... t){return (get_at(t, andId{})||...||Nothing{});}, v_);
+    return std::apply([](auto const&... t)
+                          ->decltype (auto)
+                      {
+                        return (get_at(t, andId{})||...||Nothing{});
+//                        auto&& out=(get_at(t, andId{})||...||Nothing{});
+//                        return out;
+                      }, v_);
   }
 
   template<class andId>
-  auto operator[](andId)
+  decltype(auto) operator[](non_const<andId>)//->decltype ( (get_at(std::declval<v_is&>(), andId{})||...||Nothing{}))
   {
-    return std::apply([](auto&... t){return (get_at(t, andId{})||...||Nothing{});}, v_);
+    return std::apply([](auto&... t)
+                          ->decltype (auto)
+                      {return (get_at(t, non_const<andId>{})||...||Nothing{});}, v_);
   }
 
 

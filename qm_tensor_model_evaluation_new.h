@@ -14,7 +14,7 @@ template<class ...> struct Operation_non_serial;
 
 template <class anId, class X
           , typename =std::enable_if_t< (only_xi_of_fi_v<X>)&&(!is_this_template_class_v<non_const , anId>)  ,int> >
-auto get_xi_from_this_new(anId, X&& xi)->std::conditional_t<std::is_same_v<anId,typename std::decay_t<X>::myId >, decltype (std::forward<X>(xi)),Nothing>
+decltype(auto) get_xi_from_this_new(anId, X&& xi)//->std::conditional_t<std::is_same_v<anId,typename std::decay_t<X>::myId >, decltype (std::forward<X>(xi)),Nothing>
 {
   if constexpr (std::is_same_v<anId,typename std::decay_t<X>::myId >)
     return std::forward<X>(xi);
@@ -24,8 +24,8 @@ auto get_xi_from_this_new(anId, X&& xi)->std::conditional_t<std::is_same_v<anId,
 
 template <class anId, class X
           , typename =std::enable_if_t< (only_xi_of_fi_v<X>) > >
-auto get_xi_from_this_new(non_const<anId>, X&& xi)->
-    std::conditional_t<std::is_same_v<anId,typename std::decay_t<X>::myId >, decltype (std::forward<X>(xi)),Nothing>
+decltype(auto) get_xi_from_this_new(non_const<anId>, X&& xi)
+ //   ->std::conditional_t<std::is_same_v<anId,typename std::decay_t<X>::myId >, decltype (std::forward<X>(xi)),Nothing>
 {
   if constexpr (std::is_same_v<anId,typename std::decay_t<X>::myId >)
     return std::forward<X>(xi);
@@ -135,7 +135,7 @@ auto get_type_xi_from_this_new(anId, const Operation_non_serial<Ops...>& xi)->de
 }
 
 template <class anId, class...Ops>
-auto get_type_xi_from_this_new(anId,const Operation_serial<Ops...>& xi)//->decltype (only_xi_or_fi(std::forward<V>(xi)[anId{}]))
+auto get_type_xi_from_this_new(anId,const Operation_serial<Ops...>& xi)->decltype (xi[anId{}])
 {
   // using testOperation=typename anId::testOperation;
   // using test2=typename decltype(xi[anId{}])::test;
@@ -160,7 +160,7 @@ template <class anId, class V
               (!is_this_template_class_v<Operation_serial,V>)
               && (!(only_xi_of_fi_v<V>)||(is_this_template_class_v<x_i_vector_field_const,V>))
               > >
-auto get_type_xi_from_this_new(anId, V&& xi)->Result_t<decltype(only_xi_or_fi(get_at(std::forward<V>(xi),anId{})))>
+auto get_type_xi_from_this_new(anId, V&& xi)
 {
   //  using test=typename std::conditional_t<is_this_template_class_v<Current,anId>,
   //                                           Cs<anId,decltype (get_at(std::forward<V>(xi),anId{})),
@@ -193,7 +193,7 @@ auto get_type_xi_from_this_new(anId, V&& xi)->std::conditional_t<(std::is_same_v
 
 template <class anId, class...Datas
           , typename =std::enable_if_t<               ( !is_any_of_these_template_classes<all,Size_at_Index_new,pos_new,all_new,sub,subElement,Size,pass_id, std::tuple>::template value<anId>) >>
-auto get_from_new(anId, Datas&&...ds)->decltype ((get_xi_from_this_new(anId{},std::forward<Datas>(ds))||...))
+constexpr auto get_from_new(anId, Datas&&...ds)->decltype ((get_xi_from_this_new(anId{},std::forward<Datas>(ds))||...))
 {
   //using test=typename Cs<decltype(std::forward<Datas>(ds)[anId{}])...>::tew;
   return (get_xi_from_this_new(anId{},std::forward<Datas>(ds))||...);
@@ -202,7 +202,7 @@ auto get_from_new(anId, Datas&&...ds)->decltype ((get_xi_from_this_new(anId{},st
 template <class anId, class...Datas
           , typename =std::enable_if_t<
               ( !is_any_of_these_template_classes<all,Size_at_Index_new,pos_new,all_new,sub,subElement,Size,pass_id, std::tuple>::template value<anId>) >>
-auto get_type_from_new(anId, Datas&&...ds)
+decltype(auto) get_type_from_new(anId, Datas&&...ds)
 {
   //using test=typename Cs<decltype(std::forward<Datas>(ds)[anId{}])...>::tew;
   return (get_type_xi_from_this_new(anId{},std::forward<Datas>(ds))||...);
@@ -257,9 +257,9 @@ template <class Id, class Index, class...Datas>
 auto get_from_new(Size_at_Index_new<Id, Index>, Datas&&...ds)
 {
 
-  auto& x=get_from_new(Id{},std::forward<Datas>(ds)...)();
+  auto&& x=get_from_new(Id{},std::forward<Datas>(ds)...)();
   //using test=typename decltype (x)::trst;
-  if constexpr(std::is_same_v<decltype (x),Nothing >)
+  if constexpr(std::is_same_v<std::decay_t<decltype (x)>,Nothing >)
     return Nothing{};
   else
     //using test=typename Cs<decltype(std::forward<Datas>(ds)[anId{}])...>::tew;
@@ -340,10 +340,10 @@ auto get_from_new(subElement<Id,IndexId>, Datas&&...ds)
 {
  // using test=typename Cs<subElement<Id,IndexId>, decltype(get_from_new(Id{},std::forward<Datas>(ds)...)),decltype(get_from_new(IndexId{},std::forward<Datas>(ds)...))>::tew;
 
-  auto const & x=get_from_new(Id{},std::forward<Datas>(ds)...)();
+  auto&& x=get_from_new(Id{},std::forward<Datas>(ds)...)();
 
 
-  auto const& p=get_from_new(IndexId{},std::forward<Datas>(ds)...)();
+  auto&& p=get_from_new(IndexId{},std::forward<Datas>(ds)...)();
 
   //using test=typename decltype (x)::trst;
   if constexpr(std::is_same_v<decltype (x),Nothing >||std::is_same_v<decltype (p),Nothing >)
@@ -373,7 +373,7 @@ auto get_type_from_new(subElement<Id,IndexId>, Datas&&...ds)
 }
 
 template <class Id,  class  IndexId, class...Datas>
-auto get_from_new(sub<Id,IndexId>, Datas&&...ds)
+decltype(auto) get_from_new(sub<Id,IndexId>, Datas&&...ds)
 {
 
 //  using test=typename Cs<sub<Id, IndexId>>::gewlj;
@@ -586,13 +586,13 @@ void myInvoke_elem_new(R& r,Operation_sum<Ops...> ,const quimulun<Fs...>& f,rand
 
 
 template<class R,class Op,class Id,class Calc,class Fi, class... Xs, class Position,class random,class... Datas>
-auto myInvoke_pos_new(R& r,Op,const Dq_new<Id,Calc,Fi,Arguments<Xs...>>& ,const Position& p, random& mt,Datas&&...d)
+void myInvoke_pos_new(R& r,Op,const Dq_new<Id,Calc,Fi,Arguments<Xs...>>& ,const Position& p, random& mt,Datas&&...d)
 {
   myInvoke_elem_new(r(),Op{},get_from_new(Fi{},std::forward<Datas>(d)...)(),mt, get_from_new(Xs{},std::forward<Datas>(d)...)()(p)...);
 }
 
 template<class R,class Op,class Id,class Calc,class Fi, class... Xs, class ...XXs,class Position,class random,class... Datas>
-auto myInvoke_pos_new(R& r,Op,const Dq_new<Id,Calc,Fi,Arguments<Xs...>, Index_struct<XXs...>> ,const Position& p, random& mt,Datas&&...d)
+void myInvoke_pos_new(R& r,Op,const Dq_new<Id,Calc,Fi,Arguments<Xs...>, Index_struct<XXs...>> ,const Position& p, random& mt,Datas&&...d)
 {
   myInvoke_elem_new(r(),Op{},get_from_new(Fi{},std::forward<Datas>(d)...)(),mt, get_from_new(Xs{},std::forward<Datas>(d)...)()(p)...);
 }
@@ -907,7 +907,7 @@ void Invoke_on(vector_field<vec<Xs...>,vector_space<Outer_Id_t<x_is>...>>& out,
     auto p=myResult_type::begin();
 //    using test=typename Cs<Fids...,myvec,Xs...,decltype (get_from_new(Xs{},d...))...>::sgrek;
 //    using test2=typename Cs< Datas...>::datas;
-    fill_vector_field_new(outf,p,myvec{},get_from_new_not_Nothing(Args{},d...)...);
+    fill_vector_field_new(outf,p,myvec{},get_from_new/*_not_Nothing*/(Args{},std::forward<Datas>(d)...)...);
 //    fill_vector_field_new(outf,p,myvec{},get_from_new(Xs{},d...)...);
 
     out=myResult_type(std::move(outf));
@@ -918,7 +918,7 @@ void Invoke_on(vector_field<vec<Xs...>,vector_space<Outer_Id_t<x_is>...>>& out,
       allpos.push_back(p);
     } while(out.next(p));
 
-#pragma omp parallel for
+//#pragma omp parallel for
     for (std::size_t i=0; i<allpos.size(); ++i)
     {
       mySerialInvoke_pos_new(out(allpos[i]),Operation_vector<Operation<Ops,Fids>...>{},qui,allpos[i],mt,std::forward<Datas>(d)...);
@@ -2342,7 +2342,11 @@ auto sample_loop_Operation(const quimulun<Fs...>& qui, x_random& mt, Datas&&... 
 
   //using test=typename Cs<decltype (start_op)>::test;
 
-  auto init= Execute_on(init_op,qui,mt,std::forward<Datas>(d)...);
+  auto init=typename decltype(init_op)::myResult_type{};
+  Invoke_on(init,init_op,qui,mt,std::forward<Datas>(d)...);
+
+
+  //auto init= Execute_on(init_op,qui,mt,std::forward<Datas>(d)...);
 
   return Execute_on(start_op,qui,mt,init,std::forward<Datas>(d)...);
 

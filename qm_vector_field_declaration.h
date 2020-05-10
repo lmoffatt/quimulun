@@ -299,7 +299,7 @@ void fill_vector_field(Vector&v,Position& p,vec<X,X1...> ,const Value& one,const
 
 
 template <class Vector, class X, class... X1, class Position, class Value, class... Datum1>
-void fill_vector_field_new(Vector&v,Position& p,vec<X,X1...> ,const Value& one,const Datum1&... two);
+void fill_vector_field_new(Vector&v,Position& p,vec<X,X1...> , Value&& one, Datum1&&... two);
 
 
 template<class...> class vector_field;
@@ -487,25 +487,32 @@ template<class vectorfield, class Index>
 struct
     vector_field_size<vectorfield, Index>
 {
-  vectorfield const & v_;
+  vectorfield v_;
 
   template<class Index2, class Position, typename =std::enable_if_t<!std::is_same_v<Index, Index2>>>
   auto size(Index2,const Position& p)const  {return v_.size(Index2{},p);}
 
-  vector_field_size(vectorfield const & v, Index): v_{v}{}
+  vector_field_size(vectorfield  v, Index):
+                                              v_{v}
+  {
+
+  }
 
   template<class Position>
   auto operator()(const Position& p)const
   {
     return v(v_.size(Index{},p),dimension_less{});
   }
-  auto& operator()()const {return *this;}
+  auto operator()()const {return *this;}
 
 };
 
 template<class vectorfield, class Index>
-vector_field_size(vectorfield const & v, Index)->vector_field_size<vectorfield,Index>;
+vector_field_size(vectorfield const & v, Index)->vector_field_size<vectorfield const &,Index>;
 
+
+template<class vectorfield, class Index>
+vector_field_size(vectorfield&& v, Index)->vector_field_size<std::decay_t<vectorfield>,Index>;
 
 
 template<class vectorspace>
@@ -519,7 +526,7 @@ struct
   {
     return vectorspace::size();
   }
-  auto& operator()()const {return *this;}
+  auto operator()()const {return *this;}
 
 };
 
@@ -544,67 +551,196 @@ struct get_Field_Indexes <
 
 
 
-template<class vectorfield, class Id>
+template<class vectorfield_storing_type, class Id>
 struct
  x_i_vector_field_const
 {
-  vectorfield const * v_;
+  vectorfield_storing_type  value_;
+
+  static constexpr bool pointer_storage=std::is_pointer_v<vectorfield_storing_type>;
+
 
   using myId=Id;
+
+ // explicit
+      x_i_vector_field_const(const x_i_vector_field_const& other):value_{other.value_}{
+//        if constexpr (!pointer_storage)
+//        {
+//        std::cerr<<"x_i_vector_field_const @copy constructor &vector_field_value()="<<&vector_field_value()<<"\n";
+
+//        }
+      }
+
+ // explicit
+//      x_i_vector_field_const(x_i_vector_field_const&& other):value_{std::move(other.value_)}{}
+
+  x_i_vector_field_const& operator=(const x_i_vector_field_const& other)
+  {
+  //  std::cerr<<" @operator=(const x_i_vector_field_const& other) &value_ before ="<<value_<<"\n";
+    value_=other.value_;
+
+//    std::cerr<<"x_i_vector_field_const @operator=(const x_i_vector_field_const& other) &vector_field_value()="<<&vector_field_value()<<"\n";
+  //  std::cerr<<" @operator=(const x_i_vector_field_const& other) &value_ after="<<value_<<"\n";
+    return *this;
+  }
+//  x_i_vector_field_const& operator=(x_i_vector_field_const&& other)
+//  {
+//    value_=other.value_;
+//    return *this;
+//  }
+
+  ~x_i_vector_field_const(){
+//    if constexpr (!pointer_storage)
+//    std::cerr<<"x_i_vector_field_const @destructor() &vector_field_value()="<<&vector_field_value()<<"\n";
+
+  }
+
+  using vectorfield=std::decay_t<std::conditional_t<
+                       std::is_pointer_v<vectorfield_storing_type>,
+        std::remove_pointer_t<vectorfield_storing_type>,
+      vectorfield_storing_type>>;
 
   using myIndexes=typename vectorfield:: myIndexes;
 
   static constexpr auto size(){return size_of_pack(myIds_t<vectorfield>{});}
 
-  x_i_vector_field_const(vectorfield const & v, Id): v_{&v}{}
+
+  auto& vector_field_value()const
+  {
+    if constexpr (std::is_pointer_v<vectorfield_storing_type>)
+      return *value_;
+    else
+      return value_;
+  }
+  auto& vector_field_value()
+  {
+    if constexpr (std::is_pointer_v<vectorfield_storing_type>)
+      return *value_;
+    else
+      return value_;
+  }
+
+
+  x_i_vector_field_const(vectorfield_storing_type v, Id):
+                                              value_(v){
+
+  //  using test=typename Cs<vectorfield_storing_type>::vectorfield_storingtype;
+  //  using test2=typename Cs<vectorfield>::vectorfield;
+//  std::cerr<<"x_i_vector_field_const constructor value ="<<&v<<"\n";
+
+//  std::cerr<<"x_i_vector_field_const value ="<<&vector_field_value()<<"\n";
+
+  }
+
+
+  template<class vector_field_left_value, typename = std::enable_if_t<std::is_same_v<vector_field_left_value const*,vectorfield_storing_type >>>
+  x_i_vector_field_const(vector_field_left_value const & v, Id):
+                                              value_(&v){
+  //  std::cerr<<"x_i_vector_field_const constructor pointer ="<<&v<<"\n";
+  //  std::cerr<<"x_i_vector_field_const value"<<&vector_field_value()<<"\n";
+  }
+
+
+
 
   template<class Position>
-  auto operator()(const Position& p)const//->decltype (get_at(v_(p),Id{})())
+  decltype(auto) operator()(const Position& p)const//->decltype (get_at(v_(p),Id{})())
   {
+    //std::cerr<<" @operator()(const Position& p)const &value_ ="<<value_<<"\n";
 //    using test=typename Cs<Id,vectorfield>::vector_field;
 //    using test2=typename Cs<Id,decltype(p)>::position;
 //    using test3=typename Cs<Id,decltype (v_(p))>::test_position;
 //    using test4=typename Cs<Id,decltype (get_at(v_(p),Id{}))>::get_at;
   //  using test2=typename Cs<Id,decltype(p),vectorfield>::vector_field;
-return get_at((*v_)(p),Id{})();
+//    if constexpr (!pointer_storage)
+//    std::cerr<<"x_i_vector_field_const @operator() &vector_field_value()="<<&vector_field_value()<<"\n";
+    return get_at(vector_field_value()(p),Id{})();
   }
 
   template<class Index,class Position>
-  auto size(Index,const Position& p) const { return v_->size(Index{},p);}
+  auto size(Index,const Position& p) const {
+
+    //std::cerr<<" @size &value_ ="<<value_<<"\n";
+
+    return vector_field_value().size(Index{},p);}
 
 
 
-  auto& operator()()const {return *this;}
+
+  auto operator()()const {
+//    if constexpr (!pointer_storage)
+//    std::cerr<<"x_i_vector_field_const @operator() &operator()="<<&vector_field_value()<<"\n";
+
+    return *this;
+  }
 
 };
 
+
+
+
+template<class vectorfield, class Id>
+x_i_vector_field_const(vectorfield&&,Id)->x_i_vector_field_const<vectorfield,Id>;
+
+template<class vectorfield, class Id>
+x_i_vector_field_const(vectorfield const&,Id)->x_i_vector_field_const<vectorfield const*,Id>;
 
 
 template<class vectorfield, class Id>
 struct
     x_i_vector_field_non_const
 {
-  vectorfield  & v_;
+  vectorfield  * value_;
 
   using myIndexes=typename vectorfield:: myIndexes;
 
   static constexpr auto size(){return size_of_pack(myIds_t<vectorfield>{});}
 
-  x_i_vector_field_non_const(vectorfield  & v, Id): v_{v}{}
+  x_i_vector_field_non_const(vectorfield  & v, Id): value_{&v}{}
 
-  template<class Position>
-  auto operator()(const Position& p) ->decltype (get_at(v_(p),non_const<Id>{})())
+  //explicit
+      x_i_vector_field_non_const(const x_i_vector_field_non_const& other):value_{other.value_}{}
+
+  //explicit
+          x_i_vector_field_non_const(x_i_vector_field_non_const&& other):value_{std::move(other.value_)}{}
+
+  x_i_vector_field_non_const& operator=(const x_i_vector_field_non_const& other)
   {
-    // using test=typename Cs<Id,decltype (v_),decltype (get_at(v_(p),Id{})())>::vector_field;
-    return get_at(v_(p),non_const<Id>{})();
+    value_=other.value_;
+    return *this;
+  }
+  x_i_vector_field_non_const& operator=(x_i_vector_field_non_const&& other)
+  {
+    value_=other.value_;
+    return *this;
   }
 
+  ~x_i_vector_field_non_const(){}
+
+
+
+  template<class Position>
+  decltype (auto) operator()(const Position& p)// ->decltype (get_at(v_(p),non_const<Id>{})())
+  {
+    // using test=typename Cs<Id,decltype (v_),decltype (get_at(v_(p),Id{})())>::vector_field;
+    return get_at((*value_)(p),non_const<Id>{})();
+  }
+
+  template<class Position>
+  decltype(auto) operator()(const Position& p) const
+  {
+    // using test=typename Cs<Id,decltype (v_),decltype (get_at(v_(p),Id{})())>::vector_field;
+    return get_at((*value_)(p),Id{})();
+  }
+
+
+
   template<class Index,class Position>
-  auto size(Index,const Position& p) const { return v_.size(Index{},p);}
+  auto size(Index,const Position& p) const { return value_->size(Index{},p);}
 
 
 
-  auto& operator()() {return *this;}
+  auto operator()() {return *this;}
 
 };
 
@@ -667,19 +803,19 @@ auto get_at( vector_field<vec<Xs...>,Value>& x,non_const<Id>)
     return x_i_vector_field_non_const(x,Id{});
 }
 
-template<class vectorfield, class Idinside, class Id,typename =std::enable_if_t<!is_this_template_class_v<non_const,Id>>>
-auto get_at(const x_i_vector_field_const<vectorfield,Idinside>& x, Id)
+template<class vectorfield_storage, class Idinside, class Id,typename =std::enable_if_t<!is_this_template_class_v<non_const,Id>>>
+auto get_at(x_i_vector_field_const<vectorfield_storage,Idinside> x, Id)
 {
   //  using test=typename std::conditional_t<is_this_template_class_v<non_const,Id>,
   //                                           Id,std::vector<double>>::value_type;
 
-  using Pos=transfer_t<get_Field_Indexes_t<vectorfield>,Position<>>;
+  using Pos=transfer_t<get_Field_Indexes_t<x_i_vector_field_const<vectorfield_storage,Idinside>>,Position<>>;
 
 
   if constexpr (std::is_same_v<decltype (get_at(x(Pos{}),Id{})),Nothing >)
     return Nothing{};
   else
-    return x_i_vector_field_const(x,Id{});
+    return x_i_vector_field_const(std::move(x),Id{});
 }
 
 
@@ -700,12 +836,12 @@ struct get_Field_Indexes <
 };
 
 
-template<class Id,class vectorfield>
+template<class Id,class vectorfield_storage>
 struct get_Field_Indexes <
-    x_i_vector_field_const<vectorfield, Id>
+    x_i_vector_field_const<vectorfield_storage, Id>
     >
 {
-  using type=get_Field_Indexes_t<vectorfield>;
+  using type=get_Field_Indexes_t<typename x_i_vector_field_const<vectorfield_storage, Id>::vectorfield>;
 };
 
 
@@ -740,7 +876,7 @@ struct vector_field_Position
   {
     return myPosition(p);
   }
-  auto& operator()()const {return *this;}
+  auto operator()()const {return *this;}
 
 };
 
@@ -760,7 +896,7 @@ class all_view_const_new
 public:
   all_view_const_new(vectorfield const & v):v_{v}{}
 
-  auto& operator()()const {return *this;}
+  auto operator()()const {return *this;}
 
   template<class Position>
   auto operator()(const Position&)const
@@ -774,15 +910,17 @@ public:
 template<class vectorfield, class Position_field>
 struct vector_field_subElement
 {
-  vectorfield const & v_;
-  Position_field const & p_;
+  vectorfield  v_;
+  Position_field  p_;
 
   template<class Index, class Position>
   auto size(Index,const Position& p)const  {return p_.size(Index{},p_(p));}
 
 
 
-  vector_field_subElement(vectorfield const & v, Position_field const & p): v_{v},p_{p}{}
+  vector_field_subElement(vectorfield v, Position_field  p):
+                                                             v_{v},p_{p}
+  {}
 
   template<class Pos>
   auto operator()(const Pos& p)const
@@ -792,9 +930,15 @@ struct vector_field_subElement
 //   using test3=typename Cs<decltype (v_(p_(p)))>::laconcha;
     return v_(p_(p));
   }
-  auto& operator()()const {return *this;}
+  auto operator()()const {return *this;}
 
 };
+template<class vectorfield, class Position_field>
+vector_field_subElement(vectorfield,  Position_field)->vector_field_subElement<
+    std::conditional_t<std::is_lvalue_reference_v<vectorfield>,vectorfield,std::decay_t<vectorfield>>,
+    std::conditional_t<std::is_lvalue_reference_v<Position_field>,Position_field,std::decay_t<Position_field>>
+  >;
+
 
 
 
@@ -819,7 +963,7 @@ void fill_vector_field(Vector& v,Position& ,vec<X1>)
 }
 
 template <class Vector, class Position, class... Datum>
-void fill_vector_field_new(Vector&,Position& ,vec<>, const Datum&...  )
+void fill_vector_field_new(Vector&,Position& ,vec<>,  Datum&&...  )
 {}
 
 template <class Vector, class Position, class X1>
@@ -847,7 +991,7 @@ void fill_vector_field(Vector&v,Position& p,vec<X,X1...> ,const Value& one,const
 }
 
 template <class Vector, class X, class... X1, class Position, class Value, class... Datum1>
-void fill_vector_field_new(Vector&v,Position& p,vec<X,X1...> ,const Value& one,const Datum1&... two)
+void fill_vector_field_new(Vector&v,Position& p,vec<X,X1...> , Value&& one, Datum1&&... two)
 {
   if constexpr (is_in_pack(X{},get_Field_Indexes_t<Value>{}))
   {
@@ -856,9 +1000,9 @@ void fill_vector_field_new(Vector&v,Position& p,vec<X,X1...> ,const Value& one,c
     v.resize(n);
     auto& i=p[X{}]();
     for (i=0; i<n; ++i)
-      fill_vector_field_new(v[i],p,vec<X1...>{},one,two...);
+      fill_vector_field_new(v[i],p,vec<X1...>{},std::forward<Value>(one),std::forward<Datum1>(two)...);
   }
-  else fill_vector_field_new(v,p,vec<X,X1...>{},two...);
+  else fill_vector_field_new(v,p,vec<X,X1...>{},std::forward<Datum1>(two)...);
 }
 
 
