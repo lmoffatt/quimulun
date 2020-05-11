@@ -442,6 +442,20 @@ Fq_new()=default;
 };
 
 
+template<class Id,class pos, class Calc,class Fi, class... Xs>
+struct  Fq_new<Next_new<Id,pos>,Calc,Fi,Arguments<Xs...>>
+{
+public:
+  typedef   Next_new<Id,pos> myId;
+  //auto &operator[](Id)const {return *this;}
+  auto &operator[](myId)const {return *this;}
+
+  Fq_new()=default;
+  Fq_new(myId&& ,Calc&&,Fi&& , Arguments<Xs...>&&){}
+};
+
+
+
 
 template<class Id,class Calc,class Fi, class... Xs>
 Fq_new(Id&& ,Calc&&,Fi&& , Arguments<Xs...>&&)->Fq_new<Id,Calc,Fi,Arguments<Xs...>>;
@@ -465,6 +479,20 @@ struct  Dq_new<Start_new<Id,pos>,Calc,Fi,Arguments<Xs...>>
 public:
   typedef   Start_new<Id,pos> myId;
   auto &operator[](Id)const {return *this;}
+  auto &operator[](myId)const {return *this;}
+  Dq_new()=default;
+
+  Dq_new(myId&& ,Calc&&,Fi&& , Arguments<Xs...>&&){}
+};
+
+
+
+template<class Id,class pos,class Calc,class Fi, class... Xs>
+struct  Dq_new<Next_new<Id,pos>,Calc,Fi,Arguments<Xs...>>
+{
+public:
+  typedef   Next_new<Id,pos> myId;
+  //auto &operator[](Id)const {return *this;}
   auto &operator[](myId)const {return *this;}
   Dq_new()=default;
 
