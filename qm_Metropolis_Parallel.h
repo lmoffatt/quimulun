@@ -5,7 +5,7 @@
 //#include <qm_Metropolis_Distributions.h>
 #include <qm_tensor_model_evaluation.h>
 //#include <qm_tensor_model_evaluation_new.h>
-#include "qm_tensor_model_operation_evaluation_new.h"
+#include "qm_tensor_model_instructions_execution_new.h"
 
 #include "qm_data_frame.h"
 #include <fstream>
