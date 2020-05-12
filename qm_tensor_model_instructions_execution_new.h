@@ -1,7 +1,7 @@
 #ifndef QM_TENSOR_MODEL_OPERATION_EVALUATION_NEW_H
 #define QM_TENSOR_MODEL_OPERATION_EVALUATION_NEW_H
 
-#include "qm_tensor_model_instructions_new.h"
+#include "qm_tensor_model_instructions_construction_new.h"
 
 
 
@@ -275,23 +275,6 @@ void Invoke_on(vector_tuple<results...>& out,Instructions_serial<Op,Ops...>, con
 
 
 
-
-template <class... Ops,class...Fs,class...Datas, class x_random>
-auto Execute_on(const Instructions_serial<Ops...> op,const quimulun<Fs...>& qui, x_random& mt, Datas&&... d)
-{
-  //  auto out2=(typename Ops::myResult_type{},...);
-
-  auto out=typename Instructions_serial<Ops...>::myResult_type{};
-  Invoke_on(out,op,qui,mt,std::forward<Datas>(d)...);
-  return out;
-}
-
-
-
-
-
-
-
 template <class...Fs,class...Datas, class x_random>
 auto sample_loop_Operation(const quimulun<Fs...>& qui, x_random& mt, Datas&&... d)
 {
@@ -329,7 +312,6 @@ auto sample_loop_Operation(const quimulun<Fs...>& qui, x_random& mt, Datas&&... 
   Invoke_on(init,init_op,qui,mt,std::forward<Datas>(d)...);
 
 
-  //auto init= Execute_on(init_op,qui,mt,std::forward<Datas>(d)...);
   auto loop=typename decltype(start_op)::myResult_type{};
 
   Invoke_on(loop,start_op,qui,mt,init,std::forward<Datas>(d)...);
