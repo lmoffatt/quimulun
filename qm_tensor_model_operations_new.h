@@ -205,7 +205,7 @@ auto find_type_in_new(anId, Datas&&...ds)
 
 template<class...>struct Operation_vector{};
 
-template<class Operator, class Id> struct Operation{};
+template<class Operator, class Id> struct Instruction{};
 
 
 
@@ -237,72 +237,72 @@ struct Instructions_non_serial<>
 
 
 
-template<class Operation, class ...Operations>
-struct Instructions_non_serial<Operation,Operations...>
+template<class Instruction, class ...Instructions>
+struct Instructions_non_serial<Instruction,Instructions...>
 {
 
   using myResult_type=
-      //std::conditional_t<(sizeof... (Operations) >0),
-      vector_tuple<typename Operation::myResult_type,typename Operations::myResult_type... >
-      //                  ,typename Operation::myResult_type>
+      //std::conditional_t<(sizeof... (Instructions) >0),
+      vector_tuple<typename Instruction::myResult_type,typename Instructions::myResult_type... >
+      //                  ,typename Instruction::myResult_type>
       ;
 
-  static constexpr auto size() { return (Operation::size()+...+Operations::size());}
+  static constexpr auto size() { return (Instruction::size()+...+Instructions::size());}
 
-  using myIds=pack_concatenation_t<typename Operation::myIds,typename Operations::myIds...>;
+  using myIds=pack_concatenation_t<typename Instruction::myIds,typename Instructions::myIds...>;
 
 
   template<class Id>
   constexpr auto operator[](Id)const
   {
-    return (Operation{}[Id{}]||...||Operations{}[Id{}]);
+    return (Instruction{}[Id{}]||...||Instructions{}[Id{}]);
   }
 
   template<class... Fs, class ...Datas>
   auto operator ()(const quimulun<Fs...>& qui, Datas&&...d)
   {
-    return (Operation{}(qui,std::forward<Datas>(d)...)+...+Operations{}(qui,std::forward<Datas>(d)...));
+    return (Instruction{}(qui,std::forward<Datas>(d)...)+...+Instructions{}(qui,std::forward<Datas>(d)...));
   }
 
 };
 
-template<class Operation,class ...Operations>
-struct Instructions_serial<Operation,Operations...>
+template<class Instruction,class ...Instructions>
+struct Instructions_serial<Instruction,Instructions...>
 {
 
   using myResult_type=
-      //    std::conditional_t<(sizeof... (Operations) >0),
-      vector_tuple<typename Operation::myResult_type,typename Operations::myResult_type... >
-      //                     ,typename Operation::myResult_type>
+      //    std::conditional_t<(sizeof... (Instructions) >0),
+      vector_tuple<typename Instruction::myResult_type,typename Instructions::myResult_type... >
+      //                     ,typename Instruction::myResult_type>
       ;
 
-  using myIds=pack_concatenation_t<typename Operation::myIds,typename Operations::myIds...>;
+  using myIds=pack_concatenation_t<typename Instruction::myIds,typename Instructions::myIds...>;
 
 
   template<class Id>
   constexpr auto operator[](Id)const
   {
     //using test=typename Id::test;
-    //using test2=typename Cs<decltype (Operation{}[Id{}]),decltype (Operations{}[Id{}])...>::test;
-    return (Operation{}[Id{}]||...||Operations{}[Id{}]);
+    //using test2=typename Cs<decltype (Instruction{}[Id{}]),decltype (Instructions{}[Id{}])...>::test;
+    return (Instruction{}[Id{}]||...||Instructions{}[Id{}]);
   }
 
   template<class... Fs, class ...Datas>
   auto operator ()(const quimulun<Fs...>& qui, Datas&&...d)
   {
-    auto out0=Operation{}(qui,std::forward<Datas>(d)...);
+    auto out0=Instruction{}(qui,std::forward<Datas>(d)...);
     auto const& vec=out0;
-    auto out1=Instructions_serial<Operations...>{}(qui,vec,std::forward<Datas>(d)...);
+    auto out1=Instructions_serial<Instructions...>{}(qui,vec,std::forward<Datas>(d)...);
     return std::move(out0)+std::move(out1);
   }
 
 };
 
 
-template<class... Operation_non_serials,class... Operation_fors >
-auto operator+(Instructions_serial<Operation_non_serials...>,Instructions_non_serial<Operation_fors...> )
+template<class... Instructions_non_serials,class... Instructions_fors >
+auto operator+(Instructions_serial<Instructions_non_serials...>,Instructions_non_serial<Instructions_fors...> )
 {
-  return  Instructions_serial<Operation_non_serials..., Instructions_non_serial<Operation_fors...>>{};
+  return  Instructions_serial<Instructions_non_serials..., Instructions_non_serial<Instructions_fors...>>{};
 }
 
 template<template<class, class>class x_i,class Id, class value_type, class... Xs>
@@ -320,7 +320,7 @@ constexpr auto toResult(vec<Xs...>,Result<Nothing>)
 
 
 template< class ...x_is, class... Xs, class... Ops,class... Fids, template<class...>class Arguments,class ...Args>
-struct Instructions_for_each<Result<vector_field<vec<Xs...>,vector_space<x_is...>>>, Operation_vector<Operation<Ops,Fids>...>,Arguments<Args...>>
+struct Instructions_for_each<Result<vector_field<vec<Xs...>,vector_space<x_is...>>>, Operation_vector<Instruction<Ops,Fids>...>,Arguments<Args...>>
 
 {
 
@@ -357,7 +357,7 @@ struct Instructions_for_each<Result<vector_field<vec<Xs...>,vector_space<x_is...
 
 
 template< class ...x_is, class... Xs, class... Ops,class... Fids, template<class...>class Arguments,class ...Args>
-struct Instructions_Coord<Result<vector_field<vec<Xs...>,vector_space<x_is...>>>, Operation_vector<Operation<Ops,Fids>...>,Arguments<Args...>>
+struct Instructions_Coord<Result<vector_field<vec<Xs...>,vector_space<x_is...>>>, Operation_vector<Instruction<Ops,Fids>...>,Arguments<Args...>>
 
 {
 
@@ -395,7 +395,7 @@ struct Instructions_Coord<Result<vector_field<vec<Xs...>,vector_space<x_is...>>>
 
 
 template< class value_type,  class... Ops,class... Fids, class ...Args>
-struct Instructions_sum<Result<value_type>, Operation_vector<Operation<Ops,Fids>...>,Arguments<Args...>>
+struct Instructions_sum<Result<value_type>, Operation_vector<Instruction<Ops,Fids>...>,Arguments<Args...>>
 
 {
 
@@ -424,7 +424,7 @@ template<class Op,class Id, class Idinside, class value_type, class... Xs, class
 constexpr auto make_Operation_for(Op,sub<Id, Idinside>,Result<vector_field<vec<Xs...>,value_type>>,Arguments<Args...>)
 {
 
-  return Instructions_for_each< Result< vector_field<vec<Xs...>,vector_space< x_i<Id,vector_space<x_i<Idinside,value_type> > > > >>,Operation_vector< Operation<Op,Id> > , Arguments<Args...>>{};
+  return Instructions_for_each< Result< vector_field<vec<Xs...>,vector_space< x_i<Id,vector_space<x_i<Idinside,value_type> > > > >>,Operation_vector< Instruction<Op,Id> > , Arguments<Args...>>{};
 };
 
 template<class Op,class Id, class value_type, class... Xs, class... Args, typename=std::enable_if_t<!is_any_of_these_template_classes<Start_new,Next_new,sub>::value<Id>>>
@@ -434,7 +434,7 @@ constexpr auto make_Operation_Coord(Op,Id,Result<vector_field<vec<Xs...>,value_t
   //   using test2=typename value_type::test2;
 
 
-  return Instructions_Coord< Result< vector_field<vec<Xs...>,vector_space< x_i<Id,value_type> > >>,Operation_vector< Operation<Op,Id> > , Arguments<Args...>>{};
+  return Instructions_Coord< Result< vector_field<vec<Xs...>,vector_space< x_i<Id,value_type> > >>,Operation_vector< Instruction<Op,Id> > , Arguments<Args...>>{};
 };
 
 
@@ -449,7 +449,7 @@ constexpr auto make_Operation_for(Op,Id,Result<vector_field<vec<Xs...>,value_typ
   //   using test2=typename value_type::test2;
 
 
-  return Instructions_for_each< Result< vector_field<vec<Xs...>,vector_space< x_i<Id,value_type> > >>,Operation_vector< Operation<Op,Id> > , Arguments<Args...>>{};
+  return Instructions_for_each< Result< vector_field<vec<Xs...>,vector_space< x_i<Id,value_type> > >>,Operation_vector< Instruction<Op,Id> > , Arguments<Args...>>{};
 };
 
 
@@ -460,7 +460,7 @@ constexpr auto make_Operation_for(Op,Start_new<Id,nstep>,Result<vector_field<vec
   //   using test2=typename value_type::test2;
 
   return //Instructions_serial<
-      Instructions_for_each< Result< vector_field<vec<Xs...>,vector_space< x_i<Id,value_type> > >>,Operation_vector< Operation<Op,Id> > , Arguments<Args...>>{};
+      Instructions_for_each< Result< vector_field<vec<Xs...>,vector_space< x_i<Id,value_type> > >>,Operation_vector< Instruction<Op,Id> > , Arguments<Args...>>{};
 };
 
 template<class Op,class Id,class nstep, class value_type, class... Args>
@@ -469,7 +469,7 @@ constexpr auto make_Operation_for(Op,Start_new<Id,nstep>,Result<value_type>,Argu
   //  using test=typename Id::test;
   //   using test3=typename Op::Op;
   //   using test2=typename value_type::test2;
-  return Instructions_for_each< Result< vector_field<vec<>,vector_space< x_i<Id,value_type> > >>,Operation_vector< Operation<Op,Id> > , Arguments<Args...>>{};
+  return Instructions_for_each< Result< vector_field<vec<>,vector_space< x_i<Id,value_type> > >>,Operation_vector< Instruction<Op,Id> > , Arguments<Args...>>{};
 };
 
 
@@ -482,7 +482,7 @@ constexpr auto make_Operation_for(Op,Next_new<Id,nstep>,Result<vector_field<vec<
   //   using test2=typename value_type::test2;
 
   return //Instructions_serial<
-      Instructions_for_each< Result< vector_field<vec<Xs...>,vector_space< x_i<Id,value_type> > >>,Operation_vector< Operation<Op,Id> > , Arguments<Args...>>{};
+      Instructions_for_each< Result< vector_field<vec<Xs...>,vector_space< x_i<Id,value_type> > >>,Operation_vector< Instruction<Op,Id> > , Arguments<Args...>>{};
 };
 
 template<class Op,class Id,class nstep, class value_type, class... Args>
@@ -491,7 +491,7 @@ constexpr auto make_Operation_for(Op,Next_new<Id,nstep>,Result<value_type>,Argum
   //  using test=typename Id::test;
   //   using test3=typename Op::Op;
   //   using test2=typename value_type::test2;
-  return Instructions_for_each< Result< vector_field<vec<>,vector_space< x_i<Id,value_type> > >>,Operation_vector< Operation<Op,Id> > , Arguments<Args...>>{};
+  return Instructions_for_each< Result< vector_field<vec<>,vector_space< x_i<Id,value_type> > >>,Operation_vector< Instruction<Op,Id> > , Arguments<Args...>>{};
 };
 
 
@@ -502,7 +502,7 @@ constexpr auto make_Operation_for(Op,sub<Id,Idinside>,Result<value_type>,Argumen
   using test=typename Id::test;
   //   using test3=typename Op::Op;
   //   using test2=typename value_type::test2;
-  return Instructions_for_each< Result< vector_field<vec<>,vector_space< x_i<Id,vector_space< x_i<Idinside,value_type>>> > >>,Operation_vector< Operation<Op,Id> > , Arguments<Args...>>{};
+  return Instructions_for_each< Result< vector_field<vec<>,vector_space< x_i<Id,vector_space< x_i<Idinside,value_type>>> > >>,Operation_vector< Instruction<Op,Id> > , Arguments<Args...>>{};
 };
 
 
@@ -513,7 +513,7 @@ constexpr auto make_Operation_for(Op,Id,Result<value_type>,Arguments<Args...>)
   //  using test=typename Id::test;
   //   using test3=typename Op::Op;
   //   using test2=typename value_type::test2;
-  return Instructions_for_each< Result< vector_field<vec<>,vector_space< x_i<Id,value_type> > >>,Operation_vector< Operation<Op,Id> > , Arguments<Args...>>{};
+  return Instructions_for_each< Result< vector_field<vec<>,vector_space< x_i<Id,value_type> > >>,Operation_vector< Instruction<Op,Id> > , Arguments<Args...>>{};
 };
 
 
@@ -523,7 +523,7 @@ constexpr auto make_Operation_for(Op,Id,Result<value_type>,Arguments_xi<Args...>
   //   using test=typename Id::test;
   //   using test3=typename Op::Op;
   //   using test2=typename value_type::test2;
-  return Instructions_for_each< Result< vector_field<vec<>,vector_space< x_i<Id,value_type> > >>,Operation_vector< Operation<Op,Id> > , Arguments_xi<Args...>>{};
+  return Instructions_for_each< Result< vector_field<vec<>,vector_space< x_i<Id,value_type> > >>,Operation_vector< Instruction<Op,Id> > , Arguments_xi<Args...>>{};
 };
 
 
@@ -537,7 +537,7 @@ constexpr auto make_Operation_for(logProbability,Id,Result<value_type>,Arguments
 {
   // using test=typename Id::test;
   // using test2=typename value_type::test2;
-  return Instructions_sum< Result< x_i<logpr<up<Id>,dn<Args...>>,value_type> >,Operation_vector< Operation<logProbability,Id> > , Arguments<Id, Args...>>{};
+  return Instructions_sum< Result< x_i<logpr<up<Id>,dn<Args...>>,value_type> >,Operation_vector< Instruction<logProbability,Id> > , Arguments<Id, Args...>>{};
 };
 template<class Id, class value_type, class... Xs, class... Args>
 constexpr auto make_Operation_for(logProbability,Id,Result<vector_field<vec<Xs...>,value_type>>,Arguments<Args...>)
@@ -545,7 +545,7 @@ constexpr auto make_Operation_for(logProbability,Id,Result<vector_field<vec<Xs..
   //  using test=typename Id::test;
   //  using test2=typename value_type::test2;
 
-  return Instructions_for_each< Result< vector_field<vec<Xs...>,vector_space< x_i<logpr<up<Id>,dn<Args...>>,value_type> > >>,Operation_vector< Operation<logProbability,Id> > , Arguments<Args...>>{};
+  return Instructions_for_each< Result< vector_field<vec<Xs...>,vector_space< x_i<logpr<up<Id>,dn<Args...>>,value_type> > >>,Operation_vector< Instruction<logProbability,Id> > , Arguments<Args...>>{};
 };
 
 
@@ -673,11 +673,11 @@ auto apply_sample_op_result(Op op,Result<F>,Id, Random& mt,Arguments<Xs...>,Inde
 
   //  using tId=typename Id::Id;
   //  using test=typename myvec::test;
-  using Operation=std::decay_t<decltype( myInvoke_Sample_Operation(op,std::declval<F>(),mt,std::declval<x_is&>()()(pos)...))>;
+  using Instruction=std::decay_t<decltype( myInvoke_Sample_Operation(op,std::declval<F>(),mt,std::declval<x_is&>()()(pos)...))>;
 
-  auto Res= Result<vector_field<myvec,Outer_Id_t<typename Operation::myResult_type>>>{};
-  // using test2=typename decltype (make_Operation(Operation{},Id{},Res,Arguments<Xs...>{}))::Operation;
-  return make_Operation_for(Operation{},Id{},Res,Arguments<Xs...,XXs...>{});
+  auto Res= Result<vector_field<myvec,Outer_Id_t<typename Instruction::myResult_type>>>{};
+  // using test2=typename decltype (make_Operation(Instruction{},Id{},Res,Arguments<Xs...>{}))::Instruction;
+  return make_Operation_for(Instruction{},Id{},Res,Arguments<Xs...,XXs...>{});
 
 }
 
@@ -691,14 +691,14 @@ auto apply_sample_op_result(Op op,Result<F>,Id, Random& mt,Arguments<Xs...>,Argu
   auto pos=transfer_t<myvec, Position<>>{};
 
 
-  using Operation=std::decay_t<decltype( myInvoke_Sample_Operation(op,std::declval<F>(),mt,std::declval<x_is&>()()(pos)...))>;
+  using Instruction=std::decay_t<decltype( myInvoke_Sample_Operation(op,std::declval<F>(),mt,std::declval<x_is&>()()(pos)...))>;
 
-  auto Res= Result<vector_field<myvec,Outer_Id_t<typename Operation::myResult_type>>>{};
+  auto Res= Result<vector_field<myvec,Outer_Id_t<typename Instruction::myResult_type>>>{};
 
   //using testResult=typename Cs<Id,decltype (Res)>::re;
-  //using testResultmake=typename Cs<Id,decltype (make_Operation(Operation{},Id{},Res,Arguments<Xs...>{}))>::make;
+  //using testResultmake=typename Cs<Id,decltype (make_Operation(Instruction{},Id{},Res,Arguments<Xs...>{}))>::make;
 
-  return make_Operation_for(Operation{},Id{},Res,Arguments<Xs...>{});
+  return make_Operation_for(Instruction{},Id{},Res,Arguments<Xs...>{});
 
 }
 
@@ -714,10 +714,10 @@ auto apply_sample_op_result(Op op,Result<F>,Id, Random& mt,Arguments_xi<Xs...>,A
   // auto pos=transfer_t<myvec, Position<>>{};
 
 
-  using Operation=std::decay_t<decltype( myInvoke_Sample_Operation(op,std::declval<F>(),mt,std::declval<x_is&>()...))>;
+  using Instruction=std::decay_t<decltype( myInvoke_Sample_Operation(op,std::declval<F>(),mt,std::declval<x_is&>()...))>;
 
-  auto Res= Result<Outer_Id_t<typename Operation::myResult_type>>{};
-  return make_Operation_for(Operation{},Id{},Res,Arguments_xi<Xs...>{});
+  auto Res= Result<Outer_Id_t<typename Instruction::myResult_type>>{};
+  return make_Operation_for(Instruction{},Id{},Res,Arguments_xi<Xs...>{});
 
 }
 
@@ -865,9 +865,9 @@ auto apply_calculate_op_result(Op op,Result<F> ,Id,Arguments<Xs...>,Arguments<Re
   //using test=typename Cs<Id,myvec,F>::apply_calculate_op_resul;
 
   auto pos=transfer_t<myvec, Position<>>{};
-  using  Operation=std::decay_t<decltype(myInvoke_Calculate_Operation(op,std::declval<F>(),std::declval<x_is&>()()(pos)...))>;
-  auto res= Result<vector_field<myvec,Outer_Id_t<typename Operation::myResult_type>>>{};
-  return make_Operation_for(Operation{},Id{},res,Arguments<Xs...>{});
+  using  Instruction=std::decay_t<decltype(myInvoke_Calculate_Operation(op,std::declval<F>(),std::declval<x_is&>()()(pos)...))>;
+  auto res= Result<vector_field<myvec,Outer_Id_t<typename Instruction::myResult_type>>>{};
+  return make_Operation_for(Instruction{},Id{},res,Arguments<Xs...>{});
 
 }
 template<class F, class Id,class ...Xs,class... x_is, typename=std::enable_if_t<(!std::is_same_v<std::decay_t<F>,Glue_new >)>>
@@ -879,9 +879,9 @@ auto apply_calculate_op_result(logPrior_new op,Result<F> ,Id,Arguments<Xs...>,Ar
 
 
   auto pos=transfer_t<myvec, Position<>>{};
-  using  Operation=std::decay_t<decltype(myInvoke_Calculate_Operation(op,std::declval<F>(),std::declval<x_is&>()()(pos)...))>;
-  auto res= Result<vector_field<myvec,typename Operation::myResult_type>>{};
-  return make_Operation_for(Operation{},Id{},res,Arguments<Xs...>{});
+  using  Instruction=std::decay_t<decltype(myInvoke_Calculate_Operation(op,std::declval<F>(),std::declval<x_is&>()()(pos)...))>;
+  auto res= Result<vector_field<myvec,typename Instruction::myResult_type>>{};
+  return make_Operation_for(Instruction{},Id{},res,Arguments<Xs...>{});
 
 }
 template<class F, class Id,class ...Xs,class... x_is, typename=std::enable_if_t<(!std::is_same_v<std::decay_t<F>,Glue_new >)>>
@@ -891,9 +891,9 @@ auto apply_calculate_op_result(logLikelihood_new op,Result<F> ,Id,Arguments<Xs..
 
 
   auto pos=transfer_t<myvec, Position<>>{};
-  using  Operation=std::decay_t<decltype(myInvoke_Calculate_Operation(op,std::declval<F>(),std::declval<x_is&>()()(pos)...))>;
-  auto res= Result<vector_field<myvec,typename Operation::myResult_type>>{};
-  return make_Operation_for(Operation{},Id{},res,Arguments<Xs...>{});
+  using  Instruction=std::decay_t<decltype(myInvoke_Calculate_Operation(op,std::declval<F>(),std::declval<x_is&>()()(pos)...))>;
+  auto res= Result<vector_field<myvec,typename Instruction::myResult_type>>{};
+  return make_Operation_for(Instruction{},Id{},res,Arguments<Xs...>{});
 
 }
 
@@ -995,9 +995,9 @@ constexpr auto operator+(Instructions_non_serial<Ops...>&&,
 template<class ...x_is, class... Xs, class... X2s,class... Ops,class... Fids, template<class, class>class x_i,class e_i,class value_type, class Op, class Fid,class... Operations, class... Args, class...Args2,
           typename= std::enable_if_t<(same_pack_set(Cs<Xs...>{},Cs<X2s...>{})&&!is_this_template_class_v<logpr,e_i>)>>
 constexpr auto operator+(Instructions_non_serial<
-                             Instructions_for_each<Result<vector_field<vec<Xs...>,vector_space<x_is...>>>, Operation_vector<Operation<Ops,Fids>...>,Arguments<Args...>>,
+                             Instructions_for_each<Result<vector_field<vec<Xs...>,vector_space<x_is...>>>, Operation_vector<Instruction<Ops,Fids>...>,Arguments<Args...>>,
                              Operations...>&&,
-                         Instructions_for_each<Result<vector_field<vec<X2s...>,vector_space<x_i<e_i,value_type>>>>, Operation_vector<Operation<Op,Fid>>,Arguments<Args2...>>&&)
+                         Instructions_for_each<Result<vector_field<vec<X2s...>,vector_space<x_i<e_i,value_type>>>>, Operation_vector<Instruction<Op,Fid>>,Arguments<Args2...>>&&)
 {
 
   //using test=typename decltype (std::declval<vector_space<x_is...>>()+std::declval<vector_space<x_i>>())::vector_sum;
@@ -1010,7 +1010,7 @@ constexpr auto operator+(Instructions_non_serial<
           Result<
               vector_field<vec<Xs...>,decltype(std::declval<vector_space<x_is...>>()+std::declval<vector_space<x_i<e_i,value_type>>>())>
               >,
-          Operation_vector<Operation<Ops,Fids>...,Operation<Op,Fid>>,ArgsOut >,
+          Operation_vector<Instruction<Ops,Fids>...,Instruction<Op,Fid>>,ArgsOut >,
       Operations...>{};
 
 }
@@ -1024,9 +1024,9 @@ template<class ...Ups, class ...Downs, class Value_one,
           class ...Ups2, class ...Downs2, class Value_two, class... Xs, class... X2s,class... Ops,class... Fids, class Op, class Fid,class... Operations, class... Args, class...Args2,
           typename= std::enable_if_t<same_pack_set(Cs<Xs...>{},Cs<X2s...>{})>>
 constexpr auto operator+(Instructions_non_serial<
-                             Instructions_for_each<Result<vector_field<vec<Xs...>,vector_space<x_i<logpr<up<Ups...>,dn<Downs...>>,Value_one>>>>, Operation_vector<Operation<Ops,Fids>...>,Arguments<Args...>>,
+                             Instructions_for_each<Result<vector_field<vec<Xs...>,vector_space<x_i<logpr<up<Ups...>,dn<Downs...>>,Value_one>>>>, Operation_vector<Instruction<Ops,Fids>...>,Arguments<Args...>>,
                              Operations...>&&,
-                         Instructions_for_each<Result<vector_field<vec<X2s...>,vector_space<x_i<logpr<up<Ups2...>,dn<Downs2...>>,Value_two>>>>, Operation_vector<Operation<Op,Fid>>,Arguments<Args2...>>&&)
+                         Instructions_for_each<Result<vector_field<vec<X2s...>,vector_space<x_i<logpr<up<Ups2...>,dn<Downs2...>>,Value_two>>>>, Operation_vector<Instruction<Op,Fid>>,Arguments<Args2...>>&&)
 {
 
   //using test=typename decltype (x_i<logpr<up<Ups...>,dn<Downs...>>,logv<double,unit_one>>{}+x_i<logpr<up<Ups2...>,dn<Downs2...>>,logv<double,unit_two>>{})::vector_sum;
@@ -1039,7 +1039,7 @@ constexpr auto operator+(Instructions_non_serial<
           Result<
               vector_field<vec<Xs...>,vector_space<decltype (x_i<logpr<up<Ups...>,dn<Downs...>>,Value_one>{}+x_i<logpr<up<Ups2...>,dn<Downs2...>>,Value_two>{})>
                            >>,
-          Operation_vector<Operation<Ops,Fids>...,Operation<Op,Fid>>,ArgsOut >,
+          Operation_vector<Instruction<Ops,Fids>...,Instruction<Op,Fid>>,ArgsOut >,
       Operations...>{};
 
 }
@@ -1047,14 +1047,14 @@ constexpr auto operator+(Instructions_non_serial<
 
 template<class ...x_is, class... Xs, class... Ops,class... Fids, class x_i, class ...X2s,class Op, class Fid,class... Operations,class... Args, class... Args2>
 auto operator+(Instructions_non_serial<
-                   Instructions_Coord<Result<vector_field<vec<Xs...>,vector_space<x_is...>>>, Operation_vector<Operation<Ops,Fids>...>,Arguments<Args...>>,
+                   Instructions_Coord<Result<vector_field<vec<Xs...>,vector_space<x_is...>>>, Operation_vector<Instruction<Ops,Fids>...>,Arguments<Args...>>,
                    Operations...>&&,
-               Instructions_for_each<Result<vector_field<vec<X2s...>,vector_space<x_i>>>, Operation_vector<Operation<Op,Fid>>,Arguments<Args2...>>&&)
+               Instructions_for_each<Result<vector_field<vec<X2s...>,vector_space<x_i>>>, Operation_vector<Instruction<Op,Fid>>,Arguments<Args2...>>&&)
 {
   return    Instructions_non_serial<
-             Instructions_Coord<Result<vector_field<vec<Xs...>,vector_space<x_is...>>>, Operation_vector<Operation<Ops,Fids>...>,Arguments<Args...>>>{}&&
+             Instructions_Coord<Result<vector_field<vec<Xs...>,vector_space<x_is...>>>, Operation_vector<Instruction<Ops,Fids>...>,Arguments<Args...>>>{}&&
          (Instructions_non_serial<Operations...>{}+
-          Instructions_for_each<Result<vector_field<vec<X2s...>,vector_space<x_i>>>, Operation_vector<Operation<Op,Fid>>,Arguments<Args2...>>{});
+          Instructions_for_each<Result<vector_field<vec<X2s...>,vector_space<x_i>>>, Operation_vector<Instruction<Op,Fid>>,Arguments<Args2...>>{});
 
 }
 
@@ -1064,22 +1064,22 @@ auto operator+(Instructions_non_serial<
 template<class ...x_is, class... Xs, class... Ops,class... Fids, class x_i, class ...X2s,class Op, class Fid,class... Operations,class... Args, class... Args2,
           typename=std::enable_if_t<!same_pack_set(Cs<Xs...>{},Cs<X2s...>{})>>
 auto operator+(Instructions_non_serial<
-                   Instructions_for_each<Result<vector_field<vec<Xs...>,vector_space<x_is...>>>, Operation_vector<Operation<Ops,Fids>...>,Arguments<Args...>>,
+                   Instructions_for_each<Result<vector_field<vec<Xs...>,vector_space<x_is...>>>, Operation_vector<Instruction<Ops,Fids>...>,Arguments<Args...>>,
                    Operations...>&&,
-               Instructions_for_each<Result<vector_field<vec<X2s...>,vector_space<x_i>>>, Operation_vector<Operation<Op,Fid>>,Arguments<Args2...>>&&)
+               Instructions_for_each<Result<vector_field<vec<X2s...>,vector_space<x_i>>>, Operation_vector<Instruction<Op,Fid>>,Arguments<Args2...>>&&)
 {
   return    Instructions_non_serial<
-             Instructions_for_each<Result<vector_field<vec<Xs...>,vector_space<x_is...>>>, Operation_vector<Operation<Ops,Fids>...>,Arguments<Args...>>>{}&&
+             Instructions_for_each<Result<vector_field<vec<Xs...>,vector_space<x_is...>>>, Operation_vector<Instruction<Ops,Fids>...>,Arguments<Args...>>>{}&&
          (Instructions_non_serial<Operations...>{}+
-          Instructions_for_each<Result<vector_field<vec<X2s...>,vector_space<x_i>>>, Operation_vector<Operation<Op,Fid>>,Arguments<Args2...>>{});
+          Instructions_for_each<Result<vector_field<vec<X2s...>,vector_space<x_i>>>, Operation_vector<Instruction<Op,Fid>>,Arguments<Args2...>>{});
 
 }
 
 
 
 template<class Value_type,class Value_type2,class... Ops,class... Fids,  class Op, class Fid,class... Args, class...Args2>
-constexpr auto operator+(    Instructions_sum<Result<Value_type>, Operation_vector<Operation<Ops,Fids>...>,Arguments<Args...>>&&,
-                         Instructions_sum<Result<Value_type2>, Operation_vector<Operation<Op,Fid>>,Arguments<Args2...>>&&)
+constexpr auto operator+(    Instructions_sum<Result<Value_type>, Operation_vector<Instruction<Ops,Fids>...>,Arguments<Args...>>&&,
+                         Instructions_sum<Result<Value_type2>, Operation_vector<Instruction<Op,Fid>>,Arguments<Args2...>>&&)
 {
 
   //using test=typename decltype (std::declval<vector_space<x_is...>>()+std::declval<vector_space<x_i>>())::vector_sum;
@@ -1091,7 +1091,7 @@ constexpr auto operator+(    Instructions_sum<Result<Value_type>, Operation_vect
       Instructions_sum<
           Result<
               decltype(std::declval<Value_type>()+std::declval<Value_type2>()) >,
-          Operation_vector<Operation<Ops,Fids>...,Operation<Op,Fid>>,ArgsOut >{};
+          Operation_vector<Instruction<Ops,Fids>...,Instruction<Op,Fid>>,ArgsOut >{};
 
 }
 
