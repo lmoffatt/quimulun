@@ -2,62 +2,42 @@
 #define QM_TENSOR_MODEL_OPERATIONS_NEW_H
 
 #include "qm_tensor_model_evaluation_new.h"
-template<class ...> struct Operation_for;
-template<class ...> struct Operation_Coord;
+template<class ...> struct Instructions_for_each;
+template<class ...> struct Instructions_Coord;
 
-template<class ...> struct Operation_sum;
-template<class ...> struct Operation_serial;
-template<class ...> struct Operation_non_serial;
+template<class ...> struct Instructions_sum;
+template<class ...> struct Instructions_serial;
+template<class ...> struct Instructions_non_serial;
 
 
 template <class anId, class...Ops>
-auto get_type_xi_from_this_new(anId, const Operation_non_serial<Ops...>& xi)->decltype (xi[anId{}])
+auto get_type_xi_from_this_new(anId, const Instructions_non_serial<Ops...>& xi)->decltype (xi[anId{}])
 {
-  //  using test=typename std::conditional_t<is_this_template_class_v<Current,anId>,
-  //                                           Cs<anId,decltype (xi[anId{}]),
-  //                                              decltype (xi)
-  //                                              >, std::vector<double>>::value_type;
-
   return xi[anId{}];
 }
 
 template <class anId, class...Ops>
-auto get_type_xi_from_this_new(anId,const Operation_serial<Ops...>& xi)->decltype (xi[anId{}])
+auto get_type_xi_from_this_new(anId,const Instructions_serial<Ops...>& xi)->decltype (xi[anId{}])
 {
-  // using testOperation=typename anId::testOperation;
-  // using test2=typename decltype(xi[anId{}])::test;
-
-
-  //  using test=typename std::conditional_t<is_this_template_class_v<Current,anId>,
-  //                                           Cs<anId,decltype (xi[anId{}]),
-  //                                              decltype (xi)
-  //                                              >, std::vector<double>>::value_type;
-
-
-  return xi[anId{}];
+   return xi[anId{}];
 }
 
 
 
 template <class anId, class V
           , typename =std::enable_if_t<
-              (!is_this_template_class_v<Operation_serial,V>)
+              (!is_this_template_class_v<Instructions_serial,V>)
               && (!(only_xi_of_fi_v<V>)||(is_this_template_class_v<x_i_vector_field_const,V>))
               > >
 auto get_type_xi_from_this_new(anId, V&& xi)
 {
-  //  using test=typename std::conditional_t<is_this_template_class_v<Current,anId>,
-  //                                           Cs<anId,decltype (get_at(std::forward<V>(xi),anId{})),
-  //                                              decltype (std::forward<V>(xi))
-  //                                              >, std::vector<double>>::value_type;
-  // using test2=typename decltype(xi[anId{}])::test;
-  return Result_t<decltype(only_xi_or_fi(get_at(std::forward<V>(xi),anId{})))>{};
+   return Result_t<decltype(only_xi_or_fi(get_at(std::forward<V>(xi),anId{})))>{};
 }
 
 
 template <class anId, class V
           , typename =std::enable_if_t<
-              (!is_this_template_class_v<Operation_serial,V>)
+              (!is_this_template_class_v<Instructions_serial,V>)
               && (only_xi_of_fi_v<V>)
               &&(!is_this_template_class_v<x_i_vector_field_const,V>)
               > >
@@ -78,7 +58,6 @@ template <class anId, class...Datas
               ( !is_any_of_these_template_classes<all,Size_at_Index_new,pos_new,all_new,sub,subElement,Size,pass_id, std::tuple>::template value<anId>) >>
 decltype(auto) get_type_from_new(anId, Datas&&...ds)
 {
-  //using test=typename Cs<decltype(std::forward<Datas>(ds)[anId{}])...>::tew;
   return (get_type_xi_from_this_new(anId{},std::forward<Datas>(ds))||...);
 }
 
@@ -232,7 +211,7 @@ template<class Operator, class Id> struct Operation{};
 
 
 template<>
-struct Operation_non_serial<>
+struct Instructions_non_serial<>
 {
 
   using myResult_type=Nothing;
@@ -259,7 +238,7 @@ struct Operation_non_serial<>
 
 
 template<class Operation, class ...Operations>
-struct Operation_non_serial<Operation,Operations...>
+struct Instructions_non_serial<Operation,Operations...>
 {
 
   using myResult_type=
@@ -288,7 +267,7 @@ struct Operation_non_serial<Operation,Operations...>
 };
 
 template<class Operation,class ...Operations>
-struct Operation_serial<Operation,Operations...>
+struct Instructions_serial<Operation,Operations...>
 {
 
   using myResult_type=
@@ -313,7 +292,7 @@ struct Operation_serial<Operation,Operations...>
   {
     auto out0=Operation{}(qui,std::forward<Datas>(d)...);
     auto const& vec=out0;
-    auto out1=Operation_serial<Operations...>{}(qui,vec,std::forward<Datas>(d)...);
+    auto out1=Instructions_serial<Operations...>{}(qui,vec,std::forward<Datas>(d)...);
     return std::move(out0)+std::move(out1);
   }
 
@@ -321,9 +300,9 @@ struct Operation_serial<Operation,Operations...>
 
 
 template<class... Operation_non_serials,class... Operation_fors >
-auto operator+(Operation_serial<Operation_non_serials...>,Operation_non_serial<Operation_fors...> )
+auto operator+(Instructions_serial<Operation_non_serials...>,Instructions_non_serial<Operation_fors...> )
 {
-  return  Operation_serial<Operation_non_serials..., Operation_non_serial<Operation_fors...>>{};
+  return  Instructions_serial<Operation_non_serials..., Instructions_non_serial<Operation_fors...>>{};
 }
 
 template<template<class, class>class x_i,class Id, class value_type, class... Xs>
@@ -341,7 +320,7 @@ constexpr auto toResult(vec<Xs...>,Result<Nothing>)
 
 
 template< class ...x_is, class... Xs, class... Ops,class... Fids, template<class...>class Arguments,class ...Args>
-struct Operation_for<Result<vector_field<vec<Xs...>,vector_space<x_is...>>>, Operation_vector<Operation<Ops,Fids>...>,Arguments<Args...>>
+struct Instructions_for_each<Result<vector_field<vec<Xs...>,vector_space<x_is...>>>, Operation_vector<Operation<Ops,Fids>...>,Arguments<Args...>>
 
 {
 
@@ -378,7 +357,7 @@ struct Operation_for<Result<vector_field<vec<Xs...>,vector_space<x_is...>>>, Ope
 
 
 template< class ...x_is, class... Xs, class... Ops,class... Fids, template<class...>class Arguments,class ...Args>
-struct Operation_Coord<Result<vector_field<vec<Xs...>,vector_space<x_is...>>>, Operation_vector<Operation<Ops,Fids>...>,Arguments<Args...>>
+struct Instructions_Coord<Result<vector_field<vec<Xs...>,vector_space<x_is...>>>, Operation_vector<Operation<Ops,Fids>...>,Arguments<Args...>>
 
 {
 
@@ -416,7 +395,7 @@ struct Operation_Coord<Result<vector_field<vec<Xs...>,vector_space<x_is...>>>, O
 
 
 template< class value_type,  class... Ops,class... Fids, class ...Args>
-struct Operation_sum<Result<value_type>, Operation_vector<Operation<Ops,Fids>...>,Arguments<Args...>>
+struct Instructions_sum<Result<value_type>, Operation_vector<Operation<Ops,Fids>...>,Arguments<Args...>>
 
 {
 
@@ -445,7 +424,7 @@ template<class Op,class Id, class Idinside, class value_type, class... Xs, class
 constexpr auto make_Operation_for(Op,sub<Id, Idinside>,Result<vector_field<vec<Xs...>,value_type>>,Arguments<Args...>)
 {
 
-  return Operation_for< Result< vector_field<vec<Xs...>,vector_space< x_i<Id,vector_space<x_i<Idinside,value_type> > > > >>,Operation_vector< Operation<Op,Id> > , Arguments<Args...>>{};
+  return Instructions_for_each< Result< vector_field<vec<Xs...>,vector_space< x_i<Id,vector_space<x_i<Idinside,value_type> > > > >>,Operation_vector< Operation<Op,Id> > , Arguments<Args...>>{};
 };
 
 template<class Op,class Id, class value_type, class... Xs, class... Args, typename=std::enable_if_t<!is_any_of_these_template_classes<Start_new,Next_new,sub>::value<Id>>>
@@ -455,7 +434,7 @@ constexpr auto make_Operation_Coord(Op,Id,Result<vector_field<vec<Xs...>,value_t
   //   using test2=typename value_type::test2;
 
 
-  return Operation_Coord< Result< vector_field<vec<Xs...>,vector_space< x_i<Id,value_type> > >>,Operation_vector< Operation<Op,Id> > , Arguments<Args...>>{};
+  return Instructions_Coord< Result< vector_field<vec<Xs...>,vector_space< x_i<Id,value_type> > >>,Operation_vector< Operation<Op,Id> > , Arguments<Args...>>{};
 };
 
 
@@ -470,7 +449,7 @@ constexpr auto make_Operation_for(Op,Id,Result<vector_field<vec<Xs...>,value_typ
   //   using test2=typename value_type::test2;
 
 
-  return Operation_for< Result< vector_field<vec<Xs...>,vector_space< x_i<Id,value_type> > >>,Operation_vector< Operation<Op,Id> > , Arguments<Args...>>{};
+  return Instructions_for_each< Result< vector_field<vec<Xs...>,vector_space< x_i<Id,value_type> > >>,Operation_vector< Operation<Op,Id> > , Arguments<Args...>>{};
 };
 
 
@@ -480,8 +459,8 @@ constexpr auto make_Operation_for(Op,Start_new<Id,nstep>,Result<vector_field<vec
   //using test=typename Id::test;
   //   using test2=typename value_type::test2;
 
-  return //Operation_serial<
-      Operation_for< Result< vector_field<vec<Xs...>,vector_space< x_i<Id,value_type> > >>,Operation_vector< Operation<Op,Id> > , Arguments<Args...>>{};
+  return //Instructions_serial<
+      Instructions_for_each< Result< vector_field<vec<Xs...>,vector_space< x_i<Id,value_type> > >>,Operation_vector< Operation<Op,Id> > , Arguments<Args...>>{};
 };
 
 template<class Op,class Id,class nstep, class value_type, class... Args>
@@ -490,7 +469,7 @@ constexpr auto make_Operation_for(Op,Start_new<Id,nstep>,Result<value_type>,Argu
   //  using test=typename Id::test;
   //   using test3=typename Op::Op;
   //   using test2=typename value_type::test2;
-  return Operation_for< Result< vector_field<vec<>,vector_space< x_i<Id,value_type> > >>,Operation_vector< Operation<Op,Id> > , Arguments<Args...>>{};
+  return Instructions_for_each< Result< vector_field<vec<>,vector_space< x_i<Id,value_type> > >>,Operation_vector< Operation<Op,Id> > , Arguments<Args...>>{};
 };
 
 
@@ -502,8 +481,8 @@ constexpr auto make_Operation_for(Op,Next_new<Id,nstep>,Result<vector_field<vec<
   //using test=typename Id::test;
   //   using test2=typename value_type::test2;
 
-  return //Operation_serial<
-      Operation_for< Result< vector_field<vec<Xs...>,vector_space< x_i<Id,value_type> > >>,Operation_vector< Operation<Op,Id> > , Arguments<Args...>>{};
+  return //Instructions_serial<
+      Instructions_for_each< Result< vector_field<vec<Xs...>,vector_space< x_i<Id,value_type> > >>,Operation_vector< Operation<Op,Id> > , Arguments<Args...>>{};
 };
 
 template<class Op,class Id,class nstep, class value_type, class... Args>
@@ -512,7 +491,7 @@ constexpr auto make_Operation_for(Op,Next_new<Id,nstep>,Result<value_type>,Argum
   //  using test=typename Id::test;
   //   using test3=typename Op::Op;
   //   using test2=typename value_type::test2;
-  return Operation_for< Result< vector_field<vec<>,vector_space< x_i<Id,value_type> > >>,Operation_vector< Operation<Op,Id> > , Arguments<Args...>>{};
+  return Instructions_for_each< Result< vector_field<vec<>,vector_space< x_i<Id,value_type> > >>,Operation_vector< Operation<Op,Id> > , Arguments<Args...>>{};
 };
 
 
@@ -523,7 +502,7 @@ constexpr auto make_Operation_for(Op,sub<Id,Idinside>,Result<value_type>,Argumen
   using test=typename Id::test;
   //   using test3=typename Op::Op;
   //   using test2=typename value_type::test2;
-  return Operation_for< Result< vector_field<vec<>,vector_space< x_i<Id,vector_space< x_i<Idinside,value_type>>> > >>,Operation_vector< Operation<Op,Id> > , Arguments<Args...>>{};
+  return Instructions_for_each< Result< vector_field<vec<>,vector_space< x_i<Id,vector_space< x_i<Idinside,value_type>>> > >>,Operation_vector< Operation<Op,Id> > , Arguments<Args...>>{};
 };
 
 
@@ -534,7 +513,7 @@ constexpr auto make_Operation_for(Op,Id,Result<value_type>,Arguments<Args...>)
   //  using test=typename Id::test;
   //   using test3=typename Op::Op;
   //   using test2=typename value_type::test2;
-  return Operation_for< Result< vector_field<vec<>,vector_space< x_i<Id,value_type> > >>,Operation_vector< Operation<Op,Id> > , Arguments<Args...>>{};
+  return Instructions_for_each< Result< vector_field<vec<>,vector_space< x_i<Id,value_type> > >>,Operation_vector< Operation<Op,Id> > , Arguments<Args...>>{};
 };
 
 
@@ -544,7 +523,7 @@ constexpr auto make_Operation_for(Op,Id,Result<value_type>,Arguments_xi<Args...>
   //   using test=typename Id::test;
   //   using test3=typename Op::Op;
   //   using test2=typename value_type::test2;
-  return Operation_for< Result< vector_field<vec<>,vector_space< x_i<Id,value_type> > >>,Operation_vector< Operation<Op,Id> > , Arguments_xi<Args...>>{};
+  return Instructions_for_each< Result< vector_field<vec<>,vector_space< x_i<Id,value_type> > >>,Operation_vector< Operation<Op,Id> > , Arguments_xi<Args...>>{};
 };
 
 
@@ -558,7 +537,7 @@ constexpr auto make_Operation_for(logProbability,Id,Result<value_type>,Arguments
 {
   // using test=typename Id::test;
   // using test2=typename value_type::test2;
-  return Operation_sum< Result< x_i<logpr<up<Id>,dn<Args...>>,value_type> >,Operation_vector< Operation<logProbability,Id> > , Arguments<Id, Args...>>{};
+  return Instructions_sum< Result< x_i<logpr<up<Id>,dn<Args...>>,value_type> >,Operation_vector< Operation<logProbability,Id> > , Arguments<Id, Args...>>{};
 };
 template<class Id, class value_type, class... Xs, class... Args>
 constexpr auto make_Operation_for(logProbability,Id,Result<vector_field<vec<Xs...>,value_type>>,Arguments<Args...>)
@@ -566,12 +545,12 @@ constexpr auto make_Operation_for(logProbability,Id,Result<vector_field<vec<Xs..
   //  using test=typename Id::test;
   //  using test2=typename value_type::test2;
 
-  return Operation_for< Result< vector_field<vec<Xs...>,vector_space< x_i<logpr<up<Id>,dn<Args...>>,value_type> > >>,Operation_vector< Operation<logProbability,Id> > , Arguments<Args...>>{};
+  return Instructions_for_each< Result< vector_field<vec<Xs...>,vector_space< x_i<logpr<up<Id>,dn<Args...>>,value_type> > >>,Operation_vector< Operation<logProbability,Id> > , Arguments<Args...>>{};
 };
 
 
 template<>
-struct Operation_serial<>
+struct Instructions_serial<>
 {
   template<class Id>
   constexpr auto operator[](Id)const
@@ -594,26 +573,16 @@ struct Operation_serial<>
 
 
 template<class Op,class Id, class F, class... x_is, typename=std::enable_if_t<!std::is_same_v<std::decay_t<F>,Glue_new >&&!std::is_same_v<std::decay_t<F>,Conditional_choice >>>
-auto apply_calculate_result(Op op,Id, Result<F>,Arguments<Result<x_is>...>)
+auto result_of_myInvoke_calculate(Op op,Id, Result<F>,Arguments<Result<x_is>...>)
 {
   using myvec= decltype ((vec<>{}<<...<<get_Field_Indexes_t<x_is>{}));
 
   auto pos=transfer_t<myvec, Position<>>{};
-
-
-
-
-  // using test=typename Cs<Id, myvec,F>::apply_calculate_resul;
-
-  // using test=typename Cs<x_is...>::pos;
-
-  //  using test2=typename decltype (pos)::pos;
   return Result<vector_field<myvec,std::decay_t<decltype(myInvoke(op,std::declval<F>(),std::declval<x_is>()()(pos)...))>>>{};
-
 }
 
 template<class Op, class Id, class... x_is>
-auto apply_calculate_result(Op op,Id, Result<Conditional_choice>,Arguments<Result<x_is>...>)
+auto result_of_myInvoke_calculate(Op op,Id, Result<Conditional_choice>,Arguments<Result<x_is>...>)
 {
   using myvec= decltype ((vec<>{}<<...<<get_Field_Indexes_t<x_is>{}));
 
@@ -629,7 +598,7 @@ auto apply_calculate_result(Op op,Id, Result<Conditional_choice>,Arguments<Resul
 
 
 template<class Op,class Id,class F, class... x_is, typename=std::enable_if_t<!std::is_same_v<std::decay_t<F>,Glue_new >>>
-auto apply_calculate_result_sum(Op op,Id,Result<F>,Arguments<Result<x_is>...>)
+auto result_of_myInvoke_calculate_sum(Op op,Id,Result<F>,Arguments<Result<x_is>...>)
 {
   using myvec= decltype ((vec<>{}<<...<<get_Field_Indexes_t<x_is>{}));
 
@@ -642,7 +611,7 @@ auto apply_calculate_result_sum(Op op,Id,Result<F>,Arguments<Result<x_is>...>)
 }
 
 template<class Op,class F, class Id,class... x_is, typename=std::enable_if_t<!std::is_same_v<std::decay_t<F>,Glue_new >>>
-auto apply_calculate_coordinate_result(Op op,const F& f,Id, Arguments<Result<x_is>...>)
+auto result_of_myInvoke_calculate_coordinate(Op op,const F& f,Id, Arguments<Result<x_is>...>)
 {
   typedef decltype ((vec<>{}<<...<<get_Field_Indexes_t<x_is>{})) myvec;
   // using test=typename Cs<Id,myvec,F>::apply_calculate_coordinate_resul;
@@ -660,7 +629,7 @@ auto apply_calculate_coordinate_result(Op op,const F& f,Id, Arguments<Result<x_i
 
 
 template<class Op, class Id, class... x_is>
-auto apply_calculate_result(Op op,Id, Result<Glue_new>,Arguments<Result<x_is>...>)
+auto result_of_myInvoke_calculate(Op op,Id, Result<Glue_new>,Arguments<Result<x_is>...>)
 {
   using res_value_type=std::decay_t<decltype(myInvoke(op,Glue_new{},std::declval<x_is const &>()...))>;
   return Result<res_value_type>{};
@@ -672,7 +641,7 @@ auto apply_calculate_result(Op op,Id, Result<Glue_new>,Arguments<Result<x_is>...
 
 
 template<class Op,class Id, class F, class Random, class... x_is>
-auto apply_sample_result(Op op,Id, Result<F>,Random& mt,Arguments<Result<x_is>...>)
+auto result_of_myInvoke_sample(Op op,Id, Result<F>,Random& mt,Arguments<Result<x_is>...>)
 {
   // using test=typename Cs<x_is...>::aqui_Index_struct;
   typedef decltype ((vec<>{}<<...<<get_Field_Indexes_t<x_is>{})) myvec;
@@ -683,7 +652,7 @@ auto apply_sample_result(Op op,Id, Result<F>,Random& mt,Arguments<Result<x_is>..
   return Result<vector_field<myvec,typename std::decay_t<decltype( myInvoke_Operation_Sample(op,std::declval<F>(),mt,std::declval<x_is&>()()(pos)...))>::result_type>>{};
 }
 template<class Op,class Id, class F, class Random, class... x_is,class... xx_is>
-auto apply_sample_result(Op op,Id, Result<F>,Random& mt,Arguments<Result<x_is>...>,Index_struct<Result<xx_is>...>)
+auto result_of_myInvoke_sample(Op op,Id, Result<F>,Random& mt,Arguments<Result<x_is>...>,Index_struct<Result<xx_is>...>)
 {
   //  using test=typename Cs<xx_is...>::aqui_Index_struct;
   typedef decltype (((vec<>{}<<...<<get_Field_Indexes_t<x_is>{})<<...<<get_Field_Indexes_t<xx_is>{})) myvec;
@@ -769,7 +738,7 @@ auto Sample_Operation_on_this(Sample,const D<Id,Distribution,Arguments<Xs...>>& 
 
   {
     auto d=Result<Distribution>{};
-    auto Res=apply_sample_result(Sample{},Id{},d,mt,Arguments(get_type_from_new(Xs{},ds...)...));
+    auto Res=result_of_myInvoke_sample(Sample{},Id{},d,mt,Arguments(get_type_from_new(Xs{},ds...)...));
     return make_Operation_for(Sample{},Id{},Res,Arguments<Xs...>{});
   }
 
@@ -788,7 +757,7 @@ auto Sample_Operation_on_this(Sample,const D<Id,Distribution,Arguments<Xs...>,In
 
   {
     auto d=Result<Distribution>{};
-    auto Res=apply_sample_result(Sample{},Id{},d,mt,Arguments(get_type_from_new(Xs{},ds...)...),Index_struct(get_type_from_new(XXs{},ds...)...));
+    auto Res=result_of_myInvoke_sample(Sample{},Id{},d,mt,Arguments(get_type_from_new(Xs{},ds...)...),Index_struct(get_type_from_new(XXs{},ds...)...));
     using ArgsOut=transfer_t<pack_difference_t<Cs<XXs...>,Cs<Xs...>>,Arguments<Xs...>>;
     // using test=typename decltype (make_Operation(Sample{},Id{},Res,ArgsOut{}))::D_struct;
     return make_Operation_for(Sample{},Id{},Res,ArgsOut{});
@@ -880,7 +849,7 @@ auto Calculate_Operation_on_this(Calculator_new,const Coord_new<Id,G,Arguments<X
 
 
     auto d=coord.get_G();
-    auto Res=apply_calculate_coordinate_result(Calculator_new{},d,Id{},Arguments(get_type_from_new(Xs{},ds...)...));
+    auto Res=result_of_myInvoke_calculate_coordinate(Calculator_new{},d,Id{},Arguments(get_type_from_new(Xs{},ds...)...));
     //using test=typename Cs<Id,decltype (Res),decltype (make_Operation_Coord(Calculator_new{},Id{},Res, Arguments<Xs...>{}))>::jajaja;
     return make_Operation_Coord(Calculator_new{},Id{},Res, Arguments<Xs...>{});
   }
@@ -961,7 +930,7 @@ auto Calculate_Operation_on_this(Calculator_new,F_new<Id,G,Arguments<Xs...>>, Da
   }else
 
   {
-    auto Res=apply_calculate_result(Calculator_new{},Id{},Result<G>{},Arguments(get_type_from_new(Xs{},std::forward<Datas>(ds)...)...));
+    auto Res=result_of_myInvoke_calculate(Calculator_new{},Id{},Result<G>{},Arguments(get_type_from_new(Xs{},std::forward<Datas>(ds)...)...));
     //  using test=typename std::conditional_t<is_this_template_class_v<sub,Id>,decltype (make_Operation(Calculator_new{},Id{},Res, Arguments<Xs...>{})), std::vector<double>>::value_type;
     return make_Operation_for(Calculator_new{},Id{},Res, Arguments<Xs...>{});
   }
@@ -982,7 +951,7 @@ auto Calculate_Operation_on_this(logProbability,const D<Id,Distribution,Argument
   {
     //    using test=typename Id::Id;
 
-    auto Res=apply_calculate_result_sum(logProbability{},Id{},Result<Distribution>{},Arguments(get_type_from_new(Id{},ds...),get_type_from_new(Xs{},ds...)...));
+    auto Res=result_of_myInvoke_calculate_sum(logProbability{},Id{},Result<Distribution>{},Arguments(get_type_from_new(Id{},ds...),get_type_from_new(Xs{},ds...)...));
     //  using test2=typename decltype (Res)::Res;
     //  using test3=typename decltype (make_Operation(logProbability{},Id{},Res, Arguments<Xs...>{}))::make_Operation;
     return make_Operation_for(logProbability{},Id{},Res, Arguments<Xs...>{});
@@ -1008,16 +977,16 @@ template <class...Fs,class...ds, class x_random,class... Par_ids, class...Datas 
 auto sample_Operation_on(const quimulun<Fs...>& qui, x_random& mt,myselect<Par_ids...>,Datas&&...d)
 {
 
-  return (Operation_non_serial<>{}+...+sample_Operation_Id(qui,mt,Par_ids{},std::forward<Datas>(d)...));
+  return (Instructions_non_serial<>{}+...+sample_Operation_Id(qui,mt,Par_ids{},std::forward<Datas>(d)...));
 }
 
 
 
 template<class ...Ops, class... Ts>
-constexpr auto operator+(Operation_non_serial<Ops...>&&,
-                         Operation_Coord<Ts...>&&)
+constexpr auto operator+(Instructions_non_serial<Ops...>&&,
+                         Instructions_Coord<Ts...>&&)
 {
-  return    Operation_non_serial<Ops...,Operation_Coord<Ts...>>{};
+  return    Instructions_non_serial<Ops...,Instructions_Coord<Ts...>>{};
 }
 
 
@@ -1025,10 +994,10 @@ constexpr auto operator+(Operation_non_serial<Ops...>&&,
 
 template<class ...x_is, class... Xs, class... X2s,class... Ops,class... Fids, template<class, class>class x_i,class e_i,class value_type, class Op, class Fid,class... Operations, class... Args, class...Args2,
           typename= std::enable_if_t<(same_pack_set(Cs<Xs...>{},Cs<X2s...>{})&&!is_this_template_class_v<logpr,e_i>)>>
-constexpr auto operator+(Operation_non_serial<
-                             Operation_for<Result<vector_field<vec<Xs...>,vector_space<x_is...>>>, Operation_vector<Operation<Ops,Fids>...>,Arguments<Args...>>,
+constexpr auto operator+(Instructions_non_serial<
+                             Instructions_for_each<Result<vector_field<vec<Xs...>,vector_space<x_is...>>>, Operation_vector<Operation<Ops,Fids>...>,Arguments<Args...>>,
                              Operations...>&&,
-                         Operation_for<Result<vector_field<vec<X2s...>,vector_space<x_i<e_i,value_type>>>>, Operation_vector<Operation<Op,Fid>>,Arguments<Args2...>>&&)
+                         Instructions_for_each<Result<vector_field<vec<X2s...>,vector_space<x_i<e_i,value_type>>>>, Operation_vector<Operation<Op,Fid>>,Arguments<Args2...>>&&)
 {
 
   //using test=typename decltype (std::declval<vector_space<x_is...>>()+std::declval<vector_space<x_i>>())::vector_sum;
@@ -1036,8 +1005,8 @@ constexpr auto operator+(Operation_non_serial<
 
   using ArgsOut=transfer_t<pack_difference_t<Cs<Args2...>,Cs<Args...,typename x_is::myId...>>,Arguments<Args...>>;
 
-  return    Operation_non_serial<
-      Operation_for<
+  return    Instructions_non_serial<
+      Instructions_for_each<
           Result<
               vector_field<vec<Xs...>,decltype(std::declval<vector_space<x_is...>>()+std::declval<vector_space<x_i<e_i,value_type>>>())>
               >,
@@ -1054,10 +1023,10 @@ constexpr auto operator+(Operation_non_serial<
 template<class ...Ups, class ...Downs, class Value_one,
           class ...Ups2, class ...Downs2, class Value_two, class... Xs, class... X2s,class... Ops,class... Fids, class Op, class Fid,class... Operations, class... Args, class...Args2,
           typename= std::enable_if_t<same_pack_set(Cs<Xs...>{},Cs<X2s...>{})>>
-constexpr auto operator+(Operation_non_serial<
-                             Operation_for<Result<vector_field<vec<Xs...>,vector_space<x_i<logpr<up<Ups...>,dn<Downs...>>,Value_one>>>>, Operation_vector<Operation<Ops,Fids>...>,Arguments<Args...>>,
+constexpr auto operator+(Instructions_non_serial<
+                             Instructions_for_each<Result<vector_field<vec<Xs...>,vector_space<x_i<logpr<up<Ups...>,dn<Downs...>>,Value_one>>>>, Operation_vector<Operation<Ops,Fids>...>,Arguments<Args...>>,
                              Operations...>&&,
-                         Operation_for<Result<vector_field<vec<X2s...>,vector_space<x_i<logpr<up<Ups2...>,dn<Downs2...>>,Value_two>>>>, Operation_vector<Operation<Op,Fid>>,Arguments<Args2...>>&&)
+                         Instructions_for_each<Result<vector_field<vec<X2s...>,vector_space<x_i<logpr<up<Ups2...>,dn<Downs2...>>,Value_two>>>>, Operation_vector<Operation<Op,Fid>>,Arguments<Args2...>>&&)
 {
 
   //using test=typename decltype (x_i<logpr<up<Ups...>,dn<Downs...>>,logv<double,unit_one>>{}+x_i<logpr<up<Ups2...>,dn<Downs2...>>,logv<double,unit_two>>{})::vector_sum;
@@ -1065,8 +1034,8 @@ constexpr auto operator+(Operation_non_serial<
 
   using ArgsOut=transfer_t<pack_difference_t<Cs<Args2...>,Cs<Args...,logpr<up<Ups...>,dn<Downs...>>>>,Arguments<Args...>>;
 
-  return    Operation_non_serial<
-      Operation_for<
+  return    Instructions_non_serial<
+      Instructions_for_each<
           Result<
               vector_field<vec<Xs...>,vector_space<decltype (x_i<logpr<up<Ups...>,dn<Downs...>>,Value_one>{}+x_i<logpr<up<Ups2...>,dn<Downs2...>>,Value_two>{})>
                            >>,
@@ -1077,15 +1046,15 @@ constexpr auto operator+(Operation_non_serial<
 
 
 template<class ...x_is, class... Xs, class... Ops,class... Fids, class x_i, class ...X2s,class Op, class Fid,class... Operations,class... Args, class... Args2>
-auto operator+(Operation_non_serial<
-                   Operation_Coord<Result<vector_field<vec<Xs...>,vector_space<x_is...>>>, Operation_vector<Operation<Ops,Fids>...>,Arguments<Args...>>,
+auto operator+(Instructions_non_serial<
+                   Instructions_Coord<Result<vector_field<vec<Xs...>,vector_space<x_is...>>>, Operation_vector<Operation<Ops,Fids>...>,Arguments<Args...>>,
                    Operations...>&&,
-               Operation_for<Result<vector_field<vec<X2s...>,vector_space<x_i>>>, Operation_vector<Operation<Op,Fid>>,Arguments<Args2...>>&&)
+               Instructions_for_each<Result<vector_field<vec<X2s...>,vector_space<x_i>>>, Operation_vector<Operation<Op,Fid>>,Arguments<Args2...>>&&)
 {
-  return    Operation_non_serial<
-             Operation_Coord<Result<vector_field<vec<Xs...>,vector_space<x_is...>>>, Operation_vector<Operation<Ops,Fids>...>,Arguments<Args...>>>{}&&
-         (Operation_non_serial<Operations...>{}+
-          Operation_for<Result<vector_field<vec<X2s...>,vector_space<x_i>>>, Operation_vector<Operation<Op,Fid>>,Arguments<Args2...>>{});
+  return    Instructions_non_serial<
+             Instructions_Coord<Result<vector_field<vec<Xs...>,vector_space<x_is...>>>, Operation_vector<Operation<Ops,Fids>...>,Arguments<Args...>>>{}&&
+         (Instructions_non_serial<Operations...>{}+
+          Instructions_for_each<Result<vector_field<vec<X2s...>,vector_space<x_i>>>, Operation_vector<Operation<Op,Fid>>,Arguments<Args2...>>{});
 
 }
 
@@ -1094,23 +1063,23 @@ auto operator+(Operation_non_serial<
 
 template<class ...x_is, class... Xs, class... Ops,class... Fids, class x_i, class ...X2s,class Op, class Fid,class... Operations,class... Args, class... Args2,
           typename=std::enable_if_t<!same_pack_set(Cs<Xs...>{},Cs<X2s...>{})>>
-auto operator+(Operation_non_serial<
-                   Operation_for<Result<vector_field<vec<Xs...>,vector_space<x_is...>>>, Operation_vector<Operation<Ops,Fids>...>,Arguments<Args...>>,
+auto operator+(Instructions_non_serial<
+                   Instructions_for_each<Result<vector_field<vec<Xs...>,vector_space<x_is...>>>, Operation_vector<Operation<Ops,Fids>...>,Arguments<Args...>>,
                    Operations...>&&,
-               Operation_for<Result<vector_field<vec<X2s...>,vector_space<x_i>>>, Operation_vector<Operation<Op,Fid>>,Arguments<Args2...>>&&)
+               Instructions_for_each<Result<vector_field<vec<X2s...>,vector_space<x_i>>>, Operation_vector<Operation<Op,Fid>>,Arguments<Args2...>>&&)
 {
-  return    Operation_non_serial<
-             Operation_for<Result<vector_field<vec<Xs...>,vector_space<x_is...>>>, Operation_vector<Operation<Ops,Fids>...>,Arguments<Args...>>>{}&&
-         (Operation_non_serial<Operations...>{}+
-          Operation_for<Result<vector_field<vec<X2s...>,vector_space<x_i>>>, Operation_vector<Operation<Op,Fid>>,Arguments<Args2...>>{});
+  return    Instructions_non_serial<
+             Instructions_for_each<Result<vector_field<vec<Xs...>,vector_space<x_is...>>>, Operation_vector<Operation<Ops,Fids>...>,Arguments<Args...>>>{}&&
+         (Instructions_non_serial<Operations...>{}+
+          Instructions_for_each<Result<vector_field<vec<X2s...>,vector_space<x_i>>>, Operation_vector<Operation<Op,Fid>>,Arguments<Args2...>>{});
 
 }
 
 
 
 template<class Value_type,class Value_type2,class... Ops,class... Fids,  class Op, class Fid,class... Args, class...Args2>
-constexpr auto operator+(    Operation_sum<Result<Value_type>, Operation_vector<Operation<Ops,Fids>...>,Arguments<Args...>>&&,
-                         Operation_sum<Result<Value_type2>, Operation_vector<Operation<Op,Fid>>,Arguments<Args2...>>&&)
+constexpr auto operator+(    Instructions_sum<Result<Value_type>, Operation_vector<Operation<Ops,Fids>...>,Arguments<Args...>>&&,
+                         Instructions_sum<Result<Value_type2>, Operation_vector<Operation<Op,Fid>>,Arguments<Args2...>>&&)
 {
 
   //using test=typename decltype (std::declval<vector_space<x_is...>>()+std::declval<vector_space<x_i>>())::vector_sum;
@@ -1119,7 +1088,7 @@ constexpr auto operator+(    Operation_sum<Result<Value_type>, Operation_vector<
   using ArgsOut=transfer_t<pack_difference_t<Cs<Args2...>,Cs<Args...>>,Arguments<Args...>>;
 
   return
-      Operation_sum<
+      Instructions_sum<
           Result<
               decltype(std::declval<Value_type>()+std::declval<Value_type2>()) >,
           Operation_vector<Operation<Ops,Fids>...,Operation<Op,Fid>>,ArgsOut >{};
@@ -1130,60 +1099,60 @@ constexpr auto operator+(    Operation_sum<Result<Value_type>, Operation_vector<
 
 
 template< class... Ops>
-auto operator+(Operation_non_serial<>&&,
-               Operation_for<Ops...>
+auto operator+(Instructions_non_serial<>&&,
+               Instructions_for_each<Ops...>
                    &&)
 {
-  return    Operation_non_serial<Operation_for<Ops...>
+  return    Instructions_non_serial<Instructions_for_each<Ops...>
                               >{};
 }
 
 template<class... Ts, class... Es>
-auto operator+(Operation_non_serial<Error<Es...>>&&,
-               Operation_for<Ts...>&&)
+auto operator+(Instructions_non_serial<Error<Es...>>&&,
+               Instructions_for_each<Ts...>&&)
 {
-  return    Operation_non_serial<Operation_for<Ts...>>{};
+  return    Instructions_non_serial<Instructions_for_each<Ts...>>{};
 }
 
 template<class... Ts, class... Es>
-auto operator+(Operation_non_serial<Error<Ts...>>&&,
+auto operator+(Instructions_non_serial<Error<Ts...>>&&,
                Error<Es...>&&)
 {
-  return    Operation_non_serial<Error<Ts...,Es...>>{};
+  return    Instructions_non_serial<Error<Ts...,Es...>>{};
 }
 
 
 template<class... Ts, class... Es>
-auto operator+(Operation_non_serial<Ts...>&&,
+auto operator+(Instructions_non_serial<Ts...>&&,
                Error<Es...>&&)
 {
-  return    Operation_non_serial<Ts...>{};
+  return    Instructions_non_serial<Ts...>{};
 }
 
 
 template<class... Ts>
-auto operator+(Operation_non_serial<>&&,
+auto operator+(Instructions_non_serial<>&&,
                Error<Ts...>&&)
 {
-  return    Operation_non_serial<Error<Ts...>>{};
+  return    Instructions_non_serial<Error<Ts...>>{};
 }
 
 
 
 
 template<class... Ops1, class... Ops2>
-auto operator&&(Operation_non_serial<Ops1...>&&,
-                Operation_non_serial<Ops2...>&&)
+auto operator&&(Instructions_non_serial<Ops1...>&&,
+                Instructions_non_serial<Ops2...>&&)
 {
-  return    Operation_non_serial<Ops1..., Ops2...>{};
+  return    Instructions_non_serial<Ops1..., Ops2...>{};
 }
 
 
 template<class... Ops1, class... Ops2>
-auto operator+(Operation_non_serial<Ops1...>&&,
-               Operation_non_serial<Ops2...>&&)
+auto operator+(Instructions_non_serial<Ops1...>&&,
+               Instructions_non_serial<Ops2...>&&)
 {
-  return    (Operation_non_serial<Ops1...>{}+...+ Ops2{});
+  return    (Instructions_non_serial<Ops1...>{}+...+ Ops2{});
 }
 
 
@@ -1197,7 +1166,7 @@ template <class Op,class...Fs,class...ds,class... Par_ids, class...Datas >
 auto calculate_Operation_on(Op,const quimulun<Fs...>& qui, myselect<Par_ids...>,Datas&&...d)
 {
 
-  return (Operation_non_serial<>{}+...+calculate_Operation_Id(Op{},qui,Par_ids{},std::forward<Datas>(d)...));
+  return (Instructions_non_serial<>{}+...+calculate_Operation_Id(Op{},qui,Par_ids{},std::forward<Datas>(d)...));
 }
 
 
@@ -1208,14 +1177,14 @@ auto calculate_Operation_on(Op,const quimulun<Fs...>& qui, myselect<Par_ids...>,
 
 
 template<class V,class...T>
-auto clean_Error(Operation_non_serial<Error<T...>>&&){return V{};}
+auto clean_Error(Instructions_non_serial<Error<T...>>&&){return V{};}
 
 
 
 template <class...Fs,class...Datas, class x_random,class... Par_ids, class...Var_ids,class... parOp_non_serials,class... varOp_non_serials>
 auto sample_parameters_calculate_Operation(const quimulun<Fs...>& qui,  x_random&& mt,
                                            myselect<Par_ids...>,myselect<Var_ids...>,
-                                           Operation_serial<parOp_non_serials...>&& parameters,Operation_serial<varOp_non_serials...>&& variables,Datas&&... d)
+                                           Instructions_serial<parOp_non_serials...>&& parameters,Instructions_serial<varOp_non_serials...>&& variables,Datas&&... d)
 {
   auto new_parameters=sample_Operation_on(qui,mt,myselect<Par_ids...>{},parameters,variables,std::forward<Datas>(d)...);
 
@@ -1225,7 +1194,7 @@ auto sample_parameters_calculate_Operation(const quimulun<Fs...>& qui,  x_random
   //using  new_par_ids=transfer_t<pack_difference_t<Cs<Par_ids...>,myIds_t<decltype(new_parameters)>>,myselect<>>;
   auto  new_par_idv=remove_succesfull_Operations(myselect<Par_ids...>{},new_parameters);
   if constexpr (new_par_idv.size==0)
-    return std::move(parameters)+clean_Error<Operation_non_serial<>>(std::move(new_parameters));
+    return std::move(parameters)+clean_Error<Instructions_non_serial<>>(std::move(new_parameters));
   else
   {
     auto new_variables=calculate_Operation_on(Calculator_new{},qui,myselect<Var_ids...>{},parameters,variables,std::forward<Datas>(d)...);
@@ -1238,8 +1207,8 @@ auto sample_parameters_calculate_Operation(const quimulun<Fs...>& qui,  x_random
       auto  new_var_idv=remove_succesfull_Operations(myselect<Var_ids...>{},new_variables);
 
       return sample_parameters_calculate_Operation(qui,mt,new_par_idv,new_var_idv,
-                                                   std::move(parameters)+clean_Error<Operation_non_serial<>>(std::move(new_parameters)),
-                                                   std::move(variables)+clean_Error<Operation_non_serial<>>(std::move(new_variables)),std::forward<Datas>(d)...);
+                                                   std::move(parameters)+clean_Error<Instructions_non_serial<>>(std::move(new_parameters)),
+                                                   std::move(variables)+clean_Error<Instructions_non_serial<>>(std::move(new_variables)),std::forward<Datas>(d)...);
 
     }
   }
@@ -1249,7 +1218,7 @@ auto sample_parameters_calculate_Operation(const quimulun<Fs...>& qui,  x_random
 template <class...Fs,class...Datas, class x_random,class... Par_ids, class...Var_ids,class... Op_non_serials>
 auto sample_parameters_calculate_variables_Operation(const quimulun<Fs...>& qui,  x_random&& mt,
                                                      myselect<Par_ids...>,myselect<Var_ids...>,
-                                                     Operation_serial<Op_non_serials...>&& operations,Datas&&... d)
+                                                     Instructions_serial<Op_non_serials...>&& operations,Datas&&... d)
 {
   //using test=typename myselect<Par_ids...>::Par_id;
   //using test2=typename myselect<Var_ids...>::Var_id;
@@ -1277,8 +1246,8 @@ auto sample_parameters_calculate_variables_Operation(const quimulun<Fs...>& qui,
     //  using  new_var_ids=transfer_t<pack_difference_t<Cs<Var_ids...>,myIds_t< decltype (new_variables)>>,myselect<>>;
 
     return sample_parameters_calculate_variables_Operation(qui,std::forward<x_random>(mt),new_par_idv,new_var_idv,
-                                                           operations+(clean_Error<Operation_non_serial<>>(std::move(new_parameters))+
-                                                                         clean_Error<Operation_non_serial<>>(std::move(new_variables))),std::forward<Datas>(d)...);
+                                                           operations+(clean_Error<Instructions_non_serial<>>(std::move(new_parameters))+
+                                                                         clean_Error<Instructions_non_serial<>>(std::move(new_variables))),std::forward<Datas>(d)...);
 
   }
 }
@@ -1286,7 +1255,7 @@ auto sample_parameters_calculate_variables_Operation(const quimulun<Fs...>& qui,
 
 template <class Op, class...Fs,class...Datas,  class...Var_ids,class... Op_non_serials>
 auto calculate_variables_Operation(Op,const quimulun<Fs...>& qui,  myselect<Var_ids...>,
-                                   Operation_serial<Op_non_serials...>&& operations,Datas&&... d)
+                                   Instructions_serial<Op_non_serials...>&& operations,Datas&&... d)
 {
 
   //using test=typename myselect<Var_ids...>::var_ids;
@@ -1311,7 +1280,7 @@ auto calculate_variables_Operation(Op,const quimulun<Fs...>& qui,  myselect<Var_
     auto  new_var_idv=remove_succesfull_Operations(myselect<Var_ids...>{},new_variables);
 
     return calculate_variables_Operation(Op{},qui,new_var_idv,
-                                         operations+(clean_Error<Operation_non_serial<>>(std::move(new_variables))),std::forward<Datas>(d)...);
+                                         operations+(clean_Error<Instructions_non_serial<>>(std::move(new_variables))),std::forward<Datas>(d)...);
 
   }
 }
@@ -1327,7 +1296,7 @@ auto sampleParameters_Operation(const quimulun<Fs...>& qui, x_random& mt, Datas&
   using Variables_ids=transfer_t<variables_ids,myselect<>>;
 
 
-  return sample_parameters_calculate_Operation(qui,mt,Parameters_ids{},Variables_ids{},Operation_serial<>{},Operation_serial<>{},std::forward<Datas>(d)...);
+  return sample_parameters_calculate_Operation(qui,mt,Parameters_ids{},Variables_ids{},Instructions_serial<>{},Instructions_serial<>{},std::forward<Datas>(d)...);
 
 
 }
@@ -1344,7 +1313,7 @@ auto sample_Operation(const quimulun<Fs...>& qui, x_random& mt, Datas&&... d)
   using Parameters_ids=transfer_t<pack_difference_t<distribution_ids,pack_concatenation_t<myIds_t<Datas>...>>,myselect<>>;
   using Variables_ids=transfer_t<variables_ids,myselect<>>;
 
-  return sample_parameters_calculate_variables_Operation(qui,mt,Parameters_ids{},Variables_ids{}, Operation_serial<>{},std::forward<Datas>(d)...);
+  return sample_parameters_calculate_variables_Operation(qui,mt,Parameters_ids{},Variables_ids{}, Instructions_serial<>{},std::forward<Datas>(d)...);
 
 
 }
@@ -1411,7 +1380,7 @@ auto calculate_Operation(Op,const quimulun<Fs...>& qui,  Datas&&... d)
   using variables_ids=extract_function_Id_new_t<Cs<Fs...>>;
   using Variables_ids=transfer_t<variables_ids,myselect<>>;
 
-  return calculate_variables_Operation(Op{},qui,Variables_ids{}, Operation_serial<>{},std::forward<Datas>(d)...);
+  return calculate_variables_Operation(Op{},qui,Variables_ids{}, Instructions_serial<>{},std::forward<Datas>(d)...);
 }
 
 
@@ -1468,9 +1437,9 @@ template<class, class, class, class> struct Operation_loop;
 
 
 template<class... init_ops, class... start_ops, class... loop_ops,class... next_ops >
-struct Operation_loop<Operation_serial<init_ops...>, Operation_serial<start_ops...>, Operation_serial<loop_ops...>, Operation_serial<next_ops...>>
+struct Operation_loop<Instructions_serial<init_ops...>, Instructions_serial<start_ops...>, Instructions_serial<loop_ops...>, Instructions_serial<next_ops...>>
 {
-  Operation_loop(Operation_serial<init_ops...>, Operation_serial<start_ops...>, Operation_serial<loop_ops...>, Operation_serial<next_ops...>){}
+  Operation_loop(Instructions_serial<init_ops...>, Instructions_serial<start_ops...>, Instructions_serial<loop_ops...>, Instructions_serial<next_ops...>){}
 };
 
 
@@ -1478,7 +1447,7 @@ struct Operation_loop<Operation_serial<init_ops...>, Operation_serial<start_ops.
 template <class...Fs,class...Datas, class x_random,class... Par_ids, class...Var_ids,class...start_par_ids, class... next_par_ids, class...start_var_ids, class... next_var_ids,  class... Op_non_serials>
 auto sample_parameters_calculate_variables_loop_init_Operation(const quimulun<Fs...>& qui,  x_random&& mt,
                                                                myselect<Par_ids...>,myselect<Var_ids...>,
-                                                               Operation_serial<Op_non_serials...>&& operations,Datas&&... d)
+                                                               Instructions_serial<Op_non_serials...>&& operations,Datas&&... d)
 {
   auto new_parameters=sample_Operation_on(qui,mt,myselect<Par_ids...>{},operations,std::forward<Datas>(d)...);
   auto new_variables=calculate_Operation_on(Calculator_new{},qui,myselect<Var_ids...>{},operations,std::forward<Datas>(d)...);
@@ -1497,8 +1466,8 @@ auto sample_parameters_calculate_variables_loop_init_Operation(const quimulun<Fs
 
 
     return sample_parameters_calculate_variables_loop_init_Operation(qui,std::forward<x_random>(mt),new_par_idv,new_var_idv,
-                                                                     operations+(clean_Error<Operation_non_serial<>>(std::move(new_parameters))+
-                                                                                   clean_Error<Operation_non_serial<>>(std::move(new_variables))),std::forward<Datas>(d)...);
+                                                                     operations+(clean_Error<Instructions_non_serial<>>(std::move(new_parameters))+
+                                                                                   clean_Error<Instructions_non_serial<>>(std::move(new_variables))),std::forward<Datas>(d)...);
 
   }
 }
@@ -1510,7 +1479,7 @@ auto sample_parameters_calculate_variables_loop_start_Operation(const quimulun<F
                                                                 myselect<Par_ids...>,myselect<Var_ids...>,
                                                                 myselect<Start_new<start_par_ids,start_par_nsteps>...>,
                                                                 myselect<Start_new<start_var_ids,start_var_nsteps>...>,
-                                                                Operation_serial<start_Ops...>&& start_ops,Datas&&... d)
+                                                                Instructions_serial<start_Ops...>&& start_ops,Datas&&... d)
 {
 
   auto new_start_parameters=sample_Operation_on(qui,mt,myselect<Start_new<start_par_ids,start_par_nsteps>...>{} ,start_ops,std::forward<Datas>(d)...);
@@ -1549,10 +1518,10 @@ auto sample_parameters_calculate_variables_loop_start_Operation(const quimulun<F
 
     return sample_parameters_calculate_variables_loop_start_Operation(qui,std::forward<x_random>(mt),new_par_idsv,new_var_idsv,new_start_par_idv,
                                                                       new_start_var_idv,
-                                                                      start_ops+(clean_Error<Operation_non_serial<>>(std::move(new_start_parameters))+
-                                                                                   clean_Error<Operation_non_serial<>>(std::move(new_start_variables))+
-                                                                                   clean_Error<Operation_non_serial<>>(std::move(new_parameters))+
-                                                                                   clean_Error<Operation_non_serial<>>(std::move(new_variables))),std::forward<Datas>(d)...);
+                                                                      start_ops+(clean_Error<Instructions_non_serial<>>(std::move(new_start_parameters))+
+                                                                                   clean_Error<Instructions_non_serial<>>(std::move(new_start_variables))+
+                                                                                   clean_Error<Instructions_non_serial<>>(std::move(new_parameters))+
+                                                                                   clean_Error<Instructions_non_serial<>>(std::move(new_variables))),std::forward<Datas>(d)...);
 
   }
 }
@@ -1565,7 +1534,7 @@ auto sample_parameters_calculate_variables_loop_next_Operation(const quimulun<Fs
                                                                myselect<Par_ids...>,myselect<Var_ids...>,
                                                                myselect<Next_new<next_par_ids,next_par_nsteps>...>,
                                                                myselect<Next_new<next_var_ids,next_var_nsteps>...>,
-                                                               Operation_serial<step_Ops...>&& step_ops,Datas&&... d)
+                                                               Instructions_serial<step_Ops...>&& step_ops,Datas&&... d)
 {
 
   auto new_next_parameters=sample_Operation_on(qui,mt,myselect<Next_new<next_par_ids,next_par_nsteps>...>{} ,step_ops,std::forward<Datas>(d)...);
@@ -1604,10 +1573,10 @@ auto sample_parameters_calculate_variables_loop_next_Operation(const quimulun<Fs
 
     return sample_parameters_calculate_variables_loop_next_Operation(qui,std::forward<x_random>(mt),new_par_idsv,new_var_idsv,new_next_par_idv,
                                                                      new_next_var_idv,
-                                                                     step_ops+(clean_Error<Operation_non_serial<>>(std::move(new_next_parameters))+
-                                                                                 clean_Error<Operation_non_serial<>>(std::move(new_next_variables))+
-                                                                                 clean_Error<Operation_non_serial<>>(std::move(new_parameters))+
-                                                                                 clean_Error<Operation_non_serial<>>(std::move(new_variables))),std::forward<Datas>(d)...);
+                                                                     step_ops+(clean_Error<Instructions_non_serial<>>(std::move(new_next_parameters))+
+                                                                                 clean_Error<Instructions_non_serial<>>(std::move(new_next_variables))+
+                                                                                 clean_Error<Instructions_non_serial<>>(std::move(new_parameters))+
+                                                                                 clean_Error<Instructions_non_serial<>>(std::move(new_variables))),std::forward<Datas>(d)...);
 
   }
 }

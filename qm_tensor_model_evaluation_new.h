@@ -216,78 +216,78 @@ auto myInvoke(Calculator_new,F&& f,Datas&&...d)
 
 
 template<class R, class... Datas>
-void myInvoke_elem_new(R& r,Calculator_new,Glue_new,Datas&&...d)
+void Invoke_on_elem(R& r,Calculator_new,Glue_new,Datas&&...d)
 {
   r=myInvoke(Glue_new{}, std::forward<Datas>(d)...);
 }
 
 template<class R,class F, class... Datas>
-void myInvoke_elem_new(R& r,Calculator_new,F&& f,Datas&&...d)
+void Invoke_on_elem(R& r,Calculator_new,F&& f,Datas&&...d)
 {
   r=myInvoke(Calculator_new{},std::forward<F>(f), std::forward<Datas>(d)...);
 }
 
 template<class R,class Distribution,class random, class... Datas>
-void myInvoke_elem_new(R& r,Sample,Distribution&& f,random& mt,Datas&&...d)
+void Invoke_on_elem(R& r,Sample,Distribution&& f,random& mt,Datas&&...d)
 {
   r=myInvoke(Sample{},std::forward<Distribution>(f), mt,std::forward<Datas>(d)...);
 }
 
 template<class R,class Distribution,class random, class... Datas>
-void myInvoke_elem_new(R& r,logProbability,Distribution&& f,random& ,Datas&&...d)
+void Invoke_on_elem(R& r,logProbability,Distribution&& f,random& ,Datas&&...d)
 {
   r=r+myInvoke(logProbability{},std::forward<Distribution>(f), std::forward<Datas>(d)...);
 }
 
 
 template<class R,class Id,class G, class... Xs, class... Datas>
-void myInvoke_elem_new(R& r,Calculator_new,const F_new<Id,G,Arguments<Xs...>>& f,Datas&&...d)
+void Invoke_on_elem(R& r,Calculator_new,const F_new<Id,G,Arguments<Xs...>>& f,Datas&&...d)
 {
   r=std::invoke(f.f(), std::forward<Datas>(d)...);
 }
 
 template<class R,class Op,class Id,class Calc,class Fi, class... Xs, class Position,class random,class... Datas>
-void myInvoke_pos_new(R& r,Op,const Dq_new<Id,Calc,Fi,Arguments<Xs...>>& ,const Position& p, random& mt,Datas&&...d)
+void Invoke_on_pos(R& r,Op,const Dq_new<Id,Calc,Fi,Arguments<Xs...>>& ,const Position& p, random& mt,Datas&&...d)
 {
-  myInvoke_elem_new(r(),Op{},get_from_new(Fi{},std::forward<Datas>(d)...)(),mt, get_from_new(Xs{},std::forward<Datas>(d)...)()(p)...);
+  Invoke_on_elem(r(),Op{},get_from_new(Fi{},std::forward<Datas>(d)...)(),mt, get_from_new(Xs{},std::forward<Datas>(d)...)()(p)...);
 }
 
 template<class R,class Op,class Id,class Calc,class Fi, class... Xs, class ...XXs,class Position,class random,class... Datas>
-void myInvoke_pos_new(R& r,Op,const Dq_new<Id,Calc,Fi,Arguments<Xs...>, Index_struct<XXs...>> ,const Position& p, random& mt,Datas&&...d)
+void Invoke_on_pos(R& r,Op,const Dq_new<Id,Calc,Fi,Arguments<Xs...>, Index_struct<XXs...>> ,const Position& p, random& mt,Datas&&...d)
 {
-  myInvoke_elem_new(r(),Op{},get_from_new(Fi{},std::forward<Datas>(d)...)(),mt, get_from_new(Xs{},std::forward<Datas>(d)...)()(p)...);
+  Invoke_on_elem(r(),Op{},get_from_new(Fi{},std::forward<Datas>(d)...)(),mt, get_from_new(Xs{},std::forward<Datas>(d)...)()(p)...);
 }
 
 template<class R,class Op,class Id,class Calc,class Fi, class... Xs, class Position,class random,class... Datas>
-auto myInvoke_pos_new(R& r,Op,const Dq_new<Id,Calc,Fi,Arguments_xi<Xs...>>& ,const Position& , random& mt,Datas&&...d)
+auto Invoke_on_pos(R& r,Op,const Dq_new<Id,Calc,Fi,Arguments_xi<Xs...>>& ,const Position& , random& mt,Datas&&...d)
 {
-  myInvoke_elem_new(r(),Op{},get_from_new(Fi{},std::forward<Datas>(d)...)(),mt, get_from_new(Xs{},std::forward<Datas>(d)...)...);
+  Invoke_on_elem(r(),Op{},get_from_new(Fi{},std::forward<Datas>(d)...)(),mt, get_from_new(Xs{},std::forward<Datas>(d)...)...);
 }
 
 
 template<class R,class Op,class Id,class Calc,class Fi, class... Xs, class Position,class random,class... Datas>
-auto myInvoke_pos_new(R& r,Op,const Fq_new<Id,Calc,Fi,Arguments<Xs...>>& ,const Position& p, random& mt,Datas&&...d)
+auto Invoke_on_pos(R& r,Op,const Fq_new<Id,Calc,Fi,Arguments<Xs...>>& ,const Position& p, random& mt,Datas&&...d)
 {
-  myInvoke_elem_new(r(),Op{},get_from_new(Fi{},std::forward<Datas>(d)...)(), mt,get_from_new(Xs{},std::forward<Datas>(d)...)()(p)...);
+  Invoke_on_elem(r(),Op{},get_from_new(Fi{},std::forward<Datas>(d)...)(), mt,get_from_new(Xs{},std::forward<Datas>(d)...)()(p)...);
 }
 
 
 
 template<class R,class Op,class Id,class G, class... Xs, class Position,class random,class... Datas>
-void myInvoke_pos_new(R& r,Op,const Coord_new<Id,G,Arguments<Xs...>>& f,const Position& p,random&, Datas&&...d)
+void Invoke_on_pos(R& r,Op,const Coord_new<Id,G,Arguments<Xs...>>& f,const Position& p,random&, Datas&&...d)
 {
-  myInvoke_elem_new(r().value(),Op{},f.get_G(), get_from_new(Xs{},d...)()(p)...);
+  Invoke_on_elem(r().value(),Op{},f.get_G(), get_from_new(Xs{},d...)()(p)...);
 }
 
 template<class R,class Op,class Id, class... Xs, class Position,class random,class... Datas>
-void myInvoke_pos_new(R& r,Op,const F_new<Id,Glue_new,Arguments<Xs...>>& f,const Position& ,random&, Datas&&...d)
+void Invoke_on_pos(R& r,Op,const F_new<Id,Glue_new,Arguments<Xs...>>& f,const Position& ,random&, Datas&&...d)
 {
-  myInvoke_elem_new(r(),Op{},f.f(), get_from_new(Xs{},d...)...);
+  Invoke_on_elem(r(),Op{},f.f(), get_from_new(Xs{},d...)...);
 
 }
 
 template<class R,class Op,class Id, class Distribution, class... Xs, class Position,class random,class... Datas>
-void myInvoke_sum_new(R& r,Op,const D<Id,Distribution,Arguments<Xs...>>& ,const Position& ,random& mt, Datas&&...d)
+void Invoke_on_sum(R& r,Op,const D<Id,Distribution,Arguments<Xs...>>& ,const Position& ,random& mt, Datas&&...d)
 {
   auto && y=get_from_new(Id{},std::forward<Datas>(d)...)();
 
@@ -295,7 +295,7 @@ void myInvoke_sum_new(R& r,Op,const D<Id,Distribution,Arguments<Xs...>>& ,const 
   auto pin=y.begin();
 
   do {
-    myInvoke_elem_new(loglik,Op{},Distribution{}, mt,y(pin),get_from_new(Xs{},d...)()(pin)...);
+    Invoke_on_elem(loglik,Op{},Distribution{}, mt,y(pin),get_from_new(Xs{},d...)()(pin)...);
     r()=r()+loglik;
   } while(y.next(pin));
 
@@ -303,25 +303,25 @@ void myInvoke_sum_new(R& r,Op,const D<Id,Distribution,Arguments<Xs...>>& ,const 
 
 
 template<class R,class Op,class Id, class Distribution, class... Xs, class Position,class random,class... Datas>
-void myInvoke_pos_new(R& r,Op,const D<Id,Distribution,Arguments<Xs...>>& ,const Position& p,random& mt, Datas&&...d)
+void Invoke_on_pos(R& r,Op,const D<Id,Distribution,Arguments<Xs...>>& ,const Position& p,random& mt, Datas&&...d)
 {
-  myInvoke_elem_new(r(),Op{},Distribution{}, mt,get_from_new(Xs{},d...)()(p)...);
+  Invoke_on_elem(r(),Op{},Distribution{}, mt,get_from_new(Xs{},d...)()(p)...);
 }
 
 template<class R,class Op,class Id, class Distribution, class... Xs, class ...XXs,class Position,class random,class... Datas>
-void myInvoke_pos_new(R& r,Op,const D<Id,Distribution,Arguments<Xs...>,Index_struct<XXs...>>& ,const Position& p,random& mt, Datas&&...d)
+void Invoke_on_pos(R& r,Op,const D<Id,Distribution,Arguments<Xs...>,Index_struct<XXs...>>& ,const Position& p,random& mt, Datas&&...d)
 {
-  myInvoke_elem_new(r(),Op{},Distribution{}, mt,get_from_new(Xs{},d...)()(p)...);
+  Invoke_on_elem(r(),Op{},Distribution{}, mt,get_from_new(Xs{},d...)()(p)...);
 
 }
 
 
 template<class R,class Op,class Id,class G, class... Xs, class Position,class random,class... Datas, typename=std::enable_if_t<!std::is_same_v<G,Glue_new >>>
-auto myInvoke_pos_new(R& r,Op,const F_new<Id,G,Arguments<Xs...>>& f,const Position& p,random&, Datas&&...d)
+auto Invoke_on_pos(R& r,Op,const F_new<Id,G,Arguments<Xs...>>& f,const Position& p,random&, Datas&&...d)
 {
   // using test=typename Cs<Cs<Xs,decltype (get_from_new(Xs{},d...))>...>::ajgeg;
 
-  myInvoke_elem_new(r(),Op{},f.f(), get_from_new(Xs{},d...)()(p)...);
+  Invoke_on_elem(r(),Op{},f.f(), get_from_new(Xs{},d...)()(p)...);
 }
 
 
