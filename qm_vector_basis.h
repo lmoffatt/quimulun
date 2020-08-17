@@ -10,7 +10,10 @@ template<class Id> struct pass_id{};
 
 
 template<class x_i, class Position=std::decay_t<decltype (std::declval<x_i>().begin() ) > >
-constexpr inline bool self_referred_v = std::is_same_v<std::decay_t<decltype(std::declval<x_i const&>())>,std::decay_t<decltype (std::declval<x_i const &>()(Position{}))>>;
+constexpr inline bool self_referred_v = std::is_same_v<
+    std::decay_t<decltype(std::declval<x_i const&>())>,
+    std::decay_t<decltype (std::declval<x_i const &>()(Position{}))>
+    >;
 
 
 
@@ -93,19 +96,19 @@ public:
 
 
 
-  template<class Position>
-  auto operator()(const Position& p)->std::conditional_t<self_referred_v<Value_type,Position>,x_i&, decltype (make_x_i_view(e_i{},value_(p)))>
+  template<class... Xs>
+  auto operator()(const Position<Xs...>& p)->std::conditional_t<self_referred_v<Value_type,Position<Xs...>>,x_i&, decltype (make_x_i_view(e_i{},value_(p)))>
   {
-    if constexpr (self_referred_v<Value_type,Position>)
+    if constexpr (self_referred_v<Value_type,Position<Xs...>>)
       return *this;
     else
       return make_x_i_view(e_i{},value_(p));
   }
 
-  template<class Position>
-  auto operator()(const Position& p) const ->std::conditional_t<self_referred_v<Value_type,Position>,x_i const&, decltype (make_x_i_view(e_i{},value_(p)))>
+  template<class... Xs>
+  auto operator()(const Position<Xs...>& p) const ->std::conditional_t<self_referred_v<Value_type,Position<Xs...>>,x_i const&, decltype (make_x_i_view(e_i{},value_(p)))>
   {
-    if constexpr (self_referred_v<Value_type,Position>)
+    if constexpr (self_referred_v<Value_type,Position<Xs...>>)
       return *this;
     else
       return make_x_i_view(e_i{},value_(p));
@@ -274,7 +277,8 @@ template<class e_i,class Value_type> struct get_Field_Indexes <x_i<e_i,Value_typ
 
 template<class... Is> struct get_Field_Indexes <Position<Is...>>
 {
-  typedef vec<Is...> type;
+  using type=vec<>;
+ // typedef vec<Is...> type;
 };
 
 
@@ -592,6 +596,13 @@ x_i_view_non_const<e_i,Value_type> make_view(x_i_view_non_const<e_i,Value_type> 
   return x_i_view_non_const(e_i{},x());
 }
 
+template<class vectorfield_storing_type, class Id>
+auto make_view(x_i_vector_field_const<vectorfield_storing_type,Id>const & x)
+{
+  return x;
+}
+
+
 
 template<class e_i,class Value_type,class... Xs> struct get_Field_Indexes <x_i_view_const<e_i,vector_field< vec<Xs...>,Value_type>>>
 {
@@ -619,7 +630,6 @@ struct get_Field_Indexes <x_i_tuple_view_const<xis...>>
 {
   typedef vec<> type;
 };
-
 
 template<class... xis>
 auto make_x_i_tuple_view_const(xis const& ... x)

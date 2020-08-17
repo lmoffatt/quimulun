@@ -11,6 +11,8 @@
 
 //namespace qm {
 
+template<class...> struct error_in_this_classes;
+
 
 template <class T>
 auto operator<<(std::ostream& os, T x)->decltype (x.className,os)

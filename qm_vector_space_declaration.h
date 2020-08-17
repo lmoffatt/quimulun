@@ -373,8 +373,8 @@ template<class...x_is> struct vector_space: private x_is...
 
 };
 
-template<class... I, class Is,class...vectorfield>
-auto get_size_from(Is,Position<I...>&p, const vectorfield&...me)
+template<class... I, class Is,class...vectorfield_type>
+auto get_size_from(Is,Position<I...>&p, const vectorfield_type&...me)
 {
   return ([&me,&p](auto b){
            if (b.first)

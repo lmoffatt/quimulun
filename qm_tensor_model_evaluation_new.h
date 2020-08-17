@@ -2,6 +2,7 @@
 #define QM_TENSOR_MODEL_EVALUATION_NEW_H
 
 #include "qm_tensor_model_declaration.h"
+#include "qm_tensor_model_declaration_new.h"
 #include "qm_vector_field_evaluation.h"
 #include "qm_vector_tuple_declaration.h"
 #include "qm_tensor_distribution_evaluation.h"
@@ -39,7 +40,7 @@ auto get_xi_from_this_new(anId, V&& xi)->decltype (only_xi_or_fi(std::forward<V>
 
 
 template <class anId, class...Datas
-          , typename =std::enable_if_t<               ( !is_any_of_these_template_classes<all,Size_at_Index_new,pos_new,all_new,sub,subElement,Size,pass_id, std::tuple>::template value<anId>) >>
+          , typename =std::enable_if_t<               ( !is_any_of_these_template_classes<all,Size_at_Index_new,pos_new,all_new,sub,applyPosition,Size,pass_id, std::tuple>::template value<anId>) >>
 constexpr auto get_from_new(anId, Datas&&...ds)->decltype ((get_xi_from_this_new(anId{},std::forward<Datas>(ds))||...))
 {
   //using test=typename Cs<decltype(std::forward<Datas>(ds)[anId{}])...>::tew;
@@ -110,9 +111,9 @@ auto get_from_new(pos_new<Id>, Datas&&...ds)
 }
 
 template <class Id,  class  IndexId, class...Datas>
-auto get_from_new(subElement<Id,IndexId>, Datas&&...ds)
+auto get_from_new(applyPosition<Id,IndexId>, Datas&&...ds)
 {
-  // using test=typename Cs<subElement<Id,IndexId>, decltype(get_from_new(Id{},std::forward<Datas>(ds)...)),decltype(get_from_new(IndexId{},std::forward<Datas>(ds)...))>::tew;
+  // using test=typename Cs<applyPosition<Id,IndexId>, decltype(get_from_new(Id{},std::forward<Datas>(ds)...)),decltype(get_from_new(IndexId{},std::forward<Datas>(ds)...))>::tew;
 
   auto&& x=get_from_new(Id{},std::forward<Datas>(ds)...)();
 
@@ -133,7 +134,7 @@ decltype(auto) get_from_new(sub<Id,IndexId>, Datas&&...ds)
   //  using test=typename Cs<sub<Id, IndexId>>::gewlj;
   //  using test2=typename Cs<Id,Result<decltype (get_from_new(Id{},std::forward<Datas>(ds)...))>>::test2;
   //  using test3=typename Cs<IndexId,Result<decltype (get_at(get_from_new(Id{},std::forward<Datas>(ds)...)(),IndexId{}))>>::test2;
-  return get_at(get_from_new(Id{},std::forward<Datas>(ds)...)(),IndexId{});
+  return get_at_recursive(get_from_new(Id{},std::forward<Datas>(ds)...)(),IndexId{});
 }
 
 
@@ -263,6 +264,12 @@ auto Invoke_on_pos(R& r,Op,const Dq_new<Id,Calc,Fi,Arguments_xi<Xs...>>& ,const 
 {
   Invoke_on_elem(r(),Op{},get_from_new(Fi{},std::forward<Datas>(d)...)(),mt, get_from_new(Xs{},std::forward<Datas>(d)...)...);
 }
+template<class R,class Op,class Id,class Calc,class Fi, class... Xs, class ...x_is,class Position,class random,class... Datas>
+void Invoke_on_pos(R& r,Op,const Dq_new<Id,Calc,Fi,Arguments<Xs...>, Arguments_xi<x_is...>> ,const Position& p, random& mt,Datas&&...d)
+{
+  Invoke_on_elem(r(),Op{},get_from_new(Fi{},std::forward<Datas>(d)...)(),mt,
+                 get_from_new(Xs{},std::forward<Datas>(d)...)()(p)...,get_from_new(x_is{},std::forward<Datas>(d)...)...);
+}
 
 
 template<class R,class Op,class Id,class Calc,class Fi, class... Xs, class Position,class random,class... Datas>
@@ -271,6 +278,17 @@ auto Invoke_on_pos(R& r,Op,const Fq_new<Id,Calc,Fi,Arguments<Xs...>>& ,const Pos
   Invoke_on_elem(r(),Op{},get_from_new(Fi{},std::forward<Datas>(d)...)(), mt,get_from_new(Xs{},std::forward<Datas>(d)...)()(p)...);
 }
 
+template<class R,class Op,class Id,class Calc,class... Fs, class... Xs, class Position,class random,class... Datas>
+auto Invoke_on_pos(R& r,Op,const Fq_new<Id,Calc,quimulun<Fs...>,Arguments<Xs...>>& fq,const Position& p, random& mt,Datas&&...d)
+{
+  Invoke_on_elem(r(),Op{},fq.Fq(), mt,get_from_new(Xs{},std::forward<Datas>(d)...)()(p)...);
+}
+
+template<class R,class Op,class Id,class Calc,class... Fs, class... Xs, class Position,class random,class... Datas>
+auto Invoke_on_pos(R& r,Op,const Fq_new<Id,Calc,quimulun<Fs...>,Arguments_xi<Xs...>>& fq,const Position& , random& mt,Datas&&...d)
+{
+  Invoke_on_elem(r(),Op{},fq.Fq(), mt,get_from_new(Xs{},std::forward<Datas>(d)...)...);
+}
 
 
 template<class R,class Op,class Id,class G, class... Xs, class Position,class random,class... Datas>
@@ -359,6 +377,11 @@ struct extract_distribution_Id_new<
     >{using type=Cs<Id>;};
 
 
+template<class Id,class Calc,class Fi, class... Xs, class... x_is>
+struct extract_distribution_Id_new<
+    Dq_new<Id,Calc,Fi,Arguments<Xs...>,Arguments_xi<x_is...>>
+    >{using type=Cs<Id>;};
+
 
 
 template<class Id,class Calc,class Fi, class... Xs, class... Is>
@@ -383,11 +406,24 @@ template<class Id,class Calc,class Fi, class... Xs>
 struct extract_function_Id_new<
     Fq_new<Id,Calc,Fi,Arguments<Xs...>>
     >{using type=Cs<Id>;};
+template<class Id,class Calc,class Fi, class... Xs>
+struct extract_function_Id_new<
+    Fq_new<Id,Calc,Fi,Arguments_xi<Xs...>>
+    >{using type=Cs<Id>;};
+
+
 
 template<class Id,class G, class... Xs>
 struct extract_function_Id_new<
     F_new<Id,G,Arguments<Xs...>>
     >{using type=Cs<Id>;};
+
+template<class Id,class G, class Y, class ...Ops,class ...Xs>
+struct extract_function_Id_new<
+  Update_new<Id,G,Arguments<Y>, Operations<Ops...>,Arguments<Xs...>>
+    >{using type=Cs<Id>;};
+
+
 
 
 template< class... Ids>

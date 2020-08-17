@@ -108,23 +108,43 @@ void Invoke_on_Serial_pos(vector_space<x_is...>& ,Instructions_vector<>,const qu
 {}
 
 
-template<class ...x_is, class Op, class... Ops,class Fid,class... Fids,class Position,class... Fs,class random,class... Datas, typename =std::enable_if_t<!is_this_template_class_v<Out,Fid>>>
-void Invoke_on_Serial_pos(vector_space<x_is...>& x,Instructions_vector<Instruction<Op,Fid>,Instruction<Ops,Fids>...>,const quimulun<Fs...>& qui,const Position& p, random& mt,Datas&&...d)
+template<class ...x_is, class Op, class... Instructions,class Fid,class... Args,class Position,class... Fs,class random,class... Datas, typename =std::enable_if_t<!is_any_of_these_template_classes<Out,Start_new,Next_new>::template value<Fid>>>
+void Invoke_on_Serial_pos(vector_space<x_is...>& x,Instructions_vector<Instruction_new<Op,Fid,Args...>,Instructions...>,const quimulun<Fs...>& qui,const Position& p, random& mt,Datas&&...d)
 {
   Invoke_on_pos(x[non_const<Fid>{}],Op{},qui[Fid{}], p,mt,qui,std::forward<Datas>(d)...);
-  Invoke_on_Serial_pos(x,Instructions_vector<Instruction<Ops,Fids>...>{},qui,p,mt,x[Fid{}],std::forward<Datas>(d)...);
+  Invoke_on_Serial_pos(x,Instructions_vector<Instructions...>{},qui,p,mt,x[Fid{}],std::forward<Datas>(d)...);
 }
 
 
-template<class ...x_is, class Op, class... Ops,class Fid,class... Fids,class Position,class... Fs,class random,class... Datas>
-void Invoke_on_Serial_pos(vector_space<x_is...>& x,Instructions_vector<Instruction<Op,Out<Fid>>,Instruction<Ops,Fids>...>,const quimulun<Fs...>& qui,const Position& p, random& mt,Datas&&...d)
+template<class ...x_is, class Op, class... Args,class Fid,class nstep,class... Instructions,class Position,class... Fs,class random,class... Datas>
+void Invoke_on_Serial_pos(vector_space<x_is...>& x,Instructions_vector<Instruction_new<Op,Start_new<Fid,nstep>,Args...>,Instructions...>,const quimulun<Fs...>& qui,const Position& p, random& mt,Datas&&...d)
+{
+  x[non_const<nstep>{}]()=v(0ul,dimension_less{});
+  Invoke_on_pos(x[non_const<Fid>{}],Op{},qui[Start_new<Fid,nstep>{}], p,mt,qui,std::forward<Datas>(d)...);
+  using test=typename Cs<Fid,decltype (x[Fid{}]),decltype (x)>::test;
+  Invoke_on_Serial_pos(x,Instructions_vector<Instructions...>{},qui,p,mt,x[nstep{}],x[Fid{}],std::forward<Datas>(d)...);
+}
+
+template<class ...x_is, class Op, class... Args,class Fid,class nstep,class... Instructions,class Position,class... Fs,class random,class... Datas>
+void Invoke_on_Serial_pos(vector_space<x_is...>& x,Instructions_vector<Instruction_new<Op,Next_new<Fid,nstep>,Args...>,Instructions...>,const quimulun<Fs...>& qui,const Position& p, random& mt,Datas&&...d)
+{
+  x[non_const<nstep>{}]()=x[non_const<nstep>{}]()+v(1ul,dimension_less{});
+  Invoke_on_pos(x[non_const<Fid>{}],Op{},qui[Next_new<Fid,nstep>{}], p,mt,qui,std::forward<Datas>(d)...);
+  Invoke_on_Serial_pos(x,Instructions_vector<Instructions...>{},qui,p,mt,x[nstep{}],x[Fid{}],std::forward<Datas>(d)...);
+}
+
+
+
+
+template<class ...x_is, class Op, class... Args,class Fid,class... Instructions,class Position,class... Fs,class random,class... Datas>
+void Invoke_on_Serial_pos(vector_space<x_is...>& x,Instructions_vector<Instruction_new<Op,Out<Fid>,Args...>,Instructions...>,const quimulun<Fs...>& qui,const Position& p, random& mt,Datas&&...d)
 {
   Invoke_on_pos(x[non_const<Fid>{}],Op{},qui[Out<Fid>{}], p,mt,qui,std::forward<Datas>(d)...);
-  Invoke_on_Serial_pos(x,Instructions_vector<Instruction<Ops,Fids>...>{},qui,p,mt,x_i_view_const(Out<Fid>{},x[Fid{}]),std::forward<Datas>(d)...);
+  Invoke_on_Serial_pos(x,Instructions_vector<Instructions...>{},qui,p,mt,x_i_view_const(Out<Fid>{},x[Fid{}]),std::forward<Datas>(d)...);
 }
 
-template<class ...Ups,class... Downs, class Value_type,class... Ops,class... Fids,class Position,class... Fs,class random,class... Datas>
-void Invoke_on_Serial_pos(x_i<logpr<up<Ups...>,dn<Downs...>>,Value_type>& x,Instructions_vector<Instruction<Ops,Fids>...>,const quimulun<Fs...>& qui,const Position& p, random& mt,Datas&&...d)
+template<class ...Ups,class... Downs, class Value_type,class... Ops,class...Args,class... Fids,class Position,class... Fs,class random,class... Datas>
+void Invoke_on_Serial_pos(x_i<logpr<up<Ups...>,dn<Downs...>>,Value_type>& x,Instructions_vector<Instruction_new<Ops,Fids,Args>...>,const quimulun<Fs...>& qui,const Position& p, random& mt,Datas&&...d)
 {
   (Invoke_on_sum(x,Ops{},qui[Fids{}], p,mt,qui,std::forward<Datas>(d)...),...);;
 }
@@ -133,11 +153,11 @@ void Invoke_on_Serial_pos(x_i<logpr<up<Ups...>,dn<Downs...>>,Value_type>& x,Inst
 
 
 
-template< class ...x_is, class... Xs, class... Ops,class... Fids, template<class...>class Arguments,class ...Args, class... Fs, class random,class ...Datas>
+template< class ...x_is, class... Xs, class... Instructions,  class... Fs, class random,class ...Datas>
 void Invoke_on(vector_field<vec<Xs...>,vector_space<Outer_Id_t<x_is>...>>& out,
-               Instructions_for_each<Result<vector_field<vec<Xs...>,vector_space<x_is...>>>, Instructions_vector<Instruction<Ops,Fids>...>,Arguments<Args...>>,const quimulun<Fs...>& qui, random& mt,Datas&&...d)
+               Instructions_for_each<Result<vector_field<vec<Xs...>,vector_space<x_is...>>>, Instructions_vector<Instructions...>>,const quimulun<Fs...>& qui, random& mt,Datas&&...d)
 {
-  using myResult_type=typename Instructions_for_each<Result<vector_field<vec<Xs...>,vector_space<Outer_Id_t<x_is>...>>>, Instructions_vector<Instruction<Ops,Fids>...>,Arguments<Args...>>::myResult_type;
+  using myResult_type=typename Instructions_for_each<Result<vector_field<vec<Xs...>,vector_space<Outer_Id_t<x_is>...>>>, Instructions_vector<Instructions...>>::myResult_type;
   using myvec=vec<Xs...>;
   using myValue_type= typename myResult_type::value_type;
 
@@ -146,7 +166,9 @@ void Invoke_on(vector_field<vec<Xs...>,vector_space<Outer_Id_t<x_is>...>>& out,
   auto p=myResult_type::begin();
   //    using test=typename Cs<Fids...,myvec,Xs...,decltype (get_from_new(Xs{},d...))...>::sgrek;
   //    using test2=typename Cs< Datas...>::datas;
-  fill_vector_field_new(outf,p,myvec{},get_from_new/*_not_Nothing*/(Args{},std::forward<Datas>(d)...)...);
+  /**  ERROR HERE : nees arguments
+ // fill_vector_field_new(outf,p,myvec{},get_from_new/*_not_Nothing*/(Args{},std::forward<Datas>(d)...)...);
+  */
   //    fill_vector_field_new(outf,p,myvec{},get_from_new(Xs{},d...)...);
 
   out=myResult_type(std::move(outf));
@@ -160,20 +182,20 @@ void Invoke_on(vector_field<vec<Xs...>,vector_space<Outer_Id_t<x_is>...>>& out,
   //#pragma omp parallel for
   for (std::size_t i=0; i<allpos.size(); ++i)
   {
-    Invoke_on_Serial_pos(out(allpos[i]),Instructions_vector<Instruction<Ops,Fids>...>{},qui,allpos[i],mt,std::forward<Datas>(d)...);
+    Invoke_on_Serial_pos(out(allpos[i]),Instructions_vector<Instructions...>{},qui,allpos[i],mt,std::forward<Datas>(d)...);
 
   }
 
 }
 
 
-template< class Value_type, class... Ops,class... Fids, template<class...>class Arguments,class ...Args, class... Fs, class random,class ...Datas>
+template< class Value_type, class... Instructions, class... Fs, class random,class ...Datas>
 void Invoke_on(Value_type& out,
-               Instructions_sum<Result<Value_type>, Instructions_vector<Instruction<Ops,Fids>...>,Arguments<Args...>>,const quimulun<Fs...>& qui, random& mt,Datas&&...d)
+               Instructions_sum<Result<Value_type>, Instructions_vector<Instructions...>>,const quimulun<Fs...>& qui, random& mt,Datas&&...d)
 {
 
   auto p=Position<>{};
-  Invoke_on_Serial_pos(out,Instructions_vector<Instruction<Ops,Fids>...>{},qui,p,mt,std::forward<Datas>(d)...);
+  Invoke_on_Serial_pos(out,Instructions_vector<Instructions...>{},qui,p,mt,std::forward<Datas>(d)...);
 
 }
 
@@ -181,11 +203,11 @@ void Invoke_on(Value_type& out,
 
 
 template< class x_is, class... Xs, class Op,class Fid, template<class...>class Arguments,class ...Args, class... Fs, class random,class ...Datas>
-void Invoke_on(vector_field<vec<Xs...>,vector_space<x_is>>& out,Instructions_Coord<Result<vector_field<vec<Xs...>,vector_space<x_is>>>, Instructions_vector<Instruction<Op,Fid>>,Arguments<Args...>>,const quimulun<Fs...>& qui, random& mt,Datas&&...d)
+void Invoke_on(vector_field<vec<Xs...>,vector_space<x_is>>& out,Instructions_Coord<Result<vector_field<vec<Xs...>,vector_space<x_is>>>, Instructions_vector<Instruction_new<Op,Fid,Args...>>>,const quimulun<Fs...>& qui, random& mt,Datas&&...d)
 {
   using myValue_type= vector_space<x_is>;
-  using myResult_type=typename Instructions_for_each<Result<vector_field<vec<Xs...>,vector_space<x_is>>>, Instructions_vector<Instruction<Op,Fid>>,Arguments<Args...>>::myResult_type;
-  using myvec=vec<Xs...>;
+ // using myResult_type=typename Instructions_for_each<Result<vector_field<vec<Xs...>,vector_space<x_is>>>, Instructions_vector<Instruction<Op,Fid>>,Arguments<Args...>>::myResult_type;
+  //using myvec=vec<Xs...>;
 
   using Id=myId_t<x_is>;
 
@@ -219,26 +241,26 @@ void Invoke_on(vector_field<vec<Xs...>,vector_space<x_is>>& out,Instructions_Coo
 
 
 
-template< class ...x_is,  class... Ops,class... Fids, template<class...>class Arguments,class ...Args, class... Fs, class random,class ...Datas>
-void Invoke_on(vector_space<x_is...>& out,Instructions_Coord<Result<vector_field<vec<>,vector_space<x_is...>>>, Instructions_vector<Instruction<Ops,Fids>...>,Arguments<Args...>>,const quimulun<Fs...>& qui, random &mt,Datas&&...d)
+template< class ...x_is,  class... Instructions, class... Fs, class random,class ...Datas>
+void Invoke_on(vector_space<x_is...>& out,Instructions_Coord<Result<vector_field<vec<>,vector_space<x_is...>>>, Instructions_vector<Instructions...>>,const quimulun<Fs...>& qui, random &mt,Datas&&...d)
 {
   auto o=vector_space<x_is...>{};
   //using myValue_type= vector_space<x_is...>;
   auto p=Position<>{};
-  Invoke_on_Serial_pos(out(p),Instructions_vector<Instruction<Ops,Fids>...>{},qui,p,mt,std::forward<Datas>(d)...);
+  Invoke_on_Serial_pos(out(p),Instructions_vector<Instructions...>{},qui,p,mt,std::forward<Datas>(d)...);
 
 }
 
 
 
 
-template< class ...x_is,  class... Ops,class... Fids, template<class...>class Arguments,class ...Args, class... Fs, class random,class ...Datas>
-void Invoke_on(vector_space<x_is...>& out,Instructions_for_each<Result<vector_field<vec<>,vector_space<x_is...>>>, Instructions_vector<Instruction<Ops,Fids>...>,Arguments<Args...>>,const quimulun<Fs...>& qui, random &mt,Datas&&...d)
+template< class ...x_is,  class... Instructions, class... Fs, class random,class ...Datas>
+void Invoke_on(vector_space<x_is...>& out,Instructions_for_each<Result<vector_field<vec<>,vector_space<x_is...>>>, Instructions_vector<Instructions...>>,const quimulun<Fs...>& qui, random &mt,Datas&&...d)
 {
   //  auto o=vector_space<x_is...>{};
   //using myValue_type= vector_space<x_is...>;
   auto p=Position<>{};
-  Invoke_on_Serial_pos(out(p),Instructions_vector<Instruction<Ops,Fids>...>{},qui,p,mt,std::forward<Datas>(d)...);
+  Invoke_on_Serial_pos(out(p),Instructions_vector<Instructions...>{},qui,p,mt,std::forward<Datas>(d)...);
 
 }
 
@@ -280,20 +302,21 @@ auto sample_loop_Operation(const quimulun<Fs...>& qui, x_random& mt, Datas&&... 
 {
   using distribution_ids=extract_distribution_Id_new_t<Cs<Fs...>>;
 
-
   using variables_ids=extract_function_Id_new_t<Cs<Fs...>>;
 
 
   using Parameters_ids=transfer_t<pack_difference_t<distribution_ids,pack_concatenation_t<myIds_t<Datas>...>>,myselect<>>;
   using Variables_ids=transfer_t<variables_ids,myselect<>>;
 
-  auto param_ids=Parameters_ids{} | filter_by<Not<is_any_of_these_template_classes<Start_new,Next_new>>>{};
+  auto param_ids=Parameters_ids{} | filter_by<Not<is_any_of_these_template_classes<Start_new,Next_new,End_new>>>{};
   auto start_param_ids=Parameters_ids{} | filter_by<is_any_of_these_template_classes<Start_new>>{};
   auto next_param_ids=Parameters_ids{} | filter_by<is_any_of_these_template_classes<Next_new>>{};
+  auto end_param_ids=Parameters_ids{} | filter_by<is_any_of_these_template_classes<End_new>>{};
 
   auto var_ids=Variables_ids{} | filter_by<Not<is_any_of_these_template_classes<Start_new,Next_new>>>{};
   auto start_var_ids=Variables_ids{} | filter_by<is_any_of_these_template_classes<Start_new>>{};
   auto next_var_ids=Variables_ids{} | filter_by<is_any_of_these_template_classes<Next_new>>{};
+  auto end_var_ids=Variables_ids{} | filter_by<is_any_of_these_template_classes<End_new>>{};
 
   auto init_op= build_Instructions_for_loop_init_select_parameters_variables(qui,mt,param_ids,var_ids, Instructions_serial<>{},std::forward<Datas>(d)...);
 
@@ -303,10 +326,16 @@ auto sample_loop_Operation(const quimulun<Fs...>& qui, x_random& mt, Datas&&... 
   auto start_op=build_Instructions_for_loop_start_select_parameters_and_variables
       (qui,mt,loop_param_ids,loop_var_ids,start_param_ids,start_var_ids,Instructions_serial<>{}, init_op,std::forward<Datas>(d)...);
 
+  //using test=typename Cs<decltype (start_op)>::test;
+
+
+  auto next_op=build_Instructions_for_loop_next_select_parameters_and_variables
+      (qui,mt,loop_param_ids,loop_var_ids,next_param_ids,next_var_ids,Instructions_serial<>{}, start_op,init_op,std::forward<Datas>(d)...);
+
+
 
   //using show_init_op=typename Cs<decltype (init_op)>::test;
 
-  //using test=typename Cs<decltype (start_op)>::test;
 
   auto init=typename decltype(init_op)::myResult_type{};
   Invoke_on(init,init_op,qui,mt,std::forward<Datas>(d)...);

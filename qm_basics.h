@@ -5,50 +5,7 @@
 #include "static_string.h"
 #include <variant>
 
-struct Nothing{
-  friend Nothing operator+(Nothing, Nothing ){return Nothing{};}
 
-
-  friend Nothing operator||(Nothing, Nothing ){return Nothing{};}
-
-  template<class Something>
-  friend decltype(auto) operator-( Something&& s, Nothing)//->decltype (s)
-  {return std::forward<Something>(s);}
-
-  template<class Something>
-  friend decltype(auto) operator+( Something&& s, Nothing)//->decltype (s)
-  {return std::forward<Something>(s);}
-
-
-
-  template<class Something>
-  friend Something operator||(Nothing, Something&& s)//->decltype (s)
-  {return s;}
-
-//  template<class Something>
-//  friend auto& operator||(Nothing, const Something& s)//->decltype (s)
-//  {return s;}
-
-
-
-  template<class Something>
-  friend Something operator||( Something&& s, Nothing)//->decltype (s)
-  {return s;}
-
-//  template<class Something>
-//  friend auto& operator||( const Something& s, Nothing)//->decltype (s)
-//  {return s;}
-
-
-
-
-  constexpr auto size(){return 0;}
-  using myIds=Cs<>;
-
-  Nothing operator()()const {return {};}
-
-  using result_type=Nothing;
-};
 
 
 
@@ -164,6 +121,11 @@ public:
   Position(const aPosition& p):i{p[Id{}]()}{  }
 
 
+  template<class ...Xs>
+  auto& operator()(const Position<Xs...>& ){return *this;}
+  template<class ...Xs>
+  auto& operator()(const Position<Xs...>& )const {return *this;}
+
 
   friend std::ostream& operator<<(std::ostream& os, const Position& me) {
     os<<className.c_str()<<"="<<me();
@@ -213,6 +175,12 @@ template <class Id, class... Ids> struct Position<Id,Ids...>:Position<Id>,Positi
   Position (const aPosition& p):Position<Id>{p},Position<Ids>{p}...{}
 
   Position()=default;
+
+  template<class ...Xs>
+  auto& operator()(const Position<Xs...>& ) {return *this;}
+
+  template<class ...Xs>
+  auto& operator()(const Position<Xs...>& )const {return *this;}
 
   using Position<Id>::operator[];
   using Position<Ids>::operator[]...;

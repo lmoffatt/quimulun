@@ -22,6 +22,9 @@ struct Arguments_xi{
 template<>struct Arguments_xi<>{};
 
 
+template<class...Ops>
+struct Operations{};
+
 
 template<class...Args>
 struct Index_struct{
@@ -41,7 +44,7 @@ template<class Id_of_vector, class sub_Id> struct sub{
 
 
 
-template<class IdField, class IdPosValue> struct subElement{};
+template<class IdField, class IdPosValue> struct applyPosition{};
 
 template<class Id> struct pos_new{};
 
@@ -64,7 +67,7 @@ template<class Id, class Index> struct Start_new{};
 
 template<class Id, class Index> struct Next_new{};
 
-template<class Index> struct End_new;
+template<class Id, class Index> struct End_new{};
 
 template<class Id, class Index> struct Size_at_Index_new{};
 
@@ -155,14 +158,14 @@ template<> struct vec<>
 
 
   template <class Vector, class Position>
-  static auto& get(Vector& x, const Position&)
+  static decltype(auto) get(Vector& x, const Position& p)
   {
-    return x;
+    return x(p);
   }
   template <class Vector, class Position>
-  static auto& get(const Vector& x,const Position&)
+  static decltype(auto) get(const Vector& x,const Position& p)
   {
-    return x;
+    return x(p);
   }
   template <class Vector, class Position>
   static bool next(const Vector& ,Position& ) {return false;}
@@ -176,23 +179,23 @@ template<class I0, class...I> struct vec<I0,I...>{
   using to_vector=std::vector<typename vec<I...>::template to_vector<T>>;
 
   template <class ValueType, class Positionx>
-  static auto& get(std::vector<ValueType>& x,const Positionx& p)
+  static decltype(auto) get(std::vector<ValueType>& x,const Positionx& p)
   {
     return vec<I...>::get(x.at(p[I0{}]()),p);
   }
   template <class ValueType, class Positionx>
-  static auto& get(const std::vector<ValueType>& x,const Positionx& p)
+  static decltype(auto) get(const std::vector<ValueType>& x,const Positionx& p)
   {
     return vec<I...>::get(x.at(p[I0{}]()),p);
   }
 
   template <class ValueType, class Positionx>
-  static auto& get(ValueType& x,const Positionx& p)
+  static decltype(auto) get(ValueType& x,const Positionx& p)
   {
     return vec<I...>::get(x.at(p[I0{}]()),p);
   }
   template <class ValueType, class Positionx>
-  static auto& get(const ValueType& x,const Positionx& p)
+  static decltype(auto) get(const ValueType& x,const Positionx& p)
   {
     return vec<I...>::get(x.at(p[I0{}]()),p);
   }
@@ -267,7 +270,7 @@ using get_Field_Indexes_t=typename get_Field_Indexes<std::decay_t<Ts>...>::type;
 
 template<class...x_is> struct get_Field_Indexes
 {
-  typedef decltype((vec<>{}<<...<<typename get_Field_Indexes<x_is>::type{})) type;
+  typedef decltype((vec<>{}<<...<<get_Field_Indexes_t<x_is>{})) type;
 };
 
 template<class...x_is> struct get_All_Indexes
@@ -312,8 +315,7 @@ public:
 
   typedef typename vec<Xs...>::template to_vector<Value_type> value_type;
 
-  typedef vec<Xs...> myIndexes;
-
+ // typedef vec<Xs...> myIndexes;
 
 
 private:
@@ -358,17 +360,17 @@ public:
 
 
   template<class Position>
-  auto& operator()(const Position& p){ return vec<Xs...>::get(value_,p);}
+  decltype(auto) operator()(const Position& p){ return vec<Xs...>::get(value_,p);}
 
   template<class Position>
-  auto& operator()(const Position& p)const { return vec<Xs...>::get(value_,p);}
+  decltype(auto) operator()(const Position& p)const { return vec<Xs...>::get(value_,p);}
 
 
   template<class I,class Position>
-  auto& operator()(I i,const Position& p){ return vec<Xs...>::get_I(i,value_,p);}
+  decltype(auto) operator()(I i,const Position& p){ return vec<Xs...>::get_I(i,value_,p);}
 
   template<class I,class Position>
-  auto& operator()(I i,const Position& p)const { return vec<Xs...>::get_I(i,value_,p);}
+  decltype(auto) operator()(I i,const Position& p)const { return vec<Xs...>::get_I(i,value_,p);}
 
 
 
@@ -459,6 +461,28 @@ public:
 };
 
 
+template<class Value_type, class Value_type2>
+auto operator-(const vector_field<vec<>,Value_type>& one, const vector_field<vec<>,Value_type2>& two)
+{
+  auto p=Position<>();
+  return vector_field<vec<>,std::decay_t<decltype (one(p)-two(p))>>(one(p)-two(p));
+}
+
+template<class Value_type, class Value_type2>
+auto operator*(const vector_field<vec<>,Value_type>& one, const Value_type2& two)
+{
+  auto p=Position<>();
+  return vector_field<vec<>,std::decay_t<decltype (one(p)*two)>>(one(p)*two);
+}
+
+
+template<class Value_type, class Value_type2>
+auto operator+(const vector_field<vec<>,Value_type>& one, const vector_field<vec<>,Value_type2>& two)
+{
+  auto p=Position<>();
+  return vector_field<vec<>,std::decay_t<decltype (one(p)+two(p))>>(one(p)+two(p));
+}
+
 
 template<class T>
 struct getIds_of {using type=typename T::myIds;};
@@ -467,15 +491,88 @@ template<class Id, class Value>
 struct getIds_of<x_i<Id,Value>> {using type= Cs<Id>;};
 
 
+template<class Id, class Value>
+struct getIds_of<x_i_vector_field_const<Value,Id>> {using type= Cs<Id>;};
 
-template< class ...x_is, class... Xs>
-struct getIds_of<vector_field<vec<Xs...>,vector_space<x_is...>>>
+template<class Id, class Value>
+struct getIds_of<x_i_vector_field_non_const<Value,Id>> {using type= Cs<Id>;};
+
+
+
+
+
+
+template< class value, class... Xs>
+struct getIds_of<vector_field<vec<Xs...>,value>>
 {
-  using type=typename vector_space<x_is...>::myIds;
+  using type=typename value::myIds;
 };
 
 template<class T>
 using myIds_t=typename getIds_of<std::decay_t<T>>::type;
+
+
+
+
+template<class T>
+struct get_internal_Ids_of {using type=Cs<>;};
+template<class T>
+using my_internal_Ids_t=typename get_internal_Ids_of<std::decay_t<T>>::type;
+
+template<class Id, class Value>
+struct get_internal_Ids_of<x_i<Id,Value>> {  using type=my_internal_Ids_t<Value>;};
+
+
+template<class Id, class vectorfield_storing_type>
+struct get_internal_Ids_of<x_i_vector_field_const<vectorfield_storing_type,Id>> {
+  using T=x_i_vector_field_const<vectorfield_storing_type,Id>;
+
+  using type= my_internal_Ids_t<decltype (std::declval<T>()(std::declval<T>().begin()))>;
+//  using test=typename Cs<Id,decltype ((std::declval<T>().begin())),x_i_vector_field_const<vectorfield_storing_type,Id>>::Position;
+//  using test2=typename Cs<Id,decltype (std::declval<T>()(std::declval<T>().begin()))>::value_position;
+//  using test3=typename Cs<Id,type>::internal;
+
+};
+
+template<class Id, class vectorfield_storing_type>
+struct get_internal_Ids_of<x_i_vector_field_non_const<vectorfield_storing_type,Id>> {
+  using T=x_i_vector_field_non_const<vectorfield_storing_type,Id>;
+
+  using type= my_internal_Ids_t<decltype (std::declval<T>()(std::declval<T>().begin()))>;
+  //  using test=typename Cs<Id,decltype ((std::declval<T>().begin())),x_i_vector_field_const<vectorfield_storing_type,Id>>::Position;
+  //  using test2=typename Cs<Id,decltype (std::declval<T>()(std::declval<T>().begin()))>::value_position;
+  //  using test3=typename Cs<Id,type>::internal;
+
+};
+
+
+
+
+template< class value, class... Xs>
+struct get_internal_Ids_of<vector_field<vec<Xs...>,value>>
+{
+  using type=my_internal_Ids_t<value>;
+};
+
+template< class... xs>
+struct get_internal_Ids_of<vector_space<xs...>>
+{
+  using type=Cs<typename xs::myId...>;
+};
+
+template< class... xs>
+class vector_tuple;
+template< class... xs>
+struct get_internal_Ids_of<vector_tuple<xs...>>
+{
+  using type=pack_concatenation_t<my_internal_Ids_t<xs>...>;
+};
+
+
+
+
+
+
 
 
 
@@ -487,6 +584,7 @@ template<class vectorfield, class Index>
 struct
     vector_field_size<vectorfield, Index>
 {
+
   vectorfield v_;
 
   template<class Index2, class Position, typename =std::enable_if_t<!std::is_same_v<Index, Index2>>>
@@ -559,8 +657,11 @@ struct
 
   static constexpr bool pointer_storage=std::is_pointer_v<vectorfield_storing_type>;
 
+  auto& operator[](Id)const  {return *this;}
+  //x_i& operator[](e_i) & {return *this;}
 
   using myId=Id;
+  using ei=Id;
 
  // explicit
       x_i_vector_field_const(const x_i_vector_field_const& other):value_{other.value_}{
@@ -595,14 +696,14 @@ struct
 
   }
 
-  using vectorfield=std::decay_t<std::conditional_t<
+  using vectorfield_type=std::decay_t<std::conditional_t<
                        std::is_pointer_v<vectorfield_storing_type>,
         std::remove_pointer_t<vectorfield_storing_type>,
       vectorfield_storing_type>>;
 
-  using myIndexes=typename vectorfield:: myIndexes;
+  //using myIndexes=typename vectorfield_type:: myIndexes;
 
-  static constexpr auto size(){return size_of_pack(myIds_t<vectorfield>{});}
+  static constexpr auto size(){return size_of_pack(myIds_t<vectorfield_type>{});}
 
 
   auto& vector_field_value()const
@@ -623,13 +724,6 @@ struct
 
   x_i_vector_field_const(vectorfield_storing_type v, Id):
                                               value_(v){
-
-  //  using test=typename Cs<vectorfield_storing_type>::vectorfield_storingtype;
-  //  using test2=typename Cs<vectorfield>::vectorfield;
-//  std::cerr<<"x_i_vector_field_const constructor value ="<<&v<<"\n";
-
-//  std::cerr<<"x_i_vector_field_const value ="<<&vector_field_value()<<"\n";
-
   }
 
 
@@ -641,19 +735,14 @@ struct
   }
 
 
-
+  constexpr auto begin(){ return  transfer_t<get_Field_Indexes_t<x_i_vector_field_const>,Position<>>{};}
 
   template<class Position>
   decltype(auto) operator()(const Position& p)const//->decltype (get_at(v_(p),Id{})())
   {
-    //std::cerr<<" @operator()(const Position& p)const &value_ ="<<value_<<"\n";
-//    using test=typename Cs<Id,vectorfield>::vector_field;
-//    using test2=typename Cs<Id,decltype(p)>::position;
-//    using test3=typename Cs<Id,decltype (v_(p))>::test_position;
-//    using test4=typename Cs<Id,decltype (get_at(v_(p),Id{}))>::get_at;
-  //  using test2=typename Cs<Id,decltype(p),vectorfield>::vector_field;
-//    if constexpr (!pointer_storage)
-//    std::cerr<<"x_i_vector_field_const @operator() &vector_field_value()="<<&vector_field_value()<<"\n";
+    using test=typename std::conditional_t<
+        is_this_template_class_v<::x_i_vector_field_const,decltype (get_at(vector_field_value()(p),Id{})())>,
+        Cs<Id,Position,x_i_vector_field_const,decltype(vector_field_value()(p))>,std::vector<double>>::value_type;
     return get_at(vector_field_value()(p),Id{})();
   }
 
@@ -679,24 +768,25 @@ struct
 
 
 
-template<class vectorfield, class Id>
-x_i_vector_field_const(vectorfield&&,Id)->x_i_vector_field_const<vectorfield,Id>;
-
-template<class vectorfield, class Id>
-x_i_vector_field_const(vectorfield const&,Id)->x_i_vector_field_const<vectorfield const*,Id>;
 
 
-template<class vectorfield, class Id>
-struct
-    x_i_vector_field_non_const
+template<class vectorfield_storing_type, class Id>
+struct  x_i_vector_field_non_const
 {
-  vectorfield  * value_;
+  vectorfield_storing_type value_;
+  using vectorfield_type=std::decay_t<std::conditional_t<
+      std::is_pointer_v<vectorfield_storing_type>,
+      std::remove_pointer_t<vectorfield_storing_type>,
+      vectorfield_storing_type>>;
+  
+  //using myIndexes=typename vectorfield_type:: myIndexes;
+  
+  static constexpr bool pointer_storage=std::is_pointer_v<vectorfield_storing_type>;
 
-  using myIndexes=typename vectorfield:: myIndexes;
+  static constexpr auto size(){return size_of_pack(myIds_t<vectorfield_type>{});}
 
-  static constexpr auto size(){return size_of_pack(myIds_t<vectorfield>{});}
+  constexpr auto begin(){ return  transfer_t<get_Field_Indexes_t<x_i_vector_field_non_const>,Position<>>{};}
 
-  x_i_vector_field_non_const(vectorfield  & v, Id): value_{&v}{}
 
   //explicit
       x_i_vector_field_non_const(const x_i_vector_field_non_const& other):value_{other.value_}{}
@@ -718,19 +808,44 @@ struct
   ~x_i_vector_field_non_const(){}
 
 
-
-  template<class Position>
-  decltype (auto) operator()(const Position& p)// ->decltype (get_at(v_(p),non_const<Id>{})())
+  auto& vector_field_value()const
   {
-    // using test=typename Cs<Id,decltype (v_),decltype (get_at(v_(p),Id{})())>::vector_field;
-    return get_at((*value_)(p),non_const<Id>{})();
+    if constexpr (std::is_pointer_v<vectorfield_storing_type>)
+      return *value_;
+    else
+      return value_;
+  }
+  auto& vector_field_value()
+  {
+    if constexpr (std::is_pointer_v<vectorfield_storing_type>)
+      return *value_;
+    else
+      return value_;
   }
 
   template<class Position>
-  decltype(auto) operator()(const Position& p) const
+  decltype(auto) operator()(const Position& p)const//->decltype (get_at(v_(p),Id{})())
   {
-    // using test=typename Cs<Id,decltype (v_),decltype (get_at(v_(p),Id{})())>::vector_field;
-    return get_at((*value_)(p),Id{})();
+    return get_at(vector_field_value()(p),Id{})();
+  }
+
+  template<class Position>
+  decltype(auto) operator()(const Position& p)//->decltype (get_at(v_(p),Id{})())
+  {
+    return get_at(vector_field_value()(p),non_const<Id>{})();
+  }
+
+
+  x_i_vector_field_non_const(vectorfield_storing_type v, Id):
+                                                           value_(v){
+  }
+
+
+  template<class vector_field_left_value, typename = std::enable_if_t<std::is_same_v<vector_field_left_value const*,vectorfield_storing_type >>>
+  x_i_vector_field_non_const(vector_field_left_value const & v, Id):
+                                                                 value_(&v){
+    //  std::cerr<<"x_i_vector_field_const constructor pointer ="<<&v<<"\n";
+    //  std::cerr<<"x_i_vector_field_const value"<<&vector_field_value()<<"\n";
   }
 
 
@@ -743,6 +858,10 @@ struct
   auto operator()() {return *this;}
 
 };
+
+
+
+
 
 
 
@@ -761,13 +880,174 @@ x_i_vector_field_const<vectorfield,Id> make_vector_field_view(vectorfield const 
 
 
 
+template<class vectorfield_storing_type, class Id>
+struct
+    x_i_vector_field_recursive_const
+{
+  vectorfield_storing_type  value_;
 
-template<class Id, class V>
+  static constexpr bool pointer_storage=std::is_pointer_v<vectorfield_storing_type>;
+
+
+  using myId=Id;
+
+  // explicit
+  x_i_vector_field_recursive_const(const x_i_vector_field_recursive_const& other):value_{other.value_}{
+    //        if constexpr (!pointer_storage)
+    //        {
+    //        std::cerr<<"x_i_vector_field_const @copy constructor &vector_field_value()="<<&vector_field_value()<<"\n";
+
+    //        }
+  }
+
+  // explicit
+  //      x_i_vector_field_const(x_i_vector_field_const&& other):value_{std::move(other.value_)}{}
+
+  x_i_vector_field_recursive_const& operator=(const x_i_vector_field_recursive_const& other)
+  {
+    //  std::cerr<<" @operator=(const x_i_vector_field_const& other) &value_ before ="<<value_<<"\n";
+    value_=other.value_;
+
+    //    std::cerr<<"x_i_vector_field_const @operator=(const x_i_vector_field_const& other) &vector_field_value()="<<&vector_field_value()<<"\n";
+    //  std::cerr<<" @operator=(const x_i_vector_field_const& other) &value_ after="<<value_<<"\n";
+    return *this;
+  }
+  //  x_i_vector_field_const& operator=(x_i_vector_field_const&& other)
+  //  {
+  //    value_=other.value_;
+  //    return *this;
+  //  }
+
+  ~x_i_vector_field_recursive_const(){
+    //    if constexpr (!pointer_storage)
+    //    std::cerr<<"x_i_vector_field_const @destructor() &vector_field_value()="<<&vector_field_value()<<"\n";
+
+  }
+
+  using vectorfield_type=std::decay_t<std::conditional_t<
+      std::is_pointer_v<vectorfield_storing_type>,
+      std::remove_pointer_t<vectorfield_storing_type>,
+      vectorfield_storing_type>>;
+
+//  using myIndexes=typename vectorfield_type:: myIndexes;
+
+  static constexpr auto size(){return size_of_pack(myIds_t<vectorfield_type>{});}
+
+
+  auto& vector_field_value()const
+  {
+    if constexpr (std::is_pointer_v<vectorfield_storing_type>)
+      return *value_;
+    else
+      return value_;
+  }
+  auto& vector_field_value()
+  {
+    if constexpr (std::is_pointer_v<vectorfield_storing_type>)
+      return *value_;
+    else
+      return value_;
+  }
+
+
+  x_i_vector_field_recursive_const(vectorfield_storing_type v, Id):
+                                                           value_(v){
+
+    //  using test=typename Cs<vectorfield_storing_type>::vectorfield_storingtype;
+    //  using test2=typename Cs<vectorfield>::vectorfield;
+    //  std::cerr<<"x_i_vector_field_const constructor value ="<<&v<<"\n";
+
+    //  std::cerr<<"x_i_vector_field_const value ="<<&vector_field_value()<<"\n";
+
+  }
+
+
+  template<class vector_field_left_value, typename = std::enable_if_t<std::is_same_v<vector_field_left_value const*,vectorfield_storing_type >>>
+  x_i_vector_field_recursive_const(vector_field_left_value const & v, Id):
+                                                                 value_(&v){
+    //  std::cerr<<"x_i_vector_field_const constructor pointer ="<<&v<<"\n";
+    //  std::cerr<<"x_i_vector_field_const value"<<&vector_field_value()<<"\n";
+  }
+
+
+
+
+  template<class Position>
+  decltype(auto) operator()(const Position& p)const//->decltype (get_at(v_(p),Id{})())
+  {
+    //std::cerr<<" @operator()(const Position& p)const &value_ ="<<value_<<"\n";
+    //    using test=typename Cs<Id,vectorfield>::vector_field;
+    //    using test2=typename Cs<Id,decltype(p)>::position;
+    //    using test3=typename Cs<Id,decltype (v_(p))>::test_position;
+    //    using test4=typename Cs<Id,decltype (get_at(v_(p),Id{}))>::get_at;
+    //  using test2=typename Cs<Id,decltype(p),vectorfield>::vector_field;
+    //    if constexpr (!pointer_storage)
+    //    std::cerr<<"x_i_vector_field_const @operator() &vector_field_value()="<<&vector_field_value()<<"\n";
+    return get_at(vector_field_value()(p),Id{})();
+  }
+
+  template<class Index,class Position>
+  auto size(Index,const Position& p) const {
+
+    //std::cerr<<" @size &value_ ="<<value_<<"\n";
+
+    return vector_field_value().size(Index{},p);}
+
+
+
+
+  auto operator()()const {
+    //    if constexpr (!pointer_storage)
+    //    std::cerr<<"x_i_vector_field_const @operator() &operator()="<<&vector_field_value()<<"\n";
+
+    return *this;
+  }
+
+};
+
+
+template<class vectorfield, class Id>
+x_i_vector_field_const(vectorfield&&,Id)->x_i_vector_field_const<vectorfield,Id>;
+
+template<class vectorfield, class Id>
+x_i_vector_field_const(vectorfield const&,Id)->x_i_vector_field_const<vectorfield const*,Id>;
+
+
+
+
+
+
+
+template<class Id, class V,typename=std::enable_if_t<!is_this_template_class_v<non_const,Id>>>
 auto get_at(const V& x, Id)->decltype (x[Id{}])
 {
-//  using test=typename std::conditional_t<is_this_template_class_v<non_const,Id>,
-//                                           Id,std::vector<double>>::value_type;
   return x[Id{}];
+}
+
+template<class Id, class V>
+auto get_at(V&& x, non_const<Id>)->decltype (std::forward<V>(x)[non_const<Id>{}])
+{
+  return std::forward<V>(x)[non_const<Id>{}];
+}
+
+
+
+
+template<class Id, class Id0, class Value>
+decltype(auto) get_at(const x_i<Id0,Value>& x, Id)
+{
+  if constexpr (std::is_same_v<Id,Id0 >)
+    return x;
+  else
+    return Nothing{};
+}
+template<class Id, class Id0, class Value>
+decltype(auto) get_at( x_i<Id0,Value>& x, non_const<Id>)
+{
+  if constexpr (std::is_same_v<Id,Id0 >)
+    return x;
+  else
+    return Nothing{};
 }
 
 
@@ -778,10 +1058,34 @@ auto get_at( V& x, non_const<Id>)->decltype (x[non_const<Id>{}])
 //                                           Id,std::vector<double>>::value_type;
     return x[non_const<Id>{}];
 }
+template<class Id,  class Value,typename =std::enable_if_t<!is_this_template_class_v<non_const,Id>>>
+decltype(auto) get_at(const vector_field<vec<>,Value>& x,Id)
+{
+  //  using test=typename std::conditional_t<is_this_template_class_v<non_const,Id>,
+  //                                           Id,std::vector<double>>::value_type;
+  auto p=Position<>{};
+  if constexpr (std::is_same_v<decltype (get_at(std::declval<Value>(),Id{})),Nothing >)
+    return Nothing{};
+  else
+    return x(p)[Id{}];
+}
 
 
-template<class Id, class... Xs, class Value,typename =std::enable_if_t<!is_this_template_class_v<non_const,Id>>>
-auto get_at(const vector_field<vec<Xs...>,Value>& x,Id)
+template<class Id, class Value>
+decltype(auto) get_at( vector_field<vec<>,Value>& x,non_const<Id>)
+{
+  //using test=typename std::conditional_t<is_this_template_class_v<non_const,Id>,
+  //                                        Id,std::vector<double>>::value_type;
+  auto p=Position<>{};
+  if constexpr (std::is_same_v<decltype (get_at(std::declval<Value&>(),Id{})),Nothing >)
+    return Nothing{};
+  else
+    return x(p)[non_const<Id>{}];
+}
+
+
+template<class Id, class X, class... Xs, class Value,typename =std::enable_if_t<!is_this_template_class_v<non_const,Id>>>
+auto get_at(const vector_field<vec<X,Xs...>,Value>& x,Id)
 {
 //  using test=typename std::conditional_t<is_this_template_class_v<non_const,Id>,
 //                                           Id,std::vector<double>>::value_type;
@@ -792,8 +1096,8 @@ auto get_at(const vector_field<vec<Xs...>,Value>& x,Id)
 }
 
 
-template<class Id, class... Xs, class Value>
-auto get_at( vector_field<vec<Xs...>,Value>& x,non_const<Id>)
+template<class Id, class X,class... Xs, class Value>
+auto get_at( vector_field<vec<X,Xs...>,Value>& x,non_const<Id>)
 {
   //using test=typename std::conditional_t<is_this_template_class_v<non_const,Id>,
    //                                        Id,std::vector<double>>::value_type;
@@ -811,6 +1115,8 @@ auto get_at(x_i_vector_field_const<vectorfield_storage,Idinside> x, Id)
 
   using Pos=transfer_t<get_Field_Indexes_t<x_i_vector_field_const<vectorfield_storage,Idinside>>,Position<>>;
 
+ // using test=typename Cs<Id,Idinside,Pos,vectorfield_storage>::test;
+
 
   if constexpr (std::is_same_v<decltype (get_at(x(Pos{}),Id{})),Nothing >)
     return Nothing{};
@@ -818,14 +1124,278 @@ auto get_at(x_i_vector_field_const<vectorfield_storage,Idinside> x, Id)
     return x_i_vector_field_const(std::move(x),Id{});
 }
 
+template<class vectorfield_storage, class Idinside, class Id,typename =std::enable_if_t<!is_this_template_class_v<non_const,Id>>>
+auto get_at(x_i_vector_field_non_const<vectorfield_storage,Idinside> x, non_const<Id>)
+{
+  //  using test=typename std::conditional_t<is_this_template_class_v<non_const,Id>,
+  //                                           Id,std::vector<double>>::value_type;
+
+  using Pos=transfer_t<get_Field_Indexes_t<x_i_vector_field_non_const<vectorfield_storage,Idinside>>,Position<>>;
+
+  // using test=typename Cs<Id,Idinside,Pos,vectorfield_storage>::test;
+
+
+  if constexpr (std::is_same_v<decltype (get_at(x(Pos{}),non_const<Id>{})),Nothing >)
+    return Nothing{};
+  else
+    return x_i_vector_field_non_const(std::move(x),non_const<Id>{});
+}
+
+
+template<class vectorfield_storage, class Idinside, class Id>
+auto get_at(x_i_vector_field_non_const<vectorfield_storage,Idinside> x, Id)
+{
+  //  using test=typename std::conditional_t<is_this_template_class_v<non_const,Id>,
+  //                                           Id,std::vector<double>>::value_type;
+
+  using Pos=transfer_t<get_Field_Indexes_t<x_i_vector_field_non_const<vectorfield_storage,Idinside>>,Position<>>;
+
+  // using test=typename Cs<Id,Idinside,Pos,vectorfield_storage>::test;
+
+
+  if constexpr (std::is_same_v<decltype (get_at(x(Pos{}),non_const<Id>{})),Nothing >)
+    return Nothing{};
+  else
+    return x_i_vector_field_const(std::move(x),Id{});
+}
+
+
+
+template<class Id,class...Ids,class V, typename=std::enable_if_t<!is_this_template_class_v<non_const,Id>>>
+decltype(auto) get_at_recursive(const V& x, Cs<Ids...>, Id)
+{
+  //using test=typename Cs<Id,Cs<Ids...>,Cs<decltype (get_at(x,Ids{}))...>,V>::myIds_recursive;
+  return (Nothing{}||...||get_at_recursive(get_at(x,Ids{}),Id{}));
+}
+
+template<class Id,class...Ids,class V>
+decltype(auto) get_at_recursive( V&& x, Cs<Ids...>, non_const<Id>)
+{
+  using test=typename Cs<Id,Cs<Ids...>,Cs<decltype (get_at(std::forward<V>(x),non_const<Ids>{}))...>,V>::myIds_recursive;
+  using test2=typename Cs<Id,Cs<Ids...>,Cs<decltype (get_at_recursive(get_at(std::forward<V>(x),non_const<Ids>{}),non_const<Id>{}))...>>::myIds_full_recursive;
+  return (Nothing{}||...||get_at_recursive(get_at(std::forward<V>(x),non_const<Ids>{}),non_const<Id>{}));
+}
+
+
+
+template<class Id>
+auto get_at_recursive(Nothing, Id)
+{
+  return Nothing{};
+}
+
+template<class Id, class V,typename =std::enable_if_t<!is_this_template_class_v<non_const,Id>>>
+decltype(auto) get_at_recursive(const V& x, Id)
+{
+  if constexpr (!std::is_same_v<Nothing,decltype(get_at(x,Id{}))>)
+    return get_at(x,Id{});
+  else
+  {
+  //  using test=typename Cs<Id,my_internal_Ids_t<V>,V>::myIds_;
+    return get_at_recursive(x,my_internal_Ids_t<V>{},Id{});
+  }
+}
+
+template<class Id, class V>
+decltype(auto) get_at_recursive(V&& x, non_const<Id>)
+{
+  if constexpr (!std::is_same_v<Nothing,decltype(get_at(x,non_const<Id>{}))>)
+    return get_at(x,non_const<Id>{});
+  else
+  {
+  //    using test=typename Cs<Id,my_internal_Ids_t<V>,V>::my_non_constIds_;
+    return get_at_recursive(std::forward<V>(x),my_internal_Ids_t<V>{},non_const<Id>{});
+  }
+}
+
+
+template<class...v_is> class vector_tuple;
+
+template<class vectorfield, class Position_field>
+struct vector_field_subElement;
+
+
+template<class Id,class  Value,
+          typename =std::enable_if_t<!is_any_of_these_template_classes<
+              x_i,vector_space,vector_tuple,x_i_vector_field_const,x_i_vector_field_non_const,vector_field_subElement
+              >::template value<Value>>>
+constexpr bool contains_Id(Id,Cs<Value>)
+{ return false;}
+
+
+
+template<class Id0, class Id,class  Value>
+constexpr bool contains_Id(Id,Cs< x_i<Id0,Value>>)
+{
+  if constexpr (std::is_same_v<Id0,Id > )
+    return true;
+  else return contains_Id(Id{},Cs<std::decay_t<Value>>{});
+};
+
+
+
+
+template<class Id, class...x_is>
+constexpr bool contains_Id(Id,Cs<vector_space<x_is...>>)
+{
+  return (contains_Id(Id{},Cs<x_is>{})||...||false);
+};
+
+
+
+template<class Id, class...v_is>
+constexpr bool contains_Id(Id,Cs<vector_tuple<v_is...>>)
+{
+  return (contains_Id(Id{},Cs<std::decay_t<v_is>>{})||...||false);
+};
+
+template<class Id, class vectorfield_storage,class Id0>
+constexpr bool contains_Id(Id,Cs<x_i_vector_field_const<vectorfield_storage,Id0>>)
+{
+  using vectorfield_type= typename x_i_vector_field_const<vectorfield_storage,Id0>::vectorfield_type;
+  if constexpr (std::is_same_v<Id,Id0 >) return true;
+  else
+    return contains_Id(Id{},Cs<vectorfield_type>{});
+};
+
+template<class Id, class vectorfield_storage,class Id0>
+constexpr bool contains_Id(Id,Cs<x_i_vector_field_non_const<vectorfield_storage,Id0>>)
+{
+  using vectorfield_type= typename x_i_vector_field_non_const<vectorfield_storage,Id0>::vectorfield_type;
+  if constexpr (std::is_same_v<Id,Id0 >) return true;
+  else
+    return contains_Id(Id{},Cs<vectorfield_type>{});
+};
+
+
+
+template<class... Xs,class Value,class Id>
+constexpr bool contains_Id (Id,
+                           Cs<vector_field<vec<Xs...>,Value>>)
+
+{
+  return contains_Id(Id{},Cs<Value>{});
+
+};
+template<class, class,bool> struct get_Field_Indexes_Id;
+
+template<class V, class Id,bool R> using get_Field_Indexes_Id_t=typename get_Field_Indexes_Id<std::decay_t<V>,Id,R>::type;
+
+template<class Id, class X>
+struct get_Field_Indexes_Id <
+    X,Id,false
+    >
+{
+  using type=Nothing;
+};
+
+
+template<class Id, class Value>
+struct get_Field_Indexes_Id <
+    x_i<Id,Value>,Id,true
+    >
+{
+  using type=get_Field_Indexes_t< x_i<Id,Value>>;
+  //using test=typename Cs<Id,type,Value>::x_i_;
+
+};
+
+template<class Id0,class Id, class Value>
+struct get_Field_Indexes_Id <
+        x_i<Id0,Value>,Id,true
+    >
+{
+
+  using type= get_Field_Indexes_Id_t<Value,Id,true>;
+  //using test=typename Cs<Id,Id0,type,Value>::x_i_;
+
+};
+
+
+
+template<class... x_is,class Id>
+struct get_Field_Indexes_Id <
+    vector_space<x_is...>,Id,true
+    >
+{
+  using type=decltype ((get_Field_Indexes_Id_t<x_is,Id,(contains_Id(Id{},Cs<std::decay_t<x_is>>{}))>{}||...));
+  //using test=typename Cs<Id,type,vector_space<x_is...>>::vector_space_;
+
+
+};
+
+
+
+
+
+template<class... Xs,class Value,class Id>
+struct get_Field_Indexes_Id <
+    vector_field<vec<Xs...>,Value>,Id,true
+    >
+{
+  using type=  decltype (vec<Xs...>{}<<get_Field_Indexes_Id_t<Value,Id,true>{});
+};
+
+template<class vectorfield_storage,class Idinside,class Id>
+struct get_Field_Indexes_Id <
+    x_i_vector_field_const<vectorfield_storage,Idinside>,Id,true
+    >
+{
+  using vectorfield_type=typename x_i_vector_field_const<vectorfield_storage, Idinside>
+      ::vectorfield_type;
+
+
+  using type=get_Field_Indexes_Id_t<vectorfield_type,Id,true>;
+
+  //using test=typename Cs<Id,Idinside,type,vectorfield_type>::vector_space_;
+};
+
+template<class vectorfield,class Position_field,class Id>
+struct get_Field_Indexes_Id <
+    vector_field_subElement<vectorfield,Position_field>,Id,true
+    >
+{
+  using T=vector_field_subElement<vectorfield,Position_field>;
+  using value_type=std::decay_t<decltype (std::declval<T>()()(std::declval<T>().begin()))>;
+
+  using type=decltype(get_Field_Indexes_t<Position_field>{}<<get_Field_Indexes_Id_t<value_type,Id,true>{});
+
+  //using test=typename Cs<Id,Idinside,type,vectorfield_type>::vector_space_;
+};
+
+template<class vectorfield_storage,class Idinside,class Id>
+struct get_Field_Indexes_Id <
+    x_i_vector_field_non_const<vectorfield_storage,Idinside>,Id,true
+    >
+{
+  using vectorfield_type=typename x_i_vector_field_non_const<vectorfield_storage, Idinside>
+      ::vectorfield_type;
+
+
+  using type=get_Field_Indexes_Id_t<vectorfield_type,Id,true>;
+
+  //using test=typename Cs<Id,Idinside,type,vectorfield_type>::vector_space_;
+};
+
+
+template<class ...v_is,class Id>
+struct get_Field_Indexes_Id <
+    vector_tuple<v_is...>,Id,true
+    >
+{
+  using type=decltype((get_Field_Indexes_Id_t<v_is,Id,contains_Id(Id{},Cs<std::decay_t<v_is>>{})>{}||...));
+};
+
+
+
 
 template<class... Xs,class Value>
 struct get_Field_Indexes <
-    vector_field<vec<Xs...>,Value>
-    >
+    vector_field<vec<Xs...>,Value>>
 {
-  using type=vec<Xs...>;
+  using type=decltype ((vec<Xs...>{}<<get_Field_Indexes_t<Value>{}));
 };
+
 
 template<class vector_space>
 struct get_Field_Indexes <
@@ -841,18 +1411,27 @@ struct get_Field_Indexes <
     x_i_vector_field_const<vectorfield_storage, Id>
     >
 {
-  using type=get_Field_Indexes_t<typename x_i_vector_field_const<vectorfield_storage, Id>::vectorfield>;
+  using vectorfield_type=typename x_i_vector_field_const<vectorfield_storage, Id>
+      ::vectorfield_type;
+
+  using type=get_Field_Indexes_Id_t<vectorfield_type,Id,contains_Id(Id{},Cs<vectorfield_type>{})>;
+ //using test=typename Cs<Id,type, std::integral_constant<bool,contains_Id(Id{},Cs<vectorfield_type>{})>,vectorfield_storage>::test;
 };
 
 
 
-template<class Id,class... xs,class... Xs>
+template<class Id,class vectorfield_storage>
 struct get_Field_Indexes <
-    x_i_vector_field_non_const<vector_field<vec<Xs...>,vector_space<xs...>>, Id>
+    x_i_vector_field_non_const<vectorfield_storage, Id>
     >
 {
-  using type=vec<Xs...>;
+  using vectorfield_type=typename x_i_vector_field_non_const<vectorfield_storage, Id>
+      ::vectorfield_type;
+
+  using type=get_Field_Indexes_Id_t<vectorfield_type,Id, contains_Id(Id{},Cs<vectorfield_type>{})>;
 };
+
+
 
 
 
@@ -862,7 +1441,7 @@ struct vector_field_Position
 {
   vectorfield const * v_;
 
-  using myPosition=transfer_t<typename vectorfield::myIndexes,Position<>>;
+  using myPosition=transfer_t<get_Field_Indexes_t<vectorfield>,Position<>>;
 
   vector_field_Position(Id, vectorfield const & v ):v_{&v}{}
 
@@ -874,6 +1453,8 @@ struct vector_field_Position
   template<class... Is>
   auto operator()(const Position<Is...>& p)const
   {
+    //using test=typename Cs<Id,myPosition,Position<Is...>,decltype(myPosition(p)),vectorfield>::position;
+
     return myPosition(p);
   }
   auto operator()()const {return *this;}
@@ -906,6 +1487,16 @@ public:
 };
 
 
+template<class... xs>
+struct get_Field_Indexes <
+    all_view_const_new<xs...>
+    >
+{
+  typedef vec<> type;
+};
+
+
+
 
 template<class vectorfield, class Position_field>
 struct vector_field_subElement
@@ -917,17 +1508,26 @@ struct vector_field_subElement
   auto size(Index,const Position& p)const  {return p_.size(Index{},p_(p));}
 
 
+  auto begin(){return p_.begin();}
 
   vector_field_subElement(vectorfield v, Position_field  p):
                                                              v_{v},p_{p}
   {}
 
   template<class Pos>
-  auto operator()(const Pos& p)const
+  decltype(auto) operator()(const Pos& p)const
   {
-//   using test=typename Cs<vectorfield,Position,decltype (p)>::laconcha;
-//   using test2=typename Cs<decltype (p_(p))>::laconcha;
-//   using test3=typename Cs<decltype (v_(p_(p)))>::laconcha;
+//   using test=typename Cs<vectorfield,Position_field,Pos>::types;
+//   using test2=typename Cs<decltype (p_(p))>::first;
+//   using test3=typename Cs<decltype (v_(p_(p)))>::second;
+    return v_(p_(p));
+  }
+  template<class Pos>
+  decltype(auto) operator()(const Pos& p)
+  {
+//       using test=typename Cs<vectorfield,Position_field,Pos>::types;
+//       using test2=typename Cs<decltype (p_(p))>::first;
+//       using test3=typename Cs<decltype (v_(p_(p)))>::second;
     return v_(p_(p));
   }
   auto operator()()const {return *this;}
@@ -939,7 +1539,58 @@ vector_field_subElement(vectorfield,  Position_field)->vector_field_subElement<
     std::conditional_t<std::is_lvalue_reference_v<Position_field>,Position_field,std::decay_t<Position_field>>
   >;
 
+template<class vectorfield, class Position_field, class Id, typename=std::enable_if_t<!is_this_template_class_v<non_const,Id>>>
+auto get_at(vector_field_subElement<vectorfield,Position_field> x, Id)
+{
+  //  using test=typename std::conditional_t<is_this_template_class_v<non_const,Id>,
+  //                                           Id,std::vector<double>>::value_type;
 
+  using Pos=transfer_t<get_Field_Indexes_t<vector_field_subElement<vectorfield,Position_field>>,Position<>>;
+
+  // using test=typename Cs<Id,Idinside,Pos,vectorfield_storage>::test;
+
+
+  if constexpr (std::is_same_v<decltype (get_at(x(Pos{}),Id{})),Nothing >)
+    return Nothing{};
+  else
+    return x_i_vector_field_const(std::move(x),Id{});
+}
+
+template<class vectorfield, class Position_field, class Id>
+auto get_at(vector_field_subElement<vectorfield,Position_field> x, non_const<Id>)
+{
+  //  using test=typename std::conditional_t<is_this_template_class_v<non_const,Id>,
+  //                                           Id,std::vector<double>>::value_type;
+
+  using Pos=transfer_t<get_Field_Indexes_t<vector_field_subElement<vectorfield,Position_field>>,Position<>>;
+
+  // using test=typename Cs<Id,Idinside,Pos,vectorfield_storage>::test;
+
+
+  if constexpr (std::is_same_v<decltype (get_at(x(Pos{}),non_const<Id>{})),Nothing >)
+    return Nothing{};
+  else
+    return x_i_vector_field_non_const(std::move(x),Id{});
+}
+
+
+template<class vectorfield, class Position_field>
+struct get_internal_Ids_of<vector_field_subElement<vectorfield,Position_field>> {
+  using T=vector_field_subElement<vectorfield,Position_field>;
+
+  using type= my_internal_Ids_t<decltype (std::declval<T>()(std::declval<T>().begin()))>;
+  //  using test=typename Cs<Id,decltype ((std::declval<T>().begin())),x_i_vector_field_const<vectorfield_storing_type,Id>>::Position;
+  //  using test2=typename Cs<Id,decltype (std::declval<T>()(std::declval<T>().begin()))>::value_position;
+  //  using test3=typename Cs<Id,type>::internal;
+
+};
+
+
+template<class Id, class vectorfield, class Position_field>
+constexpr bool contains_Id(Id,Cs<vector_field_subElement<vectorfield,Position_field>>)
+{
+      return contains_Id(Id{},Cs<vectorfield>{});
+};
 
 
 template<class vectorfield, class Position>
@@ -948,6 +1599,7 @@ struct get_Field_Indexes <
     >
 {
   using type=get_Field_Indexes_t<Position>;
+ // using test=typename Cs<type,Position>::test;
 };
 
 

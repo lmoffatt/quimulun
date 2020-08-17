@@ -52,7 +52,6 @@ struct SampleParameters{};
 struct logProbability{};
 struct FisherInformationMatrix{};
 
-template<class Op>struct Parallel{};
 
 
 

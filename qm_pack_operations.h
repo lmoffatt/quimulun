@@ -10,6 +10,51 @@ template<class...> class C{};
 
 
 
+struct Nothing{
+  friend Nothing operator+(Nothing, Nothing ){return Nothing{};}
+
+
+  friend Nothing operator||(Nothing, Nothing ){return Nothing{};}
+
+  template<class Something>
+  friend decltype(auto) operator-( Something&& s, Nothing)//->decltype (s)
+  {return std::forward<Something>(s);}
+
+  template<class Something>
+  friend decltype(auto) operator+( Something&& s, Nothing)//->decltype (s)
+  {return std::forward<Something>(s);}
+
+
+
+  template<class Something>
+  friend Something operator||(Nothing, Something&& s)//->decltype (s)
+  {return s;}
+
+  //  template<class Something>
+  //  friend auto& operator||(Nothing, const Something& s)//->decltype (s)
+  //  {return s;}
+
+
+
+  template<class Something>
+  friend Something operator||( Something&& s, Nothing)//->decltype (s)
+  {return s;}
+
+  //  template<class Something>
+  //  friend auto& operator||( const Something& s, Nothing)//->decltype (s)
+  //  {return s;}
+
+
+
+
+  constexpr auto size(){return 0;}
+  using myIds=Cs<>;
+
+  Nothing operator()()const {return {};}
+
+  using result_type=Nothing;
+};
+
 template<template<class...> class Cs,class...Ts>
 constexpr auto size_of_pack(Cs<Ts...>){return sizeof... (Ts);}
 
@@ -336,6 +381,12 @@ template <class...Ts>
 auto operator || (Cs<Ts...>, Cs<pack_end>){return Cs_end<Ts...>{};}
 template <class...Ts, class...Us>
 auto operator || (Cs_end<Ts...>, Cs<Us...>){return Cs_end<Ts...>{};}
+
+template<class I, template <class...>class vec>
+struct pack_until_this<I,vec<>>
+{
+  using type= Nothing;
+};
 
 
 template<class I, template <class...>class vec,class...Xs>

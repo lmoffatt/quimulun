@@ -36,24 +36,44 @@ public:
   auto & operator()(const Position<>&){return *this;}
 
 
+
+  /**   const version
+   *  @brief if all the components of the tuple return themselves upon inspected with this Position, the whole tuple will return itself.
+   */
   template<class X,class... Xs, typename=std::enable_if_t<(std::is_same_v<std::decay_t<decltype(std::declval<v_is>()(std::declval<Position<X,Xs...>>()))>,v_is >&&...&&true)>>
-  auto  & operator()(const Position<X,Xs...>& ) const{
+  decltype (auto) operator()(const Position<X,Xs...>& ) const{
+    //using test=typename Cs<Position<X,Xs...>,vector_tuple>::tuple;
+
     return *this;
   }
+
+  /**
+   *  @brief if not all the components of the tuple return themselves upon inspected with this Position, it will create a tuple with the values at the reclaimed position
+   *    */
 
   template<class X,class... Xs, typename=std::enable_if_t<!(std::is_same_v<std::decay_t<decltype(std::declval<v_is>()(std::declval<Position<X,Xs...>>()))>,v_is >&&...&&true)>>
   auto operator()(const Position<X,Xs...>& p) const{
+   // using test=typename Cs<Position<X,Xs...>,decltype(vector_tuple<std::decay_t<decltype (std::declval<v_is>()(p))>...>(std::declval<v_is>()(p)...)),vector_tuple>::tuple;
     return std::apply([&p](auto&... t){return vector_tuple<std::decay_t<decltype (t(p))>...>(t(p)...);},v_);
   }
 
+  /**  non-const version
+   *  @brief if all the components of the tuple return themselves upon inspected with this Position, the whole tuple will return itself.
+   */
   template<class X,class... Xs, typename=std::enable_if_t<(std::is_same_v<std::decay_t<decltype(std::declval<v_is>()(std::declval<Position<X,Xs...>>()))>,v_is >&&...&&true)>>
   auto  & operator()(const Position<X,Xs...>& ) {
+  //  using test=typename Cs<Position<X,Xs...>,vector_tuple>::tuple;
     return *this;
   }
 
+  /**
+   *  @brief if not all the components of the tuple return themselves upon inspected with this Position, it will create a tuple with the values at the reclaimed position
+   *    */
+
   template<class X,class... Xs, typename=std::enable_if_t<!(std::is_same_v<std::decay_t<decltype(std::declval<v_is>()(std::declval<Position<X,Xs...>>()))>,v_is >&&...&&true)>>
   auto operator()(const Position<X,Xs...>& p) {
-    return std::apply([&p](auto&... t){return vector_tuple<std::decay_t<decltype (t(p))>...>(t(p)...);},v_);
+  //  using test=typename Cs<Position<X,Xs...>,decltype(vector_tuple<decltype (std::declval<v_is>()(p))...>(std::declval<v_is>()(p)...)),vector_tuple>::tuple;
+    return std::apply([&p](auto&... t){return vector_tuple<decltype (t(p))...>(t(p)...);},v_);
   }
 
 
@@ -79,6 +99,9 @@ public:
   }
 
 
+  /**
+   * consider removing operators after we found the way of using gpus for parallelizing everything, as now they are needed
+   */
   friend auto operator + (const vector_tuple& one, const vector_tuple& two)
   {
     return vector_tuple(std::get<v_is>(one.v_)+std::get<v_is>(two.v_)...);
@@ -91,8 +114,12 @@ public:
   template<class value>
   friend auto operator *(const vector_tuple& one, const value& a)
   {
+
+   // using test=typename Cs<Cs<decltype (std::declval<v_is>())...>,value>::test;
+
     return vector_tuple<std::decay_t<decltype (std::declval<v_is>()*a)>...>(std::get<v_is>(one.v_)*a...);
   }
+
 
 
 
@@ -113,10 +140,13 @@ public:
 
   static constexpr auto size() {return sizeof... (v_is);}
 
-  explicit vector_tuple(v_is&&...xs):v_{std::forward<v_is>(xs)...}{}
+  template<class... V_is, typename=std::enable_if_t<(std::is_same_v<V_is,std::decay_t<v_is>> && ...) >>
+  explicit vector_tuple(V_is&&...xs):v_{std::forward<V_is>(xs)...}{}
+
   explicit vector_tuple(v_is const&...xs):v_{xs...}{}
 
 
+  auto begin(){return Position<>{};}
 
 
 };
@@ -162,6 +192,12 @@ public:
 
 
 
+
+template<class... xis>
+struct get_Field_Indexes <vector_tuple<xis...>>
+{
+  typedef vec<> type;
+};
 
 
 

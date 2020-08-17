@@ -2,6 +2,7 @@
 #define QM_TENSOR_MODEL_EVALUATION_H
 
 #include <qm_tensor_model_declaration.h>
+#include <qm_tensor_model_declaration_new.h>
 #include <qm_vector_field_evaluation.h>
 #include <qm_tensor_distribution_evaluation.h>
 

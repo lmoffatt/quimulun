@@ -164,7 +164,7 @@ auto myInvoke(Sample, stretch_move_Distribution<Real>, Rnd& mt,const v<Real,dime
 {
   std::uniform_real_distribution<double> U(std::sqrt(1.0 / alfa.value()),
                                            std::sqrt(alfa.value()));
-  return  sqr(U(mt.value()));
+  return  v(sqr(U(mt.value())),dimension_less{});
 }
 
 
