@@ -1,13 +1,12 @@
-#ifndef QM_STATIC_STRING_H
-#define QM_STATIC_STRING_H
+#ifndef STATIC_STRING_H
+#define STATIC_STRING_H
+#include "/usr/local/cuda-11.0/targets/x86_64-linux/include/cuda_runtime.h"
 
 #include <string>
 #include <iomanip>
-#include <cstring>
-#include <istream>
-#include <chrono>
+#include <cstdio>
 
-
+constexpr double PI = 3.14159265358979323846;
 
 template <std::size_t N> struct my_static_string {
 private:
@@ -36,6 +35,17 @@ public:
   constexpr const char * c_str() const { return &c_[0]; }
 
   friend
+      __host__ __device__
+      void my_print(const  my_static_string& me)
+  {
+    for (std::size_t i = 0; i < N-1; ++i)
+      printf("%c", me[i]);
+
+  }
+
+
+
+  friend
       std::istream& operator>>(std::istream& is, my_static_string&& m)
   {
     for (auto i=0u; i<N-1; ++i)
@@ -61,16 +71,6 @@ public:
 
   std::string str() const { return c_str(); }
 
-  template <std::size_t N2>
-  friend constexpr  bool operator < (const my_static_string& one, const my_static_string<N2>& two )
-  {
-    for (std::size_t i=0; i<std::min(N,N2); ++i)
-    {
-      if(one[i]<two[i]) return true;
-      else if (one[i]>two[i]) return false;
-    }
-    return N<N2;
-  }
   friend constexpr  bool operator == (const my_static_string& one, const my_static_string& two )
   {
     for (std::size_t i=0; i<N; ++i)
@@ -85,9 +85,20 @@ public:
 
 };
 
+template <std::size_t N,std::size_t N2>
+constexpr  bool operator < (const my_static_string<N>& one, const my_static_string<N2>& two )
+{
+  for (std::size_t i=0; i<std::min(N,N2); ++i)
+  {
+    if(one[i]<two[i]) return true;
+    else if (one[i]>two[i]) return false;
+  }
+  return N<N2;
+}
+
+
 template <int N>
-my_static_string(const char (&lit)[N]) // <- match this
-    ->my_static_string<N>;
+my_static_string(const char (&lit)[N])  ->my_static_string<N>;
 
 template <std::size_t N1, std::size_t N2>
 constexpr auto operator+(const my_static_string<N1> &s1,
@@ -96,7 +107,7 @@ constexpr auto operator+(const my_static_string<N1> &s1,
   return my_static_string<N1 + N2 - 1>(s1, s2);
 }
 
-template <int N>
+template <long N>
 constexpr auto to_static_string()
 {
   if constexpr (N<0)
@@ -110,70 +121,28 @@ constexpr auto to_static_string()
   }
   else
   {
-    constexpr int N10=N/10;
-    constexpr int N0=N-N10*10;
-    return to_static_string<N10>()+ my_static_string({'0' + N0,'\0'});
+    constexpr long N10=N/10;
+    constexpr long N0=N-N10*10;
+    return to_static_string<N10>()+ to_static_string<N0>();
   }
 }
 
-// two contiguous separators means an empty string!
-inline std::istream& read_between_separators(std::istream& is, std::string& s, char sep)
-{
-  char c;
-  is.get(c);
-  if (c==sep)
-  {
-    is.get(c);
-    if (c==sep)
-    {
-      s="";
-      return is;
-    }
-  }
-  is.putback(c);
-  is>>s;
-  return is;
-};
-
-inline
-    std::string leadingZero(int i)
-{
-  if (i==0)
-    return "00";
-  else if (i<10)
-    return "0"+std::to_string(i);
-  else return std::to_string(i);
-}
-
-inline
-    std::string leadingZeroZero(int i)
-{
-  if (i==0)
-    return "000";
-  else if (i<10)
-    return "00"+std::to_string(i);
-  else if (i<100)
-    return "0"+std::to_string(i);
-  else return std::to_string(i);
-}
-
-inline
-    std::string time_now()
-{
-  auto tc=std::chrono::system_clock::now();
-  std::time_t rawtime=std::chrono::system_clock::to_time_t(tc);
-
-  auto tcount=(tc.time_since_epoch().count()/1000)%1000000;
+inline constexpr auto eol_s=my_static_string("\n");
+inline constexpr auto obrk_s=my_static_string("(");
+inline constexpr auto cbrk_s=my_static_string(")");
 
 
-  struct std::tm * t;
-  time (&rawtime);
-  t = localtime (&rawtime);
-  return leadingZero(t->tm_hour)+leadingZero(t->tm_min)+leadingZero(t->tm_sec)+"s"+std::to_string(tcount);
 
-}
+__host__ __device__
+    void my_print(double x){ printf("%g",x);}
+
+__host__ __device__
+    void my_print(const char* x){ printf("%s",x);}
+
+__host__ __device__
+    void my_print(long x){ printf("%d",x);}
 
 
 
 
-#endif // QM_STATIC_STRING_H
+#endif // STATIC_STRING_H
