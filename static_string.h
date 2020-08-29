@@ -5,6 +5,7 @@
 #include <string>
 #include <iomanip>
 #include <cstdio>
+#include <array>
 
 constexpr double PI = 3.14159265358979323846;
 
@@ -43,10 +44,16 @@ public:
 
   }
 
+  friend
+      std::ostream& operator<<(std::ostream& os, const my_static_string& m)
+  {
+    os<<m.c_str();
+    return os;
+  }
 
 
   friend
-      std::istream& operator>>(std::istream& is, my_static_string&& m)
+      std::istream& operator>>(std::istream& is, const my_static_string& m)
   {
     for (auto i=0u; i<N-1; ++i)
     {

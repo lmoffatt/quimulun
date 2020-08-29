@@ -18,6 +18,9 @@ private:
   std::size_t n_=0;
 
 public:
+  static inline constexpr const auto sep=my_static_string("\n");
+
+
   __host__ __device__
       auto& operator[](std::size_t i){return *(v_+i);}
   __host__ __device__
@@ -32,6 +35,9 @@ public:
 
    __host__ __device__  constexpr explicit vector_device(std::size_t n):v_{new T[n]},n_{n}{}
 
+   __host__ __device__  constexpr explicit vector_device()=default;
+
+
   __host__ __device__
       vector_device& operator=(vector_device&& other)const
   {
@@ -40,8 +46,6 @@ public:
     other.n_=0;
   }
 
- // __host__ __device__
-  vector_device()=default;
 
   __host__ __device__
       ~vector_device()
@@ -70,6 +74,21 @@ public:
       my_print(me[i]);
     printf("}");
   }
+
+  friend std::ostream& operator<<(std::ostream& os, const vector_device& me)
+  {
+    for (std::size_t i=0; i<me.size(); ++i)
+     os<<me[i]<<me.sep;
+    return os;
+  }
+
+  friend std::istream& operator>>(std::istream& is, vector_device& me)
+  {
+    for (std::size_t i=0; i<me.size(); ++i)
+     is>>me[i]>>me.sep;
+    return is;
+  }
+
 
 
 

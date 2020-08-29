@@ -13,15 +13,21 @@ private:
 
 public:
 
-  inline static constexpr auto x_iname=my_static_string("x_i(");
-  inline static constexpr auto name=x_iname+Id::name+my_static_string(")");
+  inline static constexpr const auto x_iname=my_static_string("x_i(");
+  inline static constexpr const auto name=x_iname+Id::name+my_static_string(")");
   using myId=Id;
+
+
+  __host__ __device__ static constexpr auto title(){return Id::name;}
+
 
   __host__ __device__
       constexpr x_i(Id, T&& x):x_{std::move(x)}{}
 
   __host__ __device__
       constexpr x_i(Id, T const& x):x_{x}{}
+
+  constexpr x_i()=default;
 
 
   __host__ __device__

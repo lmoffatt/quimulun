@@ -148,6 +148,8 @@ public:
 
   __host__ __device__ constexpr nl_u()=default;
 
+
+
   template<class U>
   friend
       __host__ __device__ constexpr auto operator + (nl_u x, nl_u<U,unit> y)
@@ -155,6 +157,9 @@ public:
     using R=std::decay_t<decltype (x()+y())>;
     return nl_u<R,unit>(x()+y(),unit{});
   }
+
+
+
 
   friend
    __host__ __device__ void my_print(const  nl_u& me)

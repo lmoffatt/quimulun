@@ -18,7 +18,7 @@ public:
   __host__ __device__
   constexpr explicit v(T x, unit): x_{x}{}
 
-
+  constexpr v()=default;
 
   __host__ __device__
       constexpr explicit v(T x): x_{x}{}
@@ -53,6 +53,11 @@ public:
     using u=std::decay_t<decltype (unit{}/unit2{})>;
     return v<R,u>(one()/two(),u{});
   }
+
+  __host__ friend std::ostream& operator<<(std::ostream& os, const v& x){ os<<x(); return os;}
+
+  __host__ friend std::istream& operator>>(std::istream& is, v& x){ is>>x(); return is;}
+
 
 };
 
