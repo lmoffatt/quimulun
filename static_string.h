@@ -137,6 +137,12 @@ constexpr auto to_static_string()
 inline constexpr auto eol_s=my_static_string("\n");
 inline constexpr auto obrk_s=my_static_string("(");
 inline constexpr auto cbrk_s=my_static_string(")");
+inline constexpr auto osbrk_s=my_static_string("[");
+inline constexpr auto csbrk_s=my_static_string("]");
+inline constexpr auto colon_s=my_static_string(":");
+inline constexpr auto arrow_s=my_static_string("-->");
+inline constexpr auto comma_s=my_static_string(", ");
+
 
 
 

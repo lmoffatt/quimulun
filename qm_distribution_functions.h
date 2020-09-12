@@ -27,4 +27,7 @@ constexpr auto Normal_Distribution(Mean, Stddev)
 
 
 
+
+
+
 #endif // QM_DISTRIBUTION_FUNCTIONS_H

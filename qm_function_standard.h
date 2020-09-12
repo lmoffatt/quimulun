@@ -2,13 +2,18 @@
 #define QM_FUNCTION_STANDARD_H
 
 #include "static_string.h"
+#include "qm_operator.h"
 
-
- struct Pi { inline static constexpr auto name=my_static_string("pi");};
+ struct Pi {
+     friend constexpr auto collect_arguments(Pi){return arguments<>{};}
+     inline static constexpr auto name=my_static_string("pi");
+ };
 
  template <long v>
  struct N
- { inline static constexpr auto name= to_static_string<v>();};
+ {
+     friend constexpr auto collect_arguments(N){return arguments<>{};}
+     inline static constexpr auto name= to_static_string<v>();};
 
 
 template<class ei>
@@ -42,8 +47,8 @@ struct Cos_f{
 
 struct S{
   inline static constexpr auto name=my_static_string("sum");
-  template<class X, class Y>
-  inline static constexpr auto get_name(){return X::name+my_static_string("+")+Y::name;}
+  template<class X, class... Y>
+  inline static constexpr auto get_name(){return (X::name+...+(my_static_string("+")+Y::name));}
   inline static constexpr auto get_name(){return name;}
 };
 struct P{
@@ -95,6 +100,7 @@ constexpr auto operator+ (X,Y)
 {
   return Op(S{},X{},Y{});
 }
+
 
 template<class X, class Y>
 constexpr auto operator* (X,Y)

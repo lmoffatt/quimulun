@@ -26,5 +26,37 @@ struct Op<F>
 };
 
 
+template<class... Ids> struct arguments{
+    template<class ...Id2>
+    friend __host__ __device__ auto operator&&(arguments,arguments<Id2...>) {return arguments<Ids...,Id2...>{};}
+
+    friend __host__ __device__ auto operator+(arguments,arguments<>)
+    {
+        return arguments{};
+    }
+    template<class Id2>
+    friend __host__ __device__ auto operator+(arguments,arguments<Id2>)
+    {
+        if constexpr ((true&&...&&(!std::is_same_v<Ids,Id2 >)))
+                return arguments<Ids...,Id2>{};
+        else
+                return arguments{};
+    }
+
+    template<class Id2, class Id3, class... Id4>
+    friend __host__ __device__ auto operator+(arguments,arguments<Id2,Id3,Id4...>)
+    {
+        return ((arguments{}+arguments<Id2>{}+arguments<Id3>{})+...+arguments<Id4>{});
+    }
+
+
+
+};
+
+template <class Id, class Arg> struct missing{};
+
+
+
+
 
 #endif // QM_OPERATOR_H

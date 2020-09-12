@@ -20,7 +20,6 @@ public:
 
   __host__ __device__ static constexpr auto title(){return Id::name;}
 
-
   __host__ __device__
       constexpr x_i(Id, T&& x):x_{std::move(x)}{}
 
@@ -34,6 +33,17 @@ public:
       constexpr auto& operator[](Id)const {return *this;}
   __host__ __device__
       constexpr auto& operator[](Id) {return *this;}
+
+  __host__ __device__
+  constexpr auto operator[](Anything)const {return Nothing{};}
+
+
+  __host__ __device__
+      constexpr auto& at(Id)const {return *this;}
+  __host__ __device__
+      constexpr auto& at(Id) {return *this;}
+
+
   __host__ __device__
       constexpr auto& operator()()const {return x_;}
   __host__ __device__
@@ -61,6 +71,21 @@ public:
 
   }
 };
+
+template<class>
+struct element_type;
+
+template <class T>
+using element_type_t=typename element_type<T>::type;
+
+template<class Id, class value>
+struct element_type<x_i<Id,value>>
+{
+    using type=value;
+};
+
+
+
 
 
 

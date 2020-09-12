@@ -5,7 +5,7 @@
 
 
 template<class Id>  struct Index{
-  inline constexpr static auto  name_impl=my_static_string("index(");
+  inline constexpr static auto  name_impl=my_static_string("i(");
   inline constexpr static auto  name=name_impl+Id::name+my_static_string(")");
 };
 

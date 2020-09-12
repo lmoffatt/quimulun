@@ -5,7 +5,7 @@
 
 
 template<class... xs>
-struct vs :public xs...
+class vs :public xs...
 {
 private:
   template<class x0, class...x2>
@@ -25,15 +25,26 @@ private:
 
 public:
 
+  template<class Id>
+  constexpr decltype (auto) operator[](Id)const
+  {
+      return join(xs::operator[](Id{})...);
+  }
+  template<class Id>
+  constexpr decltype (auto) operator[](Id)
+  {
+      return join(xs::operator[](Id{})...);
+  }
 
 
-    static inline constexpr const auto sep=my_static_string("\t");
+  static inline constexpr const auto sep=my_static_string("\t");
 
     static constexpr auto titles(){return ((xs::title()+sep)+...);}
 
-   using xs::operator[]...;
-
     __host__ __device__ constexpr explicit vs(xs&&... x):xs{std::move(x)}...{}
+
+    __host__ __device__ constexpr explicit vs(xs const &... x):xs{x}...{}
+
 
     __host__ __device__ constexpr vs()=default;
 
@@ -51,6 +62,7 @@ public:
 
 
 };
+
 
 
 #endif // QM_VECTOR_SPACE_H
